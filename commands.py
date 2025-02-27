@@ -529,29 +529,114 @@ class GamingCommands(commands.Cog):
     @commands.command(name='help')
     async def show_help(self, ctx):
         """Show help message with available commands"""
-        embed = Embed(title="📖 Gamer Cred Bot Commands", color=0x0088ff)
+        embed = Embed(
+            title="📖 Gamer Cred Bot Commands",
+            description="Track your gaming progress and earn achievements!",
+            color=0x0088ff
+        )
 
-        # Update command descriptions
-        commands_with_descriptions = {
-            'log': '!log <hours> <game> - Log your gaming hours',
-            'setrate': '!setrate <credits> <game> - Set credits per hour for a game (0.1-10.0)',
-            'rate': '!rate <game> - Check credits per hour for a game',
-            'balance': '!balance - Check your gamer cred balance',
-            'leaderboard': '!leaderboard - View the gamer cred leaderboard',
-            'weekly': '!weekly - View the weekly gamer cred leaderboard',
-            'monthly': '!monthly - View the monthly gamer cred leaderboard',
-            'history': '!history - View your gaming history and totals per game',
-            'achievements': '!achievements - View your achievements',
-            'help': '!help - Show this help message',
-            'gamestats': '!gamestats <game> - Show detailed game statistics',
-            'mystats': '!mystats - Show your overall gaming statistics or use !mystats <game> for game-specific stats',
-            'addbonus': '!addbonus @user <amount> <reason> - Add bonus credits (Moderator only)',
-            'renamegame': '!renamegame "Old Name" "New Name" - Rename a game (Moderator only)',
-            'deletegame': '!deletegame <game> - Delete a game (Moderator only)'
-        }
+        # Core Commands
+        embed.add_field(
+            name="📱 CORE COMMANDS",
+            value="━━━━━━━━━━━━━━━",
+            inline=False
+        )
+        embed.add_field(
+            name="!log <hours> <game>",
+            value="Log your gaming hours",
+            inline=False
+        )
+        embed.add_field(
+            name="!balance",
+            value="Check your gamer cred balance",
+            inline=False
+        )
+        embed.add_field(
+            name="!history",
+            value="View your gaming history",
+            inline=False
+        )
+        embed.add_field(
+            name="!mystats [game]",
+            value="Show your gaming statistics (overall or per game)",
+            inline=False
+        )
+        embed.add_field(
+            name="!achievements",
+            value="View your gaming achievements",
+            inline=False
+        )
 
-        for command, description in commands_with_descriptions.items():
-            embed.add_field(name=command, value=description, inline=False)
+        # Competition Commands
+        embed.add_field(
+            name="🏆 LEADERBOARDS",
+            value="━━━━━━━━━━━━━━━",
+            inline=False
+        )
+        embed.add_field(
+            name="!leaderboard",
+            value="View the all-time gamer cred leaderboard",
+            inline=False
+        )
+        embed.add_field(
+            name="!weekly",
+            value="View the weekly gamer cred leaderboard",
+            inline=False
+        )
+        embed.add_field(
+            name="!monthly",
+            value="View the monthly gamer cred leaderboard",
+            inline=False
+        )
+
+        # Game Management
+        embed.add_field(
+            name="🎮 GAME MANAGEMENT",
+            value="━━━━━━━━━━━━━━━",
+            inline=False
+        )
+        embed.add_field(
+            name="!rate <game>",
+            value="Check credits per hour for a game",
+            inline=False
+        )
+        embed.add_field(
+            name="!setrate <credits> <game>",
+            value="Set credits per hour for a game",
+            inline=False
+        )
+        embed.add_field(
+            name="!gamestats <game>",
+            value="View detailed statistics for a specific game",
+            inline=False
+        )
+        embed.add_field(
+            name="!userstats @user [game]",
+            value="View another user's gaming statistics",
+            inline=False
+        )
+
+        # Admin Commands
+        embed.add_field(
+            name="⚙️ ADMIN COMMANDS",
+            value="━━━━━━━━━━━━━━━",
+            inline=False
+        )
+        embed.add_field(
+            name="!addbonus @user <amount> <reason>",
+            value="Add or remove bonus cred (Mod only)",
+            inline=False
+        )
+        embed.add_field(
+            name="!renamegame \"Old Name\" \"New Name\"",
+            value="Rename a game (Mod only)",
+            inline=False
+        )
+        embed.add_field(
+            name="!deletegame <game>",
+            value="Delete a game from the database (Mod only)",
+            inline=False
+        )
 
         await ctx.send(embed=embed)
 
@@ -693,3 +778,134 @@ class GamingCommands(commands.Cog):
             await ctx.send("❌ Please provide a game name (!deletegame <game>)")
         else:
             await ctx.send(f"❌ An error occurred: {str(error)}")
+            
+    @commands.command(name='userstats')
+    async def show_user_stats(self, ctx, member: discord.Member, *, game: Optional[str] = None):
+        """Show gaming statistics for another user, optionally for a specific game"""
+        try:
+            if game:
+                # If game is specified, show game-specific stats
+                await self.show_other_user_game_stats(ctx, member, game)
+                return
+
+            # Get user's overall stats
+            summaries = self.storage.get_user_game_summaries(member.id)
+            if not summaries:
+                await ctx.send(f"{member.display_name} hasn't logged any gaming sessions yet!")
+                return
+
+            # Calculate overall stats
+            total_hours = sum(s['total_hours'] for s in summaries)
+            total_credits = sum(s['total_credits'] for s in summaries)
+            unique_games = len(summaries)
+            avg_credits_per_hour = total_credits / total_hours if total_hours > 0 else 0
+
+            # Sort games by hours played to find most played
+            sorted_games = sorted(summaries, key=lambda x: x['total_hours'], reverse=True)
+            top_games = sorted_games[:3]  # Get top 3 most played games
+
+            # Create embed for overall stats
+            embed = Embed(title=f"📊 Gaming Stats for {member.display_name}", color=0x00ff00)
+
+            # Main stats
+            embed.add_field(
+                name="⏱️ Total Gaming Time",
+                value=f"{total_hours:,.1f} hours",
+                inline=True
+            )
+            embed.add_field(
+                name="💎 Total Credits Earned",
+                value=f"{total_credits:,.1f} cred",
+                inline=True
+            )
+            embed.add_field(
+                name="🎮 Games Played",
+                value=f"{unique_games:,} different games",
+                inline=True
+            )
+            embed.add_field(
+                name="📈 Average Credits/Hour",
+                value=f"{avg_credits_per_hour:,.1f} cred/hour",
+                inline=True
+            )
+
+            # Most played games section
+            most_played = "\n".join([
+                f"**{i+1}. {game['game']}**\n"
+                f"⏱️ {game['total_hours']:,.1f} hours • 💎 {game['total_credits']:,.1f} cred"
+                for i, game in enumerate(top_games)
+            ])
+            embed.add_field(
+                name="🏆 Most Played Games",
+                value=most_played or "No games logged yet",
+                inline=False
+            )
+
+            # Get achievements
+            achievements = self.storage.get_user_achievements(member.id)
+            achieved = sum(1 for v in achievements.values() if v)
+            total = len(achievements)
+
+            embed.add_field(
+                name="🌟 Achievements Progress",
+                value=f"{achieved} out of {total} achievements unlocked",
+                inline=False
+            )
+
+            await ctx.send(embed=embed)
+
+        except Exception as e:
+            await ctx.send(MESSAGES['error'].format(error=str(e)))
+
+    async def show_other_user_game_stats(self, ctx, member: discord.Member, game: str):
+        """Helper function to show game-specific stats for another user"""
+        try:
+            stats = self.storage.get_user_game_stats(member.id, game)
+            if not stats:
+                await ctx.send(f"❓ {member.display_name} hasn't played '{game}' yet!")
+                return
+
+            embed = Embed(title=f"📊 {member.display_name}'s Stats for {stats['name']}", color=0x00ff00)
+            embed.add_field(
+                name="Total Hours",
+                value=f"⏱️ {stats['total_hours']:,.1f} hours",
+                inline=True
+            )
+            embed.add_field(
+                name="Total Credits",
+                value=f"💎 {stats['total_credits']:,.1f} cred",
+                inline=True
+            )
+            embed.add_field(
+                name="Credit Rate",
+                value=f"📈 {stats['credits_per_hour']:,.1f} cred/hour",
+                inline=True
+            )
+            embed.add_field(
+                name="Gaming Sessions",
+                value=f"🎮 {stats['total_sessions']} sessions",
+                inline=True
+            )
+            embed.add_field(
+                name="First Played",
+                value=f"`📅 {stats['first_played'].strftime('%Y-%m-%d')}",
+                inline=True
+            )
+            embed.add_field(
+                name="Last Played",
+                value=f"🕒 {stats['last_played'].strftime('%Y-%m-%d')}",
+                inline=True
+            )
+
+            # Add Backloggd link
+            backloggd_url = self.get_backloggd_url(game)
+            embed.add_field(
+                name="View on Backloggd",
+                value=f"🔗 [Game Page]({backloggd_url})",
+                inline=False
+            )
+
+            await ctx.send(embed=embed)
+
+        except Exception as e:
+            await ctx.send(MESSAGES['error'].format(error=str(e)))
