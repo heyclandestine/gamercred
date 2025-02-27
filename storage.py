@@ -7,11 +7,11 @@ from models import Base, Game, UserStats, GamingSession
 
 class GameStorage:
     def __init__(self):
-        database_url = os.getenv('DATABASE_URL')
-        if not database_url:
-            raise ValueError("DATABASE_URL environment variable is required")
+        from constants import DATABASE_URL
+        if not DATABASE_URL:
+            raise ValueError("No database URL found. Set DATABASE_URL or LOCAL_DATABASE_URL environment variable")
 
-        self.engine = create_engine(database_url)
+        self.engine = create_engine(DATABASE_URL)
         # Create tables if they don't exist (remove drop_all)
         Base.metadata.create_all(self.engine)
         self.Session = sessionmaker(bind=self.engine)

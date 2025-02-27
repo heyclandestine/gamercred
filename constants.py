@@ -12,6 +12,10 @@ if 'channels' in channel_id:
     channel_id = channel_id.split('/')[-1]
 CHANNEL_ID = int(channel_id)  # Add this to restrict commands to one channel
 
+# Database configuration
+# Use LOCAL_DATABASE_URL if set, otherwise fallback to Replit's DATABASE_URL
+DATABASE_URL = os.getenv('LOCAL_DATABASE_URL', os.getenv('DATABASE_URL', ''))
+
 # Command list - ordered by frequency of use
 COMMANDS = OrderedDict([
     ('log', '!log <hours> <game> - Log your gaming hours'),
