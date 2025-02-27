@@ -73,14 +73,62 @@ class GameStorage:
                 .filter(GamingSession.user_id == user_id)\
                 .scalar() or 0
 
+            # Get longest session
+            longest_session = session.query(func.max(GamingSession.hours))\
+                .filter(GamingSession.user_id == user_id)\
+                .scalar() or 0
+
+            # Get highest rate game played
+            highest_rate = session.query(func.max(Game.credits_per_hour))\
+                .join(GamingSession)\
+                .filter(GamingSession.user_id == user_id)\
+                .scalar() or 0
+
+            # Get number of games with more than 10 hours
+            dedicated_games = session.query(func.count(GamingSession.game_id.distinct()))\
+                .filter(GamingSession.user_id == user_id)\
+                .group_by(GamingSession.game_id)\
+                .having(func.sum(GamingSession.hours) >= 10)\
+                .count()
+
             return {
+                # Time-based achievements
                 'novice_gamer': total_hours >= 10,
                 'veteran_gamer': total_hours >= 100,
                 'gaming_legend': total_hours >= 1000,
+                'gaming_god': total_hours >= 5000,
+
+                # Credit-based achievements
+                'credit_starter': total_credits >= 10,
                 'credit_collector': total_credits >= 100,
                 'credit_hoarder': total_credits >= 1000,
+                'credit_baron': total_credits >= 10000,
+                'credit_millionaire': total_credits >= 1000000,
+
+                # Game variety achievements
+                'game_curious': unique_games >= 3,
                 'game_explorer': unique_games >= 5,
-                'game_connoisseur': unique_games >= 20
+                'game_adventurer': unique_games >= 10,
+                'game_connoisseur': unique_games >= 20,
+                'game_master': unique_games >= 50,
+
+                # Session-based achievements
+                'gaming_sprint': longest_session >= 1,
+                'gaming_marathon': longest_session >= 5,
+                'gaming_ultramarathon': longest_session >= 12,
+                'gaming_immortal': longest_session >= 24,
+
+                # Rate-based achievements
+                'efficient_gamer': highest_rate >= 2,
+                'pro_gamer': highest_rate >= 5,
+                'elite_gamer': highest_rate >= 10,
+                'legendary_gamer': highest_rate >= 100,
+
+                # Dedication achievements
+                'game_enthusiast': dedicated_games >= 1,
+                'game_devotee': dedicated_games >= 3,
+                'game_zealot': dedicated_games >= 5,
+                'game_fanatic': dedicated_games >= 10
             }
         finally:
             session.close()
@@ -89,9 +137,12 @@ class GameStorage:
         """Get a game by name or create it if it doesn't exist"""
         session = self.Session()
         try:
-            game = session.query(Game).filter(Game.name == game_name).first()
+            # Case-insensitive search for existing game
+            game = session.query(Game).filter(func.lower(Game.name) == func.lower(game_name)).first()
             if not game:
-                game = Game(name=game_name, credits_per_hour=credits_per_hour, added_by=user_id)
+                # Capitalize the first letter for consistency
+                formatted_name = game_name.strip().capitalize()
+                game = Game(name=formatted_name, credits_per_hour=credits_per_hour, added_by=user_id)
                 session.add(game)
                 session.commit()
                 return game, True
@@ -106,15 +157,16 @@ class GameStorage:
 
         session = self.Session()
         try:
-            # Look for existing game first
-            game = session.query(Game).filter(Game.name == game_name).first()
+            # Case-insensitive search for existing game
+            game = session.query(Game).filter(func.lower(Game.name) == func.lower(game_name)).first()
 
             if game:
                 # Update existing game
                 game.credits_per_hour = credits
             else:
                 # Create new game with specified rate
-                game = Game(name=game_name, credits_per_hour=credits, added_by=user_id)
+                formatted_name = game_name.strip().capitalize()
+                game = Game(name=formatted_name, credits_per_hour=credits, added_by=user_id)
                 session.add(game)
 
             session.commit()
@@ -127,13 +179,13 @@ class GameStorage:
         session = self.Session()
         try:
             # Get game by name
-            game = session.query(Game).filter(Game.name == game_name).first()
+            game = session.query(Game).filter(func.lower(Game.name) == func.lower(game_name)).first()
             if not game:
                 # Check if this is a renamed game before creating a new one
                 # Look for any recent gaming sessions with this game name
                 latest_session = session.query(GamingSession)\
                     .join(Game)\
-                    .filter(Game.name == game_name)\
+                    .filter(func.lower(Game.name) == func.lower(game_name))\
                     .order_by(GamingSession.timestamp.desc())\
                     .first()
 
@@ -142,7 +194,7 @@ class GameStorage:
                     game = latest_session.game
                 else:
                     # Create new game with default rate
-                    game = Game(name=game_name, credits_per_hour=1.0, added_by=user_id)
+                    game = Game(name=game_name.strip().capitalize(), credits_per_hour=1.0, added_by=user_id)
                     session.add(game)
                     session.commit()
 
@@ -196,7 +248,7 @@ class GameStorage:
         """Get game information including credits per hour"""
         session = self.Session()
         try:
-            game = session.query(Game).filter(Game.name == game_name).first()
+            game = session.query(Game).filter(func.lower(Game.name) == func.lower(game_name)).first()
             if game:
                 return {
                     'name': game.name,
@@ -211,7 +263,7 @@ class GameStorage:
         """Get detailed statistics for a specific game"""
         session = self.Session()
         try:
-            game = session.query(Game).filter(Game.name == game_name).first()
+            game = session.query(Game).filter(func.lower(Game.name) == func.lower(game_name)).first()
             if not game:
                 return None
 
@@ -265,7 +317,7 @@ class GameStorage:
         """Get detailed statistics for a specific game for a specific user"""
         session = self.Session()
         try:
-            game = session.query(Game).filter(Game.name == game_name).first()
+            game = session.query(Game).filter(func.lower(Game.name) == func.lower(game_name)).first()
             if not game:
                 return None
 
@@ -321,7 +373,7 @@ class GameStorage:
         session = self.Session()
         try:
             # Check if the old game exists
-            old_game = session.query(Game).filter(Game.name == old_name).first()
+            old_game = session.query(Game).filter(func.lower(Game.name) == func.lower(old_name)).first()
             if not old_game:
                 return None
 
@@ -341,9 +393,48 @@ class GameStorage:
             }
 
             # Update the game name
-            old_game.name = new_name
+            old_game.name = new_name.strip().capitalize()
             session.commit()
 
             return old_info
+        finally:
+            session.close()
+
+    def delete_game(self, game_name: str) -> Optional[Dict]:
+        """Delete a game from the database and return its stats"""
+        session = self.Session()
+        try:
+            # Get game and its stats before deletion
+            game = session.query(Game).filter(func.lower(Game.name) == func.lower(game_name)).first()
+            if not game:
+                return None
+
+            # Get game stats before deletion
+            stats = session.query(
+                func.sum(GamingSession.hours).label('total_hours'),
+                func.sum(GamingSession.credits_earned).label('total_credits'),
+                func.count(GamingSession.id.distinct()).label('total_sessions'),
+                func.count(GamingSession.user_id.distinct()).label('unique_players')
+            ).filter(GamingSession.game_id == game.id).first()
+
+            # Store stats for return value
+            game_info = {
+                'name': game.name,
+                'credits_per_hour': game.credits_per_hour,
+                'added_by': game.added_by,
+                'total_hours': float(stats.total_hours or 0),
+                'total_credits': float(stats.total_credits or 0),
+                'total_sessions': stats.total_sessions,
+                'unique_players': stats.unique_players
+            }
+
+            # Delete all gaming sessions for this game first
+            session.query(GamingSession).filter(GamingSession.game_id == game.id).delete()
+
+            # Then delete the game itself
+            session.delete(game)
+            session.commit()
+
+            return game_info
         finally:
             session.close()

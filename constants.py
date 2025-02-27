@@ -16,9 +16,10 @@ COMMANDS = {
     'history': '!history - View your gaming history',
     'achievements': '!achievements - View your gaming achievements',
     'gamestats': '!gamestats <game> - View detailed statistics for a specific game',
-    'mystats': '!mystats <game> - View your personal statistics for a specific game',
+    'mystats': '!mystats - Show your overall gaming statistics or use !mystats <game> for game-specific stats',
     'addbonus': '!addbonus @user <amount> <reason> - Add or remove bonus cred (Mod only)',
     'renamegame': '!renamegame "Old Name" "New Name" - Rename a game (Mod only)',
+    'deletegame': '!deletegame <game> - Delete a game from the database (Mod only)',
     'help': '!help - Show this help message'
 }
 

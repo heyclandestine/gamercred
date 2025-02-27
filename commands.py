@@ -5,6 +5,7 @@ from typing import Optional
 from storage import GameStorage
 from constants import MESSAGES, COMMANDS
 import re
+import asyncio
 
 class GamingCommands(commands.Cog):
     def __init__(self, bot):
@@ -256,25 +257,80 @@ class GamingCommands(commands.Cog):
         try:
             achievements = self.storage.get_user_achievements(ctx.author.id)
 
-            embed = Embed(title=f"🏆 Achievements for {ctx.author.display_name}", color=0xffd700)
-
-            achievement_descriptions = {
-                'novice_gamer': ('🎮 Novice Gamer', 'Play for 10+ hours'),
-                'veteran_gamer': ('🎮🎮 Veteran Gamer', 'Play for 100+ hours'),
-                'gaming_legend': ('🎮🎮🎮 Gaming Legend', 'Play for 1000+ hours'),
-                'credit_collector': ('💎 Credit Collector', 'Earn 100+ credits'),
-                'credit_hoarder': ('💎💎 Credit Hoarder', 'Earn 1000+ credits'),
-                'game_explorer': ('🔍 Game Explorer', 'Play 5+ different games'),
-                'game_connoisseur': ('🎯 Game Connoisseur', 'Play 20+ different games')
+            # Achievement categories and their descriptions
+            achievement_categories = {
+                "⏱️ Time": {
+                    'novice_gamer': ('Novice', '10h+'),
+                    'veteran_gamer': ('Veteran', '100h+'),
+                    'gaming_legend': ('Legend', '1000h+'),
+                    'gaming_god': ('God', '5000h+')
+                },
+                "💎 Credits": {
+                    'credit_starter': ('Starter', '10+'),
+                    'credit_collector': ('Collector', '100+'),
+                    'credit_hoarder': ('Hoarder', '1000+'),
+                    'credit_baron': ('Baron', '10k+'),
+                    'credit_millionaire': ('Millionaire', '1M+')
+                },
+                "🎮 Games": {
+                    'game_curious': ('Curious', '3+'),
+                    'game_explorer': ('Explorer', '5+'),
+                    'game_adventurer': ('Adventurer', '10+'),
+                    'game_connoisseur': ('Connoisseur', '20+'),
+                    'game_master': ('Master', '50+')
+                },
+                "⚡ Sessions": {
+                    'gaming_sprint': ('Sprint', '1h+'),
+                    'gaming_marathon': ('Marathon', '5h+'),
+                    'gaming_ultramarathon': ('Ultra', '12h+'),
+                    'gaming_immortal': ('Immortal', '24h+')
+                },
+                "📈 Skills": {
+                    'efficient_gamer': ('Efficient', '2+/h'),
+                    'pro_gamer': ('Pro', '5+/h'),
+                    'elite_gamer': ('Elite', '10+/h'),
+                    'legendary_gamer': ('Legend', '100+/h')
+                },
+                "💪 Dedication": {
+                    'game_enthusiast': ('Enthusiast', '1×10h'),
+                    'game_devotee': ('Devotee', '3×10h'),
+                    'game_zealot': ('Zealot', '5×10h'),
+                    'game_fanatic': ('Fanatic', '10×10h')
+                }
             }
 
-            for achievement, (title, description) in achievement_descriptions.items():
-                status = "✅" if achievements[achievement] else "❌"
+            # Calculate total progress
+            total_achieved = sum(1 for v in achievements.values() if v)
+            total_achievements = len(achievements)
+            progress_percent = (total_achieved / total_achievements) * 100
+
+            # Create single embed
+            embed = Embed(
+                title=f"🏆 Achievements for {ctx.author.display_name}",
+                description=f"Progress: {total_achieved}/{total_achievements} ({progress_percent:.1f}%)",
+                color=0xffd700
+            )
+
+            # Add categories
+            for category_name, category_achievements in achievement_categories.items():
+                achieved = sum(1 for k in category_achievements.keys() if achievements[k])
+                total = len(category_achievements)
+
+                # Create category value with achievements
+                value = []
+                for achievement, (title, req) in category_achievements.items():
+                    status = "✅" if achievements[achievement] else "❌"
+                    value.append(f"{status} {title} `{req}`")
+
                 embed.add_field(
-                    name=f"{status} {title}",
-                    value=description,
-                    inline=False
+                    name=f"{category_name} ({achieved}/{total})",
+                    value="\n".join(value),
+                    inline=True
                 )
+
+                # Add empty field after every 2 categories for alignment
+                if len(embed.fields) % 3 == 2:
+                    embed.add_field(name="\u200b", value="\u200b", inline=True)
 
             await ctx.send(embed=embed)
 
@@ -490,7 +546,8 @@ class GamingCommands(commands.Cog):
             'gamestats': '!gamestats <game> - Show detailed game statistics',
             'mystats': '!mystats - Show your overall gaming statistics or use !mystats <game> for game-specific stats',
             'addbonus': '!addbonus @user <amount> <reason> - Add bonus credits (Moderator only)',
-            'renamegame': '!renamegame "Old Name" "New Name" - Rename a game (Moderator only)'
+            'renamegame': '!renamegame "Old Name" "New Name" - Rename a game (Moderator only)',
+            'deletegame': '!deletegame <game> - Delete a game (Moderator only)'
         }
 
         for command, description in commands_with_descriptions.items():
@@ -590,5 +647,49 @@ class GamingCommands(commands.Cog):
             await ctx.send("❌ You need moderator permissions to use this command")
         elif isinstance(error, commands.MissingRequiredArgument):
             await ctx.send("❌ Please provide both names (!renamegame \"Old Name\" \"New Name\")")
+        else:
+            await ctx.send(f"❌ An error occurred: {str(error)}")
+
+    @commands.command(name='deletegame')
+    @commands.has_permissions(manage_messages=True)  # Require moderator permissions
+    async def delete_game(self, ctx, *, game: Optional[str] = None):
+        """Delete a game from the database (Moderator only)"""
+        try:
+            if not game:
+                await ctx.send("❌ Please provide a game name (!deletegame <game>)")
+                return
+
+            # Try to delete the game
+            result = self.storage.delete_game(game)
+            if not result:
+                await ctx.send(f"❌ Game '{game}' not found in database")
+                return
+
+            # Create confirmation embed with game stats
+            embed = Embed(title=f"🗑️ Game Deleted: {result['name']}", color=0xff0000)
+            embed.add_field(
+                name="Game Stats",
+                value=(
+                    f"⏱️ Total Hours: {result['total_hours']:,.1f}\n"
+                    f"💎 Total Credits: {result['total_credits']:,.1f}\n"
+                    f"📊 Rate: {result['credits_per_hour']:,.1f} cred/hour\n"
+                    f"🎮 Sessions: {result['total_sessions']:,}\n"
+                    f"👥 Players: {result['unique_players']:,}\n"
+                    f"👤 Added by: <@{result['added_by']}>"
+                ),
+                inline=False
+            )
+
+            await ctx.send(embed=embed)
+
+        except Exception as e:
+            await ctx.send(MESSAGES['error'].format(error=str(e)))
+
+    @delete_game.error
+    async def delete_game_error(self, ctx, error):
+        if isinstance(error, commands.MissingPermissions):
+            await ctx.send("❌ You need moderator permissions to use this command")
+        elif isinstance(error, commands.MissingRequiredArgument):
+            await ctx.send("❌ Please provide a game name (!deletegame <game>)")
         else:
             await ctx.send(f"❌ An error occurred: {str(error)}")
