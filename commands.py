@@ -76,8 +76,8 @@ class GamingCommands(commands.Cog):
 
             try:
                 credits_float = float(credits)
-                if not 0.1 <= credits_float <= 10.0:
-                    await ctx.send("❌ Credits per hour must be between 0.1 and 10.0")
+                if credits_float < 0.1:
+                    await ctx.send("❌ Credits per hour must be at least 0.1")
                     return
             except ValueError:
                 await ctx.send("❌ Please provide a valid number for credits per hour")
@@ -412,7 +412,8 @@ class GamingCommands(commands.Cog):
             'help': '!help - Show this help message',
             'gamestats': '!gamestats <game> - Show detailed game statistics',
             'mystats': '!mystats <game> - Show your personal statistics for a specific game',
-            'addbonus': '!addbonus @user <amount> <reason> - Add bonus credits (Moderator only)'
+            'addbonus': '!addbonus @user <amount> <reason> - Add bonus credits (Moderator only)',
+            'renamegame': '!renamegame "Old Name" "New Name" - Rename a game (Moderator only)'
         }
 
         for command, description in commands_with_descriptions.items():
@@ -428,8 +429,8 @@ class GamingCommands(commands.Cog):
             # Validate inputs
             try:
                 credits_float = float(credits)
-                if not 1.0 <= credits_float <= 1000.0:  # Reasonable limits
-                    await ctx.send("❌ Bonus credits must be between 1 and 1000")
+                if credits_float <= 0:  # Only check if positive
+                    await ctx.send("❌ Bonus credits must be greater than 0")
                     return
             except ValueError:
                 await ctx.send("❌ Please provide a valid number for credits")
@@ -468,5 +469,43 @@ class GamingCommands(commands.Cog):
             await ctx.send("❌ You need moderator permissions to use this command")
         elif isinstance(error, commands.MissingRequiredArgument):
             await ctx.send("❌ Please provide a user and amount (!addbonus @user <amount> <reason>)")
+        else:
+            await ctx.send(f"❌ An error occurred: {str(error)}")
+
+    @commands.command(name='renamegame')
+    @commands.has_permissions(manage_messages=True)  # Require moderator permissions
+    async def rename_game(self, ctx, old_name: str, *, new_name: str):
+        """Rename a game in the system (Moderator only)"""
+        try:
+            # Get original game info first
+            old_game_info = self.storage.get_game_info(old_name)
+            if not old_game_info:
+                await ctx.send(f"❌ Game '{old_name}' not found in database")
+                return
+
+            # Try to rename the game
+            result = self.storage.rename_game(old_name, new_name, ctx.author.id)
+            if not result:
+                await ctx.send(f"❌ Failed to rename game. '{new_name}' might already exist.")
+                return
+
+            # Send confirmation with details
+            await ctx.send(
+                f"✅ Successfully renamed game!\n"
+                f"📝 Old name: {result['old_name']}\n"
+                f"📝 New name: {result['new_name']}\n"
+                f"📊 Rate: {result['credits_per_hour']} cred/hour\n"
+                f"👤 Originally added by: <@{result['added_by']}>"
+            )
+
+        except Exception as e:
+            await ctx.send(MESSAGES['error'].format(error=str(e)))
+
+    @rename_game.error
+    async def rename_game_error(self, ctx, error):
+        if isinstance(error, commands.MissingPermissions):
+            await ctx.send("❌ You need moderator permissions to use this command")
+        elif isinstance(error, commands.MissingRequiredArgument):
+            await ctx.send("❌ Please provide both names (!renamegame \"Old Name\" \"New Name\")")
         else:
             await ctx.send(f"❌ An error occurred: {str(error)}")

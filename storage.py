@@ -101,7 +101,7 @@ class GameStorage:
 
     def set_game_credits_per_hour(self, game_name: str, credits: float, user_id: int) -> bool:
         """Set credits per hour for a game"""
-        if not 0.1 <= credits <= 10.0:  # Reasonable limits
+        if credits < 0.1:  # Only keep minimum limit
             return False
 
         session = self.Session()
@@ -126,12 +126,25 @@ class GameStorage:
         """Add gaming hours and return earned credits"""
         session = self.Session()
         try:
-            # Get or create game
+            # Get game by name
             game = session.query(Game).filter(Game.name == game_name).first()
             if not game:
-                game = Game(name=game_name, credits_per_hour=1.0, added_by=user_id)
-                session.add(game)
-                session.commit()
+                # Check if this is a renamed game before creating a new one
+                # Look for any recent gaming sessions with this game name
+                latest_session = session.query(GamingSession)\
+                    .join(Game)\
+                    .filter(Game.name == game_name)\
+                    .order_by(GamingSession.timestamp.desc())\
+                    .first()
+
+                if latest_session:
+                    # Use the same game and its rate
+                    game = latest_session.game
+                else:
+                    # Create new game with default rate
+                    game = Game(name=game_name, credits_per_hour=1.0, added_by=user_id)
+                    session.add(game)
+                    session.commit()
 
             # Get or create user stats
             user_stats = session.query(UserStats).filter(UserStats.user_id == user_id).first()
@@ -149,7 +162,7 @@ class GameStorage:
                 game_id=game.id,
                 hours=hours,
                 credits_earned=credits,
-                timestamp=datetime.utcnow()  # Store as DateTime object directly
+                timestamp=datetime.utcnow()
             )
             session.add(gaming_session)
 
@@ -300,5 +313,37 @@ class GameStorage:
             session.commit()
             return user_stats.total_credits
 
+        finally:
+            session.close()
+
+    def rename_game(self, old_name: str, new_name: str, user_id: int) -> Optional[Dict]:
+        """Rename a game in the database"""
+        session = self.Session()
+        try:
+            # Check if the old game exists
+            old_game = session.query(Game).filter(Game.name == old_name).first()
+            if not old_game:
+                return None
+
+            # Check if the new name already exists (case insensitive)
+            existing_game = session.query(Game).filter(
+                func.lower(Game.name) == func.lower(new_name)
+            ).first()
+            if existing_game and existing_game.id != old_game.id:
+                return None
+
+            # Store old info for return value
+            old_info = {
+                'old_name': old_game.name,
+                'new_name': new_name,
+                'credits_per_hour': old_game.credits_per_hour,
+                'added_by': old_game.added_by
+            }
+
+            # Update the game name
+            old_game.name = new_name
+            session.commit()
+
+            return old_info
         finally:
             session.close()

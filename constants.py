@@ -18,6 +18,7 @@ COMMANDS = {
     'gamestats': '!gamestats <game> - View detailed statistics for a specific game',
     'mystats': '!mystats <game> - View your personal statistics for a specific game',
     'addbonus': '!addbonus @user <amount> <reason> - Add bonus cred to a user (Mod only)',
+    'renamegame': '!renamegame "Old Name" "New Name" - Rename a game (Mod only)',
     'help': '!help - Show this help message'
 }
 
