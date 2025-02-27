@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Float, ForeignKey, BigInteger
+from sqlalchemy import Column, Integer, String, Float, ForeignKey, BigInteger, DateTime
 from sqlalchemy.orm import relationship
 from sqlalchemy.ext.declarative import declarative_base
 
@@ -27,6 +27,6 @@ class GamingSession(Base):
     game_id = Column(Integer, ForeignKey('games.id'), nullable=False)
     hours = Column(Float, nullable=False)
     credits_earned = Column(Float, nullable=False)
-    timestamp = Column(String, nullable=False)  # ISO format
+    timestamp = Column(DateTime, nullable=False)  # Changed from String to DateTime
 
     game = relationship("Game")

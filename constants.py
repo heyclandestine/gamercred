@@ -10,7 +10,11 @@ COMMANDS = {
     'setrate': '!setrate <credits> <game> - Set credits per hour for a game (0.1-10.0)',
     'rate': '!rate <game> - Check credits per hour for a game',
     'balance': '!balance - Check your gamer cred balance',
-    'leaderboard': '!leaderboard - View the gamer cred leaderboard',
+    'leaderboard': '!leaderboard - View the all-time gamer cred leaderboard',
+    'weekly': '!weekly - View the weekly gamer cred leaderboard',
+    'monthly': '!monthly - View the monthly gamer cred leaderboard',
+    'history': '!history - View your gaming history',
+    'achievements': '!achievements - View your gaming achievements',
     'help': '!help - Show this help message'
 }
 

@@ -1,7 +1,7 @@
 import os
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Dict, List, Tuple, Optional
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, func, DateTime as sqlalchemy_DateTime
 from sqlalchemy.orm import sessionmaker
 from models import Base, Game, UserStats, GamingSession
 
@@ -14,6 +14,76 @@ class GameStorage:
         self.engine = create_engine(database_url)
         Base.metadata.create_all(self.engine)
         self.Session = sessionmaker(bind=self.engine)
+
+    def get_leaderboard_by_timeframe(self, days: Optional[int] = None) -> List[Tuple[int, float, int]]:
+        """Get sorted list of (user_id, credits, games_played) tuples for a specific timeframe"""
+        session = self.Session()
+        try:
+            query = session.query(
+                GamingSession.user_id,
+                func.sum(GamingSession.credits_earned).label('total_credits'),
+                func.count(GamingSession.game_id.distinct()).label('games_played')
+            )
+
+            if days is not None:
+                cutoff_date = datetime.utcnow() - timedelta(days=days)
+                query = query.filter(
+                    func.cast(GamingSession.timestamp, sqlalchemy_DateTime) >= cutoff_date
+                )
+
+            results = query.group_by(GamingSession.user_id)\
+                         .order_by(func.sum(GamingSession.credits_earned).desc())\
+                         .all()
+
+            return [(r[0], float(r[1] or 0), r[2]) for r in results]
+        finally:
+            session.close()
+
+    def get_user_gaming_history(self, user_id: int, limit: int = 10) -> List[Dict]:
+        """Get user's recent gaming sessions with game details"""
+        session = self.Session()
+        try:
+            sessions = session.query(GamingSession, Game)\
+                .join(Game)\
+                .filter(GamingSession.user_id == user_id)\
+                .order_by(GamingSession.timestamp.desc())\
+                .limit(limit)\
+                .all()
+
+            return [{
+                'game': s.Game.name,
+                'hours': s.GamingSession.hours,
+                'credits_earned': s.GamingSession.credits_earned,
+                'timestamp': s.GamingSession.timestamp,
+                'rate': s.Game.credits_per_hour
+            } for s in sessions]
+        finally:
+            session.close()
+
+    def get_user_achievements(self, user_id: int) -> Dict[str, bool]:
+        """Get user's achievement status"""
+        session = self.Session()
+        try:
+            # Get total stats
+            total_credits = self.get_user_credits(user_id)
+            total_hours = session.query(func.sum(GamingSession.hours))\
+                .filter(GamingSession.user_id == user_id)\
+                .scalar() or 0
+            unique_games = session.query(func.count(GamingSession.game_id.distinct()))\
+                .filter(GamingSession.user_id == user_id)\
+                .scalar() or 0
+
+            return {
+                'novice_gamer': total_hours >= 10,
+                'veteran_gamer': total_hours >= 100,
+                'gaming_legend': total_hours >= 1000,
+                'credit_collector': total_credits >= 100,
+                'credit_hoarder': total_credits >= 1000,
+                'game_explorer': unique_games >= 5,
+                'game_connoisseur': unique_games >= 20
+            }
+        finally:
+            session.close()
 
     def get_or_create_game(self, game_name: str, user_id: int, credits_per_hour: float = 1.0) -> Tuple[Game, bool]:
         """Get a game by name or create it if it doesn't exist"""
@@ -57,13 +127,18 @@ class GameStorage:
         session = self.Session()
         try:
             # Get or create game
-            game, _ = self.get_or_create_game(game_name, user_id)
+            game = session.query(Game).filter(Game.name == game_name).first()
+            if not game:
+                game = Game(name=game_name, credits_per_hour=1.0, added_by=user_id)
+                session.add(game)
+                session.commit()
 
             # Get or create user stats
             user_stats = session.query(UserStats).filter(UserStats.user_id == user_id).first()
             if not user_stats:
-                user_stats = UserStats(user_id=user_id)
+                user_stats = UserStats(user_id=user_id, total_credits=0.0)
                 session.add(user_stats)
+                session.commit()
 
             # Calculate credits
             credits = hours * game.credits_per_hour
@@ -74,7 +149,7 @@ class GameStorage:
                 game_id=game.id,
                 hours=hours,
                 credits_earned=credits,
-                timestamp=datetime.utcnow().isoformat()
+                timestamp=datetime.utcnow()  # Store as DateTime object directly
             )
             session.add(gaming_session)
 
