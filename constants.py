@@ -15,6 +15,9 @@ COMMANDS = {
     'monthly': '!monthly - View the monthly gamer cred leaderboard',
     'history': '!history - View your gaming history',
     'achievements': '!achievements - View your gaming achievements',
+    'gamestats': '!gamestats <game> - View detailed statistics for a specific game',
+    'mystats': '!mystats <game> - View your personal statistics for a specific game',
+    'addbonus': '!addbonus @user <amount> <reason> - Add bonus cred to a user (Mod only)',
     'help': '!help - Show this help message'
 }
 

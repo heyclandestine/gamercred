@@ -193,3 +193,112 @@ class GameStorage:
             return None
         finally:
             session.close()
+
+    def get_game_stats(self, game_name: str) -> Optional[Dict]:
+        """Get detailed statistics for a specific game"""
+        session = self.Session()
+        try:
+            game = session.query(Game).filter(Game.name == game_name).first()
+            if not game:
+                return None
+
+            # Get total hours and credits for this game
+            stats = session.query(
+                func.sum(GamingSession.hours).label('total_hours'),
+                func.sum(GamingSession.credits_earned).label('total_credits'),
+                func.count(GamingSession.id.distinct()).label('total_sessions'),
+                func.count(GamingSession.user_id.distinct()).label('unique_players')
+            ).filter(GamingSession.game_id == game.id).first()
+
+            return {
+                'name': game.name,
+                'credits_per_hour': game.credits_per_hour,
+                'total_hours': float(stats.total_hours or 0),
+                'total_credits': float(stats.total_credits or 0),
+                'total_sessions': stats.total_sessions,
+                'unique_players': stats.unique_players,
+                'added_by': game.added_by
+            }
+        finally:
+            session.close()
+
+    def get_user_game_summaries(self, user_id: int) -> List[Dict]:
+        """Get summary of total hours and credits per game for a user"""
+        session = self.Session()
+        try:
+            summaries = session.query(
+                Game.name,
+                func.sum(GamingSession.hours).label('total_hours'),
+                func.sum(GamingSession.credits_earned).label('total_credits'),
+                func.count(GamingSession.id).label('sessions'),
+                Game.credits_per_hour
+            ).join(GamingSession)\
+             .filter(GamingSession.user_id == user_id)\
+             .group_by(Game.id, Game.name, Game.credits_per_hour)\
+             .order_by(func.sum(GamingSession.hours).desc())\
+             .all()
+
+            return [{
+                'game': s.name,
+                'total_hours': float(s.total_hours),
+                'total_credits': float(s.total_credits),
+                'sessions': s.sessions,
+                'rate': s.credits_per_hour
+            } for s in summaries]
+        finally:
+            session.close()
+
+    def get_user_game_stats(self, user_id: int, game_name: str) -> Optional[Dict]:
+        """Get detailed statistics for a specific game for a specific user"""
+        session = self.Session()
+        try:
+            game = session.query(Game).filter(Game.name == game_name).first()
+            if not game:
+                return None
+
+            # Get user-specific stats for this game
+            stats = session.query(
+                func.sum(GamingSession.hours).label('total_hours'),
+                func.sum(GamingSession.credits_earned).label('total_credits'),
+                func.count(GamingSession.id).label('total_sessions'),
+                func.min(GamingSession.timestamp).label('first_played'),
+                func.max(GamingSession.timestamp).label('last_played')
+            ).filter(
+                GamingSession.game_id == game.id,
+                GamingSession.user_id == user_id
+            ).first()
+
+            if not stats.total_hours:  # User hasn't played this game
+                return None
+
+            return {
+                'name': game.name,
+                'credits_per_hour': game.credits_per_hour,
+                'total_hours': float(stats.total_hours),
+                'total_credits': float(stats.total_credits),
+                'total_sessions': stats.total_sessions,
+                'first_played': stats.first_played,
+                'last_played': stats.last_played,
+                'added_by': game.added_by
+            }
+        finally:
+            session.close()
+
+    def add_bonus_credits(self, user_id: int, credits: float, reason: str, awarded_by: int) -> float:
+        """Add bonus credits to a user's total"""
+        session = self.Session()
+        try:
+            # Get or create user stats
+            user_stats = session.query(UserStats).filter(UserStats.user_id == user_id).first()
+            if not user_stats:
+                user_stats = UserStats(user_id=user_id, total_credits=0.0)
+                session.add(user_stats)
+                session.commit()
+
+            # Add the bonus credits
+            user_stats.total_credits += credits
+            session.commit()
+            return user_stats.total_credits
+
+        finally:
+            session.close()
