@@ -7,7 +7,7 @@ with open('database_export.json', 'r') as f:
 
 # Create a structure that's more compatible with Postgres admin tools
 pg_export = {
-    "servers": [
+    "Servers": [
         {
             "Name": "GamerCredServer",
             "Group": "Servers",
@@ -58,7 +58,7 @@ pg_export = {
 
 # Populate the data
 for game in data['games']:
-    pg_export["servers"][0]["Databases"]["gamer_cred"]["Tables"]["public"]["games"]["Data"].append([
+    pg_export["Servers"][0]["Databases"]["gamer_cred"]["Tables"]["public"]["games"]["Data"].append([
         game["id"],
         game["name"],
         game["credits_per_hour"],
@@ -66,14 +66,14 @@ for game in data['games']:
     ])
 
 for stat in data['user_stats']:
-    pg_export["servers"][0]["Databases"]["gamer_cred"]["Tables"]["public"]["user_stats"]["Data"].append([
+    pg_export["Servers"][0]["Databases"]["gamer_cred"]["Tables"]["public"]["user_stats"]["Data"].append([
         stat["id"],
         stat["user_id"],
         stat["total_credits"]
     ])
 
 for session in data['gaming_sessions']:
-    pg_export["servers"][0]["Databases"]["gamer_cred"]["Tables"]["public"]["gaming_sessions"]["Data"].append([
+    pg_export["Servers"][0]["Databases"]["gamer_cred"]["Tables"]["public"]["gaming_sessions"]["Data"].append([
         session["id"],
         session["user_id"],
         session["game_id"],
