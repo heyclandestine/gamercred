@@ -1,0 +1,104 @@
+{
+  "servers": [
+    {
+      "Name": "GamerCredServer",
+      "Group": "Servers",
+      "Port": 5432,
+      "Username": "postgres",
+      "Host": "localhost",
+      "SSLMode": "prefer",
+      "MaintenanceDB": "postgres",
+      "Databases": {
+        "gamer_cred": {
+          "Tables": {
+            "public": {
+              "games": {
+                "Columns": [
+                  {
+                    "name": "id",
+                    "type": "integer",
+                    "primary_key": true
+                  },
+                  {
+                    "name": "name",
+                    "type": "text"
+                  },
+                  {
+                    "name": "credits_per_hour",
+                    "type": "float"
+                  },
+                  {
+                    "name": "added_by",
+                    "type": "bigint"
+                  }
+                ],
+                "Data": [
+                  [
+                    2,
+                    "Super auto pets",
+                    30000.0,
+                    181981501653516298
+                  ],
+                  [
+                    1,
+                    "Valorant",
+                    15.0,
+                    395758828899139587
+                  ]
+                ]
+              },
+              "user_stats": {
+                "Columns": [
+                  {
+                    "name": "id",
+                    "type": "integer",
+                    "primary_key": true
+                  },
+                  {
+                    "name": "user_id",
+                    "type": "bigint"
+                  },
+                  {
+                    "name": "total_credits",
+                    "type": "float"
+                  }
+                ],
+                "Data": []
+              },
+              "gaming_sessions": {
+                "Columns": [
+                  {
+                    "name": "id",
+                    "type": "integer",
+                    "primary_key": true
+                  },
+                  {
+                    "name": "user_id",
+                    "type": "bigint"
+                  },
+                  {
+                    "name": "game_id",
+                    "type": "integer"
+                  },
+                  {
+                    "name": "hours",
+                    "type": "float"
+                  },
+                  {
+                    "name": "credits_earned",
+                    "type": "float"
+                  },
+                  {
+                    "name": "timestamp",
+                    "type": "timestamp"
+                  }
+                ],
+                "Data": []
+              }
+            }
+          }
+        }
+      }
+    }
+  ]
+}
