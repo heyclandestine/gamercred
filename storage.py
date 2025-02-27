@@ -15,13 +15,13 @@ class GameStorage:
         Base.metadata.create_all(self.engine)
         self.Session = sessionmaker(bind=self.engine)
 
-    def get_or_create_game(self, game_name: str, user_id: int) -> Tuple[Game, bool]:
+    def get_or_create_game(self, game_name: str, user_id: int, credits_per_hour: float = 1.0) -> Tuple[Game, bool]:
         """Get a game by name or create it if it doesn't exist"""
         session = self.Session()
         try:
             game = session.query(Game).filter(Game.name == game_name).first()
             if not game:
-                game = Game(name=game_name, credits_per_hour=1.0, added_by=user_id)
+                game = Game(name=game_name, credits_per_hour=credits_per_hour, added_by=user_id)
                 session.add(game)
                 session.commit()
                 return game, True
@@ -36,8 +36,17 @@ class GameStorage:
 
         session = self.Session()
         try:
-            game, created = self.get_or_create_game(game_name, user_id)
-            game.credits_per_hour = credits
+            # Look for existing game first
+            game = session.query(Game).filter(Game.name == game_name).first()
+
+            if game:
+                # Update existing game
+                game.credits_per_hour = credits
+            else:
+                # Create new game with specified rate
+                game = Game(name=game_name, credits_per_hour=credits, added_by=user_id)
+                session.add(game)
+
             session.commit()
             return True
         finally:
