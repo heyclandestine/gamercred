@@ -3,7 +3,7 @@ from discord import Embed
 import discord
 from typing import Optional
 from storage import GameStorage
-from constants import MESSAGES, COMMANDS
+from constants import MESSAGES, COMMANDS, CHANNEL_ID
 import re
 import asyncio
 
@@ -13,6 +13,13 @@ class GamingCommands(commands.Cog):
         self.storage = GameStorage()
         # Remove default help command
         self.bot.remove_command('help')
+
+    async def cog_check(self, ctx):
+        """Check if the command is being used in the correct channel"""
+        if CHANNEL_ID and ctx.channel.id != CHANNEL_ID:
+            await ctx.send(MESSAGES['wrong_channel'])
+            return False
+        return True
 
     def get_backloggd_url(self, game_name: str) -> str:
         """Generate a Backloggd search URL for the game"""
@@ -778,7 +785,7 @@ class GamingCommands(commands.Cog):
             await ctx.send("❌ Please provide a game name (!deletegame <game>)")
         else:
             await ctx.send(f"❌ An error occurred: {str(error)}")
-            
+
     @commands.command(name='userstats')
     async def show_user_stats(self, ctx, member: discord.Member, *, game: Optional[str] = None):
         """Show gaming statistics for another user, optionally for a specific game"""

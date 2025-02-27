@@ -5,6 +5,13 @@ from collections import OrderedDict
 TOKEN = os.getenv('DISCORD_TOKEN', '')
 COMMAND_PREFIX = '!'
 
+# Extract channel ID from URL if needed
+channel_id = os.getenv('DISCORD_CHANNEL_ID', '0')
+if 'channels' in channel_id:
+    # Extract the last part of the URL which is the channel ID
+    channel_id = channel_id.split('/')[-1]
+CHANNEL_ID = int(channel_id)  # Add this to restrict commands to one channel
+
 # Command list - ordered by frequency of use
 COMMANDS = OrderedDict([
     ('log', '!log <hours> <game> - Log your gaming hours'),
@@ -33,5 +40,6 @@ MESSAGES = {
     'no_balance': '😢 You haven\'t earned any gamer cred yet. Start playing!',
     'balance': '🎮 Your current gamer cred balance is: {credits}',
     'error': '❌ An error occurred: {error}',
-    'no_data': '📝 No gaming data available yet!'
+    'no_data': '📝 No gaming data available yet!',
+    'wrong_channel': '❌ Please use this command in the designated gaming channel!'
 }

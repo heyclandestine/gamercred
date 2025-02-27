@@ -12,6 +12,7 @@ class GameStorage:
             raise ValueError("DATABASE_URL environment variable is required")
 
         self.engine = create_engine(database_url)
+        # Create tables if they don't exist (remove drop_all)
         Base.metadata.create_all(self.engine)
         self.Session = sessionmaker(bind=self.engine)
 

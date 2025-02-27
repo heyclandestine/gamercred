@@ -2,6 +2,7 @@ import discord
 from discord.ext import commands
 from commands import GamingCommands
 from constants import TOKEN, COMMAND_PREFIX
+from keepalive import keep_alive
 
 # Set up the bot with required intents
 intents = discord.Intents.default()
@@ -33,6 +34,9 @@ def main():
         return
 
     try:
+        # Start the keep alive server
+        keep_alive()
+        # Run the bot
         bot.run(TOKEN)
     except discord.errors.LoginFailure:
         print("Error: Failed to login. Please check your Discord token.")
