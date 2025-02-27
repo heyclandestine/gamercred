@@ -17,10 +17,10 @@ COMMANDS = {
 # Messages
 MESSAGES = {
     'invalid_hours': '❌ Please provide a valid number of hours (between 0.5 and 24)',
-    'invalid_game': '❌ Please provide a game name',
-    'success_log': '✅ Successfully logged {hours} hours for {game}! You earned {credits} cred!',
+    'invalid_game': '❌ Please provide both hours and game name (!log <hours> <game>)',
+    'success_log': '✅ Successfully logged {hours} hours for {game}! You earned {credits:.1f} cred!',
     'no_balance': '😢 You haven\'t earned any gamer cred yet. Start playing!',
-    'balance': '🎮 Your current gamer cred balance is: {credits}',
+    'balance': '🎮 Your current gamer cred balance is: {credits:.1f}',
     'error': '❌ An error occurred: {error}',
     'no_data': '📝 No gaming data available yet!'
 }
