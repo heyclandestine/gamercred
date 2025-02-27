@@ -123,7 +123,7 @@ class GameStorage:
             session.close()
 
     def add_gaming_hours(self, user_id: int, hours: float, game_name: str) -> float:
-        """Add gaming hours and return earned credits"""
+        """Add gaming hours and return earned credits. Supports negative hours for corrections."""
         session = self.Session()
         try:
             # Get game by name

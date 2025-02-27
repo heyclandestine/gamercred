@@ -32,9 +32,6 @@ class GamingCommands(commands.Cog):
 
             try:
                 hours_float = float(hours)
-                if not 0.5 <= hours_float <= 24:
-                    await ctx.send(MESSAGES['invalid_hours'])
-                    return
             except ValueError:
                 await ctx.send(MESSAGES['invalid_hours'])
                 return
@@ -48,19 +45,26 @@ class GamingCommands(commands.Cog):
             # Generate Backloggd URL
             backloggd_url = self.get_backloggd_url(game)
 
+            # Determine if this is an addition or reduction
+            action_word = "logged" if hours_float > 0 else "removed"
+            hours_display = abs(hours_float)  # Use absolute value for display
+            credits_display = abs(credits)  # Use absolute value for display
+
             # Create detailed response
             if game_info:
                 await ctx.send(
-                    f"✅ Successfully logged {hours_float} hours for {game}!\n"
-                    f"📊 Rate: {game_info['credits_per_hour']} cred/hour\n"
-                    f"💎 You earned {credits:.1f} cred!\n"
+                    f"✅ Successfully {action_word} {hours_display:,.1f} hours for {game}!\n"
+                    f"📊 Rate: {game_info['credits_per_hour']:,.1f} cred/hour\n"
+                    f"💎 {'Earned' if credits > 0 else 'Removed'} {credits_display:,.1f} cred!\n"
                     f"🎮 View on Backloggd: {backloggd_url}"
                 )
             else:
                 await ctx.send(MESSAGES['success_log'].format(
-                    hours=hours_float,
+                    action=action_word,
+                    hours=f"{hours_display:,.1f}",
                     game=game,
-                    credits=credits
+                    credits=f"{credits_display:,.1f}",
+                    earned="Earned" if credits > 0 else "Removed"
                 ) + f"\n🎮 View on Backloggd: {backloggd_url}")
 
         except Exception as e:
@@ -84,7 +88,7 @@ class GamingCommands(commands.Cog):
                 return
 
             if self.storage.set_game_credits_per_hour(game, credits_float, ctx.author.id):
-                await ctx.send(f"✅ Set rate for {game} to {credits_float} cred/hour!")
+                await ctx.send(f"✅ Set rate for {game} to {credits_float:,.1f} cred/hour!")
             else:
                 await ctx.send("❌ Failed to set game rate")
 
@@ -102,7 +106,7 @@ class GamingCommands(commands.Cog):
             game_info = self.storage.get_game_info(game)
             if game_info:
                 await ctx.send(
-                    f"📊 Rate for {game}: {game_info['credits_per_hour']} cred/hour\n"
+                    f"📊 Rate for {game}: {game_info['credits_per_hour']:,.1f} cred/hour\n"
                     f"👤 Set by: <@{game_info['added_by']}>"
                 )
             else:
@@ -119,7 +123,7 @@ class GamingCommands(commands.Cog):
             if credits == 0:
                 await ctx.send(MESSAGES['no_balance'])
             else:
-                await ctx.send(MESSAGES['balance'].format(credits=credits))
+                await ctx.send(MESSAGES['balance'].format(credits=f"{credits:,.1f}"))
         except Exception as e:
             await ctx.send(MESSAGES['error'].format(error=str(e)))
 
@@ -140,7 +144,7 @@ class GamingCommands(commands.Cog):
                 username = member.display_name if member else f"User{user_id}"
                 embed.add_field(
                     name=f"{position}. {username}",
-                    value=f"{credits:.1f} cred",
+                    value=f"{credits:,.1f} cred",
                     inline=False
                 )
 
@@ -166,7 +170,7 @@ class GamingCommands(commands.Cog):
                 username = member.display_name if member else f"User{user_id}"
                 embed.add_field(
                     name=f"{position}. {username}",
-                    value=f"{credits:.1f} cred (🎮 {games} games)",
+                    value=f"{credits:,.1f} cred (🎮 {games} games)",
                     inline=False
                 )
 
@@ -192,7 +196,7 @@ class GamingCommands(commands.Cog):
                 username = member.display_name if member else f"User{user_id}"
                 embed.add_field(
                     name=f"{position}. {username}",
-                    value=f"{credits:.1f} cred (🎮 {games} games)",
+                    value=f"{credits:,.1f} cred (🎮 {games} games)",
                     inline=False
                 )
 
@@ -221,7 +225,7 @@ class GamingCommands(commands.Cog):
             for session in history:
                 sessions_embed.add_field(
                     name=f"{session['game']} ({session['timestamp'].strftime('%Y-%m-%d')})",
-                    value=f"Hours: {session['hours']}\nCredits: {session['credits_earned']:.1f}\nRate: {session['rate']} cred/hour",
+                    value=f"Hours: {session['hours']:,.1f}\nCredits: {session['credits_earned']:,.1f}\nRate: {session['rate']:,.1f} cred/hour",
                     inline=False
                 )
 
@@ -237,7 +241,7 @@ class GamingCommands(commands.Cog):
                 for summary in summaries:
                     summary_embed.add_field(
                         name=summary['game'],
-                        value=f"⏱️ {summary['total_hours']:.1f} hours in {summary['sessions']} sessions\n💎 {summary['total_credits']:.1f} cred earned",
+                        value=f"⏱️ {summary['total_hours']:,.1f} hours in {summary['sessions']} sessions\n💎 {summary['total_credits']:,.1f} cred earned",
                         inline=True
                     )
 
@@ -293,17 +297,17 @@ class GamingCommands(commands.Cog):
             embed = Embed(title=f"📊 Stats for {stats['name']}", color=0x00ff00)
             embed.add_field(
                 name="Total Hours Played",
-                value=f"⏱️ {stats['total_hours']:.1f} hours",
+                value=f"⏱️ {stats['total_hours']:,.1f} hours",
                 inline=True
             )
             embed.add_field(
                 name="Total Credits Earned",
-                value=f"💎 {stats['total_credits']:.1f} cred",
+                value=f"💎 {stats['total_credits']:,.1f} cred",
                 inline=True
             )
             embed.add_field(
                 name="Credit Rate",
-                value=f"📈 {stats['credits_per_hour']} cred/hour",
+                value=f"📈 {stats['credits_per_hour']:,.1f} cred/hour",
                 inline=True
             )
             embed.add_field(
@@ -335,14 +339,9 @@ class GamingCommands(commands.Cog):
         except Exception as e:
             await ctx.send(MESSAGES['error'].format(error=str(e)))
 
-    @commands.command(name='mystats')
-    async def show_my_game_stats(self, ctx, *, game: Optional[str] = None):
-        """Show your personal statistics for a specific game"""
+    async def show_my_game_stats(self, ctx, game: str):
+        """Helper function to show game-specific stats"""
         try:
-            if not game:
-                await ctx.send("❌ Please provide a game name (!mystats <game>)")
-                return
-
             stats = self.storage.get_user_game_stats(ctx.author.id, game)
             if not stats:
                 await ctx.send(f"❓ You haven't played '{game}' yet!")
@@ -351,17 +350,17 @@ class GamingCommands(commands.Cog):
             embed = Embed(title=f"📊 Your Stats for {stats['name']}", color=0x00ff00)
             embed.add_field(
                 name="Your Total Hours",
-                value=f"⏱️ {stats['total_hours']:.1f} hours",
+                value=f"⏱️ {stats['total_hours']:,.1f} hours",
                 inline=True
             )
             embed.add_field(
                 name="Your Total Credits",
-                value=f"💎 {stats['total_credits']:.1f} cred",
+                value=f"💎 {stats['total_credits']:,.1f} cred",
                 inline=True
             )
             embed.add_field(
                 name="Credit Rate",
-                value=f"📈 {stats['credits_per_hour']} cred/hour",
+                value=f"📈 {stats['credits_per_hour']:,.1f} cred/hour",
                 inline=True
             )
             embed.add_field(
@@ -393,6 +392,84 @@ class GamingCommands(commands.Cog):
         except Exception as e:
             await ctx.send(MESSAGES['error'].format(error=str(e)))
 
+    @commands.command(name='mystats')
+    async def show_my_stats(self, ctx, *, game: Optional[str] = None):
+        """Show your personal gaming statistics, optionally for a specific game"""
+        try:
+            if game:
+                # If game is specified, show game-specific stats
+                await self.show_my_game_stats(ctx, game)
+                return
+
+            # Get user's overall stats
+            summaries = self.storage.get_user_game_summaries(ctx.author.id)
+            if not summaries:
+                await ctx.send("You haven't logged any gaming sessions yet!")
+                return
+
+            # Calculate overall stats
+            total_hours = sum(s['total_hours'] for s in summaries)
+            total_credits = sum(s['total_credits'] for s in summaries)
+            unique_games = len(summaries)
+            avg_credits_per_hour = total_credits / total_hours if total_hours > 0 else 0
+
+            # Sort games by hours played to find most played
+            sorted_games = sorted(summaries, key=lambda x: x['total_hours'], reverse=True)
+            top_games = sorted_games[:3]  # Get top 3 most played games
+
+            # Create embed for overall stats
+            embed = Embed(title=f"📊 Gaming Stats for {ctx.author.display_name}", color=0x00ff00)
+
+            # Main stats
+            embed.add_field(
+                name="⏱️ Total Gaming Time",
+                value=f"{total_hours:,.1f} hours",
+                inline=True
+            )
+            embed.add_field(
+                name="💎 Total Credits Earned",
+                value=f"{total_credits:,.1f} cred",
+                inline=True
+            )
+            embed.add_field(
+                name="🎮 Games Played",
+                value=f"{unique_games:,} different games",
+                inline=True
+            )
+            embed.add_field(
+                name="📈 Average Credits/Hour",
+                value=f"{avg_credits_per_hour:,.1f} cred/hour",
+                inline=True
+            )
+
+            # Most played games section
+            most_played = "\n".join([
+                f"**{i+1}. {game['game']}**\n"
+                f"⏱️ {game['total_hours']:,.1f} hours • 💎 {game['total_credits']:,.1f} cred"
+                for i, game in enumerate(top_games)
+            ])
+            embed.add_field(
+                name="🏆 Most Played Games",
+                value=most_played or "No games logged yet",
+                inline=False
+            )
+
+            # Get achievements
+            achievements = self.storage.get_user_achievements(ctx.author.id)
+            achieved = sum(1 for v in achievements.values() if v)
+            total = len(achievements)
+
+            embed.add_field(
+                name="🌟 Achievements Progress",
+                value=f"{achieved} out of {total} achievements unlocked",
+                inline=False
+            )
+
+            await ctx.send(embed=embed)
+
+        except Exception as e:
+            await ctx.send(MESSAGES['error'].format(error=str(e)))
+
     @commands.command(name='help')
     async def show_help(self, ctx):
         """Show help message with available commands"""
@@ -411,7 +488,7 @@ class GamingCommands(commands.Cog):
             'achievements': '!achievements - View your achievements',
             'help': '!help - Show this help message',
             'gamestats': '!gamestats <game> - Show detailed game statistics',
-            'mystats': '!mystats <game> - Show your personal statistics for a specific game',
+            'mystats': '!mystats - Show your overall gaming statistics or use !mystats <game> for game-specific stats',
             'addbonus': '!addbonus @user <amount> <reason> - Add bonus credits (Moderator only)',
             'renamegame': '!renamegame "Old Name" "New Name" - Rename a game (Moderator only)'
         }
@@ -429,33 +506,39 @@ class GamingCommands(commands.Cog):
             # Validate inputs
             try:
                 credits_float = float(credits)
-                if credits_float <= 0:  # Only check if positive
-                    await ctx.send("❌ Bonus credits must be greater than 0")
-                    return
             except ValueError:
                 await ctx.send("❌ Please provide a valid number for credits")
                 return
 
             if not reason:
-                await ctx.send("❌ Please provide a reason for the bonus credits")
+                await ctx.send("❌ Please provide a reason for the credit adjustment")
                 return
 
             # Add the bonus credits
             new_total = self.storage.add_bonus_credits(user.id, credits_float, reason, ctx.author.id)
 
+            # Determine if this is an addition or reduction
+            action_word = "added to" if credits_float > 0 else "removed from"
+            credits_display = abs(credits_float)  # Use absolute value for display
+
             # Send confirmation messages
             await ctx.send(
-                f"✨ Added {credits_float} bonus cred to {user.display_name}!\n"
+                f"✨ {credits_display:,.1f} cred {action_word} {user.display_name}!\n"
                 f"📝 Reason: {reason}\n"
-                f"💎 New total: {new_total:.1f} cred"
+                f"💎 New total: {new_total:,.1f} cred"
             )
 
-            # DM the user about their bonus
+            # DM the user about their bonus/reduction
             try:
+                message = (
+                    f"🎉 You received {credits_display:,.1f} cred from {ctx.author.display_name}!"
+                    if credits_float > 0
+                    else f"📉 {credits_display:,.1f} cred was removed by {ctx.author.display_name}"
+                )
                 await user.send(
-                    f"🎉 You received {credits_float} bonus cred from {ctx.author.display_name}!\n"
+                    f"{message}\n"
                     f"📝 Reason: {reason}\n"
-                    f"💎 Your new total: {new_total:.1f} cred"
+                    f"💎 Your new total: {new_total:,.1f} cred"
                 )
             except discord.Forbidden:
                 pass  # User has DMs disabled
@@ -494,7 +577,7 @@ class GamingCommands(commands.Cog):
                 f"✅ Successfully renamed game!\n"
                 f"📝 Old name: {result['old_name']}\n"
                 f"📝 New name: {result['new_name']}\n"
-                f"📊 Rate: {result['credits_per_hour']} cred/hour\n"
+                f"📊 Rate: {result['credits_per_hour']:,.1f} cred/hour\n"
                 f"👤 Originally added by: <@{result['added_by']}>"
             )
 
