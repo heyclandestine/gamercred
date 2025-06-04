@@ -177,6 +177,18 @@ def clean_and_truncate_description(html_text):
     # Removed truncation logic
     return clean_text
 
+# Error handlers
+@app.errorhandler(404)
+def not_found_error(error):
+    logger.error(f"404 error: {error}")
+    return send_from_directory(app.static_folder, 'index.html')
+
+@app.errorhandler(500)
+def internal_error(error):
+    logger.error(f"500 error: {error}")
+    return jsonify({'error': 'Internal server error'}), 500
+
+# Static file routes
 @app.route('/')
 def index():
     logger.info("Serving index.html")
@@ -567,17 +579,6 @@ def search_api():
     users = storage.search_users_by_name(query)
 
     return jsonify({'games': games, 'users': users})
-
-# Error handlers
-@app.errorhandler(404)
-def not_found_error(error):
-    logger.error(f"404 error: {error}")
-    return jsonify({'error': 'Not found'}), 404
-
-@app.errorhandler(500)
-def internal_error(error):
-    logger.error(f"500 error: {error}")
-    return jsonify({'error': 'Internal server error'}), 500
 
 if __name__ == '__main__':
     # In production, this won't be used as gunicorn will run the app

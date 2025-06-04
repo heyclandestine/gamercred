@@ -3,7 +3,7 @@ services:
     name: gamercred
     env: python
     buildCommand: pip install -r requirements.txt
-    startCommand: gunicorn website.app:app --config gunicorn_config.py
+    startCommand: cd website && gunicorn app:app --config ../gunicorn_config.py
     envVars:
       - key: DATABASE_URL
         sync: false
