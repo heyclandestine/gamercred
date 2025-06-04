@@ -8,6 +8,7 @@ import pytz
 import discord
 from dotenv import load_dotenv
 import aiohttp
+from sqlalchemy import inspect
 
 # Load environment variables
 load_dotenv()
@@ -33,10 +34,19 @@ class GameStorage:
             self.engine = create_engine(self.database_url)
             print("PostgreSQL engine created")
 
-            # Create tables if they don't exist
-            print("Creating database tables...")
-            Base.metadata.create_all(self.engine)
-            print("Database tables created")
+            # Check if tables exist before creating them
+            inspector = inspect(self.engine)
+            existing_tables = inspector.get_table_names()
+            required_tables = ['games', 'user_stats', 'gaming_sessions', 'leaderboard_periods', 'leaderboard_history', 'bonuses']
+            
+            missing_tables = [table for table in required_tables if table not in existing_tables]
+            
+            if missing_tables:
+                print(f"Creating missing tables: {missing_tables}")
+                Base.metadata.create_all(self.engine)
+                print("Missing tables created")
+            else:
+                print("All required tables already exist")
 
             # Initialize session maker
             print("Initializing session maker...")
