@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: discord-companion
+    name: gamercred
     env: python
     buildCommand: pip install -r requirements.txt
     startCommand: gunicorn website.app:app
@@ -9,10 +9,10 @@ services:
         value: 3.11.0
       - key: DATABASE_URL
         fromDatabase:
-          name: discord-companion-db
+          name: gamercred-db
           property: connectionString
 
 databases:
-  - name: discord-companion-db
-    databaseName: discord_companion
-    user: discord_companion_user 
+  - name: gamercred-db
+    databaseName: gamercred
+    user: gamercred_user 
