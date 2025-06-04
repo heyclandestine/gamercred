@@ -4,6 +4,4 @@ threads = 2
 timeout = 120
 accesslog = "-"
 errorlog = "-"
-loglevel = "debug"
-worker_class = "gthread"
-preload_app = True 
+loglevel = "info" 

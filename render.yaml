@@ -3,22 +3,14 @@ services:
     name: gamercred
     env: python
     buildCommand: pip install -r requirements.txt
-    startCommand: cd website && gunicorn app:app --config ../gunicorn_config.py
+    startCommand: gunicorn website.app:app
     envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.0
       - key: DATABASE_URL
-        sync: false
-      - key: RAWG_API_KEY
-        sync: false
-      - key: DISCORD_TOKEN
-        sync: false
-      - key: DISCORD_CLIENT_ID
-        sync: false
-      - key: DISCORD_CLIENT_SECRET
-        sync: false
-      - key: DISCORD_REDIRECT_URI
-        sync: false
-      - key: PYTHONUNBUFFERED
-        value: "1"
+        fromDatabase:
+          name: gamercred-db
+          property: connectionString
 
 databases:
   - name: gamercred-db
