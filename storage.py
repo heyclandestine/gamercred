@@ -1,7 +1,7 @@
 import os
 from datetime import datetime, timedelta
 from typing import Dict, List, Tuple, Optional, Any
-from sqlalchemy import create_engine, func, DateTime as sqlalchemy_DateTime, and_, Integer, String, BigInteger
+from sqlalchemy import create_engine, func, DateTime as sqlalchemy_DateTime, and_, Integer, String, BigInteger, text
 from sqlalchemy.orm import sessionmaker, scoped_session
 from models import Base, Game, UserStats, GamingSession, LeaderboardHistory, LeaderboardType, LeaderboardPeriod, Bonus # Removed User import
 import pytz
@@ -67,8 +67,8 @@ class GameStorage:
             # Test the connection
             with self.engine.connect() as conn:
                 logger.info("Successfully connected to database")
-                # Test a simple query
-                result = conn.execute("SELECT 1").scalar()
+                # Test a simple query using text()
+                result = conn.execute(text("SELECT 1")).scalar()
                 logger.info(f"Test query result: {result}")
 
         except Exception as e:
