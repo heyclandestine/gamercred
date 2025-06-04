@@ -13,7 +13,7 @@ app = Flask(__name__)
 
 @app.route('/')
 def index():
-    return redirect('/')
+    return website_app.send_static_file('index.html')
 
 if __name__ == '__main__':
     # In production, this won't be used as gunicorn will run the app
