@@ -15,9 +15,9 @@ load_dotenv()
 class GameStorage:
     def __init__(self):
         # Try to get database URL from environment variables
-        self.database_url = os.getenv('DATABASE_URL') or os.getenv('LOCAL_DATABASE_URL')
+        self.database_url = os.getenv('DATABASE_URL')
         if not self.database_url:
-            raise ValueError("No database URL found. Set DATABASE_URL or LOCAL_DATABASE_URL environment variable")
+            raise ValueError("DATABASE_URL environment variable not set")
         self._initialize_db()
         # Set CST timezone as a class variable for consistent use
         self.cst = pytz.timezone('America/Chicago')
@@ -27,49 +27,26 @@ class GameStorage:
         try:
             print(f"Initializing database with URL: {self.database_url}")
 
-            # Get the directory where the script is located
-            script_dir = os.path.dirname(os.path.abspath(__file__))
-
-            # Handle SQLite path
-            if self.database_url.startswith('sqlite:///'):
-                # Remove sqlite:/// prefix to get the actual file path
-                db_path = self.database_url[10:]
-
-                # Convert to absolute path if relative
-                if not os.path.isabs(db_path):
-                    db_path = os.path.join(script_dir, db_path)
-
-                # Ensure the directory exists
-                db_dir = os.path.dirname(db_path)
-                if not os.path.exists(db_dir):
-                    print(f"Creating database directory: {db_dir}")
-                    os.makedirs(db_dir, exist_ok=True)
-
-                # Update the DATABASE_URL with the proper path
-                self.database_url = f'sqlite:///{db_path}'
-                print(f"Using SQLite database path: {db_path}")
-                
-                # Create the engine with SQLite-specific settings
-                self.engine = create_engine(
-                    self.database_url,
-                    connect_args={'check_same_thread': False}
-                )
-            else:
-                # PostgreSQL connection
-                print("Using PostgreSQL database")
-                # Create engine without SQLite-specific arguments
-                self.engine = create_engine(self.database_url)
+            # Create PostgreSQL engine
+            print("Using PostgreSQL database")
+            print(f"PostgreSQL URL: {self.database_url}")
+            self.engine = create_engine(self.database_url)
+            print("PostgreSQL engine created")
 
             # Create tables if they don't exist
+            print("Creating database tables...")
             Base.metadata.create_all(self.engine)
+            print("Database tables created")
 
             # Initialize session maker
+            print("Initializing session maker...")
             self.Session = scoped_session(
                 sessionmaker(
                     bind=self.engine,
                     expire_on_commit=False
                 )
             )
+            print("Session maker initialized")
         except Exception as e:
             print(f"Error initializing database: {str(e)}")
             print(f"Current working directory: {os.getcwd()}")
