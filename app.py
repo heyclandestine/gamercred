@@ -4,6 +4,7 @@ import os
 import sys # Import the sys module
 import re # Import re for HTML cleaning
 from dotenv import load_dotenv
+import logging
 print("sys.path before storage import:", sys.path) # Print sys.path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))) # Add parent directory to path
 from storage import GameStorage # Import GameStorage
@@ -18,6 +19,10 @@ from models import LeaderboardType # Import LeaderboardType
 # Load environment variables
 load_dotenv()
 
+# Configure logging
+logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger(__name__)
+
 # Initialize Flask app with correct static folder path
 app = Flask(__name__, 
             static_folder='public',
@@ -29,10 +34,10 @@ CORS(app, resources={r"/api/*": {"origins": ["https://www.gamercred.co", "http:/
 
 # Add debug logging for database URL
 database_url = os.getenv('DATABASE_URL')
-print(f"DEBUG: Database URL: {database_url}")
+logger.info(f"Database URL: {database_url}")
 
 storage = GameStorage() # Instantiate GameStorage
-print("DEBUG: GameStorage initialized")
+logger.info("GameStorage initialized")
 
 # Get RAWG API key from environment variable
 RAWG_API_KEY = os.getenv('RAWG_API_KEY')
@@ -174,14 +179,17 @@ def clean_and_truncate_description(html_text):
 
 @app.route('/')
 def index():
+    logger.info("Serving index.html")
     return send_from_directory(app.static_folder, 'index.html')
 
 @app.route('/game.html')
 def game():
+    logger.info("Serving game.html")
     return send_from_directory(app.static_folder, 'game.html')
 
 @app.route('/user.html')
 def user():
+    logger.info("Serving user.html")
     return send_from_directory(app.static_folder, 'user.html')
 
 @app.route('/api/game')
@@ -305,7 +313,7 @@ def get_game_activity():
 def get_leaderboard():
     try:
         timeframe = request.args.get('timeframe', 'weekly')
-        print(f"DEBUG: Fetching leaderboard for timeframe: {timeframe}")
+        logger.info(f"GET /api/leaderboard called with timeframe: {timeframe}")
         
         # Convert timeframe to LeaderboardType
         if timeframe == 'weekly':
@@ -314,27 +322,34 @@ def get_leaderboard():
             leaderboard_type = LeaderboardType.MONTHLY
         elif timeframe == 'alltime':
             # Handle alltime case
+            logger.info("Fetching alltime leaderboard")
             leaderboard_data = storage.get_leaderboard()
+            logger.info(f"Alltime leaderboard data: {leaderboard_data}")
             return jsonify(leaderboard_data)
         else:
+            logger.error(f"Invalid timeframe: {timeframe}")
             return jsonify({'error': 'Invalid timeframe'}), 400
 
         # Get leaderboard data
+        logger.info(f"Fetching leaderboard for type: {leaderboard_type}")
         leaderboard_data = storage.get_leaderboard_by_timeframe(leaderboard_type)
+        logger.info(f"Leaderboard data: {leaderboard_data}")
         return jsonify(leaderboard_data)
     except Exception as e:
-        print(f"Error in get_leaderboard: {str(e)}")
+        logger.error(f"Error in get_leaderboard: {str(e)}", exc_info=True)
         return jsonify({'error': str(e)}), 500
 
 # Add endpoint to fetch recent bonuses
 @app.route('/api/recent-bonuses')
 def get_recent_bonuses_endpoint():
     try:
-        print("DEBUG: Fetching recent bonuses")
+        logger.info("GET /api/recent-bonuses called")
+        logger.info("Fetching recent bonuses")
         bonuses_data = storage.get_recent_bonuses()
+        logger.info(f"Recent bonuses data: {bonuses_data}")
         return jsonify(bonuses_data)
     except Exception as e:
-        print(f"Error in get_recent_bonuses_endpoint: {str(e)}")
+        logger.error(f"Error in get_recent_bonuses_endpoint: {str(e)}", exc_info=True)
         return jsonify({'error': str(e)}), 500
 
 # Add endpoint to fetch popular games data
@@ -342,13 +357,15 @@ def get_recent_bonuses_endpoint():
 def get_popular_games():
     try:
         timeframe = request.args.get('timeframe', 'weekly')
-        print(f"DEBUG: Fetching popular games for timeframe: {timeframe}")
+        logger.info(f"GET /api/popular-games called with timeframe: {timeframe}")
         
         # Get popular games data
+        logger.info(f"Fetching popular games for timeframe: {timeframe}")
         games_data = storage.get_total_game_hours_by_timeframe(timeframe)
+        logger.info(f"Popular games data: {games_data}")
         return jsonify(games_data)
     except Exception as e:
-        print(f"Error in get_popular_games: {str(e)}")
+        logger.error(f"Error in get_popular_games: {str(e)}", exc_info=True)
         return jsonify({'error': str(e)}), 500
 
 # Add endpoint to fetch user overall stats
@@ -529,11 +546,13 @@ def get_user_leaderboard_history(user_identifier):
 @app.route('/api/recent-activity')
 def recent_activity():
     try:
-        print("DEBUG: Fetching recent activity")
+        logger.info("GET /api/recent-activity called")
+        logger.info("Fetching recent activity")
         activity_data = storage.get_recent_gaming_sessions()
+        logger.info(f"Recent activity data: {activity_data}")
         return jsonify(activity_data)
     except Exception as e:
-        print(f"Error in recent_activity: {str(e)}")
+        logger.error(f"Error in recent_activity: {str(e)}", exc_info=True)
         return jsonify({'error': str(e)}), 500
 
 @app.route('/api/search')
@@ -552,10 +571,12 @@ def search_api():
 # Error handlers
 @app.errorhandler(404)
 def not_found_error(error):
+    logger.error(f"404 error: {error}")
     return jsonify({'error': 'Not found'}), 404
 
 @app.errorhandler(500)
 def internal_error(error):
+    logger.error(f"500 error: {error}")
     return jsonify({'error': 'Internal server error'}), 500
 
 if __name__ == '__main__':
