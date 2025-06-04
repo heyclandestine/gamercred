@@ -23,7 +23,7 @@ class Game(Base):
 class UserStats(Base):
     __tablename__ = 'user_stats'
     id = Column(Integer, primary_key=True)
-    user_id = Column(String, unique=True)  # Store as string to preserve precision
+    user_id = Column(BigInteger, unique=True)  # Changed to BigInteger
     total_credits = Column(Float, default=0.0)
     gaming_sessions = relationship("GamingSession", back_populates="user_stats")
     username = Column(String, nullable=True)      # Discord username
@@ -32,7 +32,7 @@ class UserStats(Base):
 class GamingSession(Base):
     __tablename__ = 'gaming_sessions'
     id = Column(Integer, primary_key=True, autoincrement=True)
-    user_id = Column(String, ForeignKey('user_stats.user_id'))  # Changed to String
+    user_id = Column(BigInteger, ForeignKey('user_stats.user_id'))  # Changed to BigInteger
     game_id = Column(Integer, ForeignKey('games.id'))
     hours = Column(Float)
     credits_earned = Column(Float)
@@ -52,7 +52,7 @@ class LeaderboardPeriod(Base):
 class LeaderboardHistory(Base):
     __tablename__ = 'leaderboard_history'
     id = Column(Integer, primary_key=True)
-    user_id = Column(String, ForeignKey('user_stats.user_id'))  # Changed to String
+    user_id = Column(BigInteger, ForeignKey('user_stats.user_id'))  # Changed to BigInteger
     period_id = Column(Integer, ForeignKey('leaderboard_periods.id'))
     leaderboard_type = Column(Enum(LeaderboardType))
     placement = Column(Integer)
@@ -66,8 +66,8 @@ class LeaderboardHistory(Base):
 class Bonus(Base):
     __tablename__ = 'bonuses'
     id = Column(Integer, primary_key=True)
-    user_id = Column(String, ForeignKey('user_stats.user_id'))  # Changed to String
+    user_id = Column(BigInteger, ForeignKey('user_stats.user_id'))  # Changed to BigInteger
     credits = Column(Float)
     reason = Column(String)
-    granted_by = Column(String)  # Changed to String
+    granted_by = Column(BigInteger)  # Changed to BigInteger
     timestamp = Column(DateTime)

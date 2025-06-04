@@ -1,5 +1,35 @@
 console.log('Script loaded');
 document.addEventListener('DOMContentLoaded', function() {
+  // Fetch and display recent bonuses
+  const bonusesSection = document.querySelector('.bonuses');
+  if (bonusesSection) {
+    fetch('/api/recent-bonuses')
+      .then(res => res.json())
+      .then(bonuses => {
+        const spinner = bonusesSection.querySelector('.loading-spinner');
+        if (spinner) spinner.remove();
+        
+        const ul = document.createElement('ul');
+        bonuses.forEach(bonus => {
+          const li = document.createElement('li');
+          li.innerHTML = `
+            <img class="avatar-sm" src="${bonus.avatar_url || `https://cdn.discordapp.com/embed/avatars/${parseInt(bonus.user_id.slice(-1)) % 6}.png`}" alt="${bonus.username}">
+            <a class="user-link" href="user.html?user=${bonus.user_id}">${bonus.username}</a> earned 
+            <span class="bonus"><i class="fas fa-bolt"></i> "${bonus.reason}"</span>
+          `;
+          ul.appendChild(li);
+        });
+        bonusesSection.appendChild(ul);
+      })
+      .catch(error => {
+        console.error('Error fetching bonuses:', error);
+        const spinner = bonusesSection.querySelector('.loading-spinner');
+        if (spinner) {
+          spinner.innerHTML = '<i class="fas fa-exclamation-circle"></i> Error loading bonuses';
+        }
+      });
+  }
+
   // Discord login button mockup
   const loginBtn = document.querySelector('.discord-login');
   if (loginBtn) {

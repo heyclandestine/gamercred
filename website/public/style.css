@@ -921,17 +921,10 @@ a:hover .game-cover-carousel, .activity-card:hover .game-cover-carousel {
   filter: none;
 }
 .activity-date {
-  position: absolute;
-  top: 0px;
-  right: 0px;
-  background: rgba(35, 35, 43, 0.9);
   color: #fff;
-  padding: 4px 4px;
-  border-radius: 8px;
   font-size: 1em;
   font-weight: 600;
   z-index: 3;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 }
 .activity-overlay {
   position: absolute;

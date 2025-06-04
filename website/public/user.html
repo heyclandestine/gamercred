@@ -245,38 +245,8 @@
       <div class="tab-content active" id="played-weekly">
         <div class="most-played-carousel">
           <div class="activity-carousel">
-            <div class="activity-card-wrap">
-              <div class="activity-card">
-                <a href="game.html?game=StardewValley"><img class="game-cover-carousel" src="https://static-cdn.jtvnw.net/ttv-boxart/27471-285x380.jpg" alt="Stardew Valley"></a>
-                <div class="activity-overlay">
-                  <div class="activity-userblock">
-                    <span class="activity-sessions">12 sessions</span>
-                    <span class="activity-time">80 hrs</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-            <div class="activity-card-wrap">
-              <div class="activity-card">
-                <a href="game.html?game=EldenRing"><img class="game-cover-carousel" src="https://static-cdn.jtvnw.net/ttv-boxart/516575-285x380.jpg" alt="Elden Ring"></a>
-                <div class="activity-overlay">
-                  <div class="activity-userblock">
-                    <span class="activity-sessions">8 sessions</span>
-                    <span class="activity-time">75 hrs</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-            <div class="activity-card-wrap">
-              <div class="activity-card">
-                <a href="game.html?game=Minecraft"><img class="game-cover-carousel" src="https://static-cdn.jtvnw.net/ttv-boxart/2748-285x380.jpg" alt="Minecraft"></a>
-                <div class="activity-overlay">
-                  <div class="activity-userblock">
-                    <span class="activity-sessions">15 sessions</span>
-                    <span class="activity-time">60 hrs</span>
-                  </div>
-                </div>
-              </div>
+            <div class="loading-spinner">
+              <i class="fas fa-spinner fa-spin"></i> Loading weekly stats...
             </div>
           </div>
         </div>
@@ -284,38 +254,8 @@
       <div class="tab-content" id="played-monthly">
         <div class="most-played-carousel">
           <div class="activity-carousel">
-            <div class="activity-card-wrap">
-              <div class="activity-card">
-                <a href="game.html?game=EldenRing"><img class="game-cover-carousel" src="https://static-cdn.jtvnw.net/ttv-boxart/516575-285x380.jpg" alt="Elden Ring"></a>
-                <div class="activity-overlay">
-                  <div class="activity-userblock">
-                    <span class="activity-sessions">45 sessions</span>
-                    <span class="activity-time">320 hrs</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-            <div class="activity-card-wrap">
-              <div class="activity-card">
-                <a href="game.html?game=StardewValley"><img class="game-cover-carousel" src="https://static-cdn.jtvnw.net/ttv-boxart/27471-285x380.jpg" alt="Stardew Valley"></a>
-                <div class="activity-overlay">
-                  <div class="activity-userblock">
-                    <span class="activity-sessions">38 sessions</span>
-                    <span class="activity-time">290 hrs</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-            <div class="activity-card-wrap">
-              <div class="activity-card">
-                <a href="game.html?game=Minecraft"><img class="game-cover-carousel" src="https://static-cdn.jtvnw.net/ttv-boxart/2748-285x380.jpg" alt="Minecraft"></a>
-                <div class="activity-overlay">
-                  <div class="activity-userblock">
-                    <span class="activity-sessions">42 sessions</span>
-                    <span class="activity-time">250 hrs</span>
-                  </div>
-                </div>
-              </div>
+            <div class="loading-spinner">
+              <i class="fas fa-spinner fa-spin"></i> Loading monthly stats...
             </div>
           </div>
         </div>
@@ -323,38 +263,8 @@
       <div class="tab-content" id="played-alltime">
         <div class="most-played-carousel">
           <div class="activity-carousel">
-            <div class="activity-card-wrap">
-              <div class="activity-card">
-                <a href="game.html?game=Minecraft"><img class="game-cover-carousel" src="https://static-cdn.jtvnw.net/ttv-boxart/2748-285x380.jpg" alt="Minecraft"></a>
-                <div class="activity-overlay">
-                  <div class="activity-userblock">
-                    <span class="activity-sessions">850 sessions</span>
-                    <span class="activity-time">5,000 hrs</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-            <div class="activity-card-wrap">
-              <div class="activity-card">
-                <a href="game.html?game=EldenRing"><img class="game-cover-carousel" src="https://static-cdn.jtvnw.net/ttv-boxart/516575-285x380.jpg" alt="Elden Ring"></a>
-                <div class="activity-overlay">
-                  <div class="activity-userblock">
-                    <span class="activity-sessions">720 sessions</span>
-                    <span class="activity-time">4,200 hrs</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-            <div class="activity-card-wrap">
-              <div class="activity-card">
-                <a href="game.html?game=StardewValley"><img class="game-cover-carousel" src="https://static-cdn.jtvnw.net/ttv-boxart/27471-285x380.jpg" alt="Stardew Valley"></a>
-                <div class="activity-overlay">
-                  <div class="activity-userblock">
-                    <span class="activity-sessions">680 sessions</span>
-                    <span class="activity-time">4,100 hrs</span>
-                  </div>
-                </div>
-              </div>
+            <div class="loading-spinner">
+              <i class="fas fa-spinner fa-spin"></i> Loading all-time stats...
             </div>
           </div>
         </div>
@@ -862,6 +772,60 @@
         const endDate = new Date(end);
         return `${startDate.toLocaleDateString()} - ${endDate.toLocaleDateString()}`;
       }
+
+      // Function to load most played games
+      function loadMostPlayedGames(period) {
+        const userId = getUserIdentifierFromUrl();
+        const carousel = document.querySelector(`#played-${period} .activity-carousel`);
+        const spinner = carousel.querySelector('.loading-spinner');
+        
+        fetch(`/api/user/${userId}/most-played?period=${period}`)
+          .then(res => res.json())
+          .then(games => {
+            if (spinner) spinner.remove();
+            
+            games.forEach(game => {
+              const cardWrap = document.createElement('div');
+              cardWrap.className = 'activity-card-wrap';
+              cardWrap.innerHTML = `
+                <div class="activity-card">
+                  <a href="game.html?game=${encodeURIComponent(game.name)}">
+                    <img class="game-cover-carousel" src="${game.box_art_url || 'https://static-cdn.jtvnw.net/ttv-boxart/loading_boxart.png'}" alt="${game.name}">
+                  </a>
+                  <div class="activity-overlay">
+                    <div class="activity-userblock">
+                      <span class="activity-sessions">${game.sessions} sessions</span>
+                      <span class="activity-time">${game.hours} hrs</span>
+                    </div>
+                  </div>
+                </div>
+              `;
+              carousel.appendChild(cardWrap);
+            });
+          })
+          .catch(error => {
+            console.error(`Error loading ${period} games:`, error);
+            if (spinner) {
+              spinner.innerHTML = `<i class="fas fa-exclamation-circle"></i> Error loading ${period} stats`;
+            }
+          });
+      }
+
+      // Load games for each period
+      loadMostPlayedGames('weekly');
+      loadMostPlayedGames('monthly');
+      loadMostPlayedGames('alltime');
+
+      // Tab switching logic
+      document.querySelectorAll('.most-played-tabs .tab-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+          document.querySelectorAll('.most-played-tabs .tab-btn').forEach(b => b.classList.remove('active'));
+          this.classList.add('active');
+          document.querySelectorAll('.most-played .tab-content').forEach(tc => tc.classList.remove('active'));
+          const tab = this.getAttribute('data-tab');
+          document.getElementById(tab).classList.add('active');
+        });
+      });
 
     });
 

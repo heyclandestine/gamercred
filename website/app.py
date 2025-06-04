@@ -1,4 +1,4 @@
-from flask import Flask, render_template, jsonify, request
+from flask import Flask, render_template, jsonify, request, send_from_directory
 import os
 import sys # Import the sys module
 import re # Import re for HTML cleaning
@@ -17,8 +17,18 @@ from models import LeaderboardType # Import LeaderboardType
 # Load environment variables
 load_dotenv()
 
-app = Flask(__name__, static_folder='public', static_url_path='')
+# Initialize Flask app with correct static folder path
+app = Flask(__name__, 
+            static_folder='public',
+            static_url_path='',
+            template_folder='public')
+
+# Add debug logging for database URL
+database_url = os.getenv('DATABASE_URL')
+print(f"DEBUG: Database URL: {database_url}")
+
 storage = GameStorage() # Instantiate GameStorage
+print("DEBUG: GameStorage initialized")
 
 # Get RAWG API key from environment variable
 RAWG_API_KEY = os.getenv('RAWG_API_KEY')
@@ -160,15 +170,15 @@ def clean_and_truncate_description(html_text):
 
 @app.route('/')
 def index():
-    return app.send_static_file('index.html')
+    return send_from_directory(app.static_folder, 'index.html')
 
 @app.route('/game.html')
 def game():
-    return app.send_static_file('game.html')
+    return send_from_directory(app.static_folder, 'game.html')
 
 @app.route('/user.html')
 def user():
-    return app.send_static_file('user.html')
+    return send_from_directory(app.static_folder, 'user.html')
 
 @app.route('/api/game')
 def get_game():
@@ -524,13 +534,20 @@ def get_user_history_endpoint(user_identifier):
                 game_info = game_info_map.get(game_name, {})
                 box_art_url = game_info.get('cover_image_url')
                 
+                # Get Discord info for the user
+                discord_info = get_cached_discord_user_info(user_id_str)
+                username = discord_info['username'] if discord_info else f'User{user_id_str}'
+                avatar_url = discord_info['avatar_url'] if discord_info else f'https://randomuser.me/api/portraits/men/{user_id_str}.jpg'
+                
                 formatted_entry = {
                     'game_name': game_name or 'Unknown Game',
                     'hours': float(entry.get('hours', 0.0)),
                     'credits_earned': float(entry.get('credits_earned', 0.0)),
                     'timestamp': entry.get('timestamp', datetime.now()).isoformat(),
                     'box_art_url': box_art_url,
-                    'user_id': user_id_str
+                    'user_id': user_id_str,
+                    'username': username,
+                    'avatar_url': avatar_url
                 }
                 formatted_history.append(formatted_entry)
                 print(f"DEBUG: Formatted entry: {formatted_entry}")
@@ -571,11 +588,29 @@ def get_user_leaderboard_history(user_identifier):
             else:
                 return jsonify({'error': 'Invalid leaderboard type'}), 400
 
-        # Get leaderboard history from storage, optionally filtered by type
-        leaderboard_history = storage.get_user_placement_history(int(user_identifier), leaderboard_type=leaderboard_type)
+        # Keep as string to preserve precision
+        user_id_str = str(user_identifier)
 
-        print(f"DEBUG: /api/user-stats/{user_identifier}/leaderboard-history returning: {leaderboard_history}")
-        return jsonify(leaderboard_history)
+        # Get leaderboard history from storage, optionally filtered by type
+        leaderboard_history = storage.get_user_placement_history(user_id_str, leaderboard_type=leaderboard_type)
+
+        # Format the history data with Discord info
+        formatted_history = []
+        for entry in leaderboard_history:
+            # Get Discord info for the user
+            discord_info = get_cached_discord_user_info(user_id_str)
+            username = discord_info['username'] if discord_info else f'User{user_id_str}'
+            avatar_url = discord_info['avatar_url'] if discord_info else f'https://randomuser.me/api/portraits/men/{user_id_str}.jpg'
+
+            formatted_entry = {
+                **entry,
+                'username': username,
+                'avatar_url': avatar_url
+            }
+            formatted_history.append(formatted_entry)
+
+        print(f"DEBUG: /api/user-stats/{user_identifier}/leaderboard-history returning: {formatted_history}")
+        return jsonify(formatted_history)
     except Exception as e:
         print(f"Error processing /api/user-stats/{user_identifier}/leaderboard-history: {e}")
         return jsonify({'error': 'Internal server error'}), 500
