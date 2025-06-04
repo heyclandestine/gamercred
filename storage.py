@@ -1164,6 +1164,7 @@ class GameStorage:
         """Get the total hours played for each game within a given timeframe."""
         session = self.Session()
         try:
+            print(f"DEBUG: Getting total game hours for timeframe: {timeframe}")
             query = session.query(
                 Game.name,  # Select the game name from the Game table
                 func.sum(GamingSession.hours),
@@ -1181,24 +1182,30 @@ class GameStorage:
                     hour=0, minute=0, second=0, microsecond=0
                 )
                 start_time = self.cst.localize(naive_start)
+                print(f"DEBUG: Weekly start time: {start_time}")
             elif timeframe == 'monthly':
                 # Start from 1st of current month CST
                 naive_start = naive_now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
                 start_time = self.cst.localize(naive_start)
+                print(f"DEBUG: Monthly start time: {start_time}")
             # For 'alltime', no time filter is needed, start_time remains None
 
             if start_time:
                 # Ensure comparison is between timezone-aware datetimes
                 query = query.filter(GamingSession.timestamp >= start_time) # Filter by timestamp in GamingSession
+                print(f"DEBUG: Added time filter: {start_time}")
 
             # Group by both game name and box_art_url
             query = query.group_by(Game.name, Game.box_art_url)
 
             results = query.all()
+            print(f"DEBUG: Query results: {results}")
             return results
 
         except Exception as e:
             print(f"Error getting total game hours for timeframe {timeframe}: {str(e)}")
+            import traceback
+            traceback.print_exc()
             return []
         finally:
             session.close()
@@ -1260,6 +1267,7 @@ class GameStorage:
         """Get the most recent gaming sessions with game details and user_id."""
         session = self.Session()
         try:
+            print(f"DEBUG: Getting recent gaming sessions, limit: {limit}")
             # Fetch recent gaming sessions and join with Game to get game details
             sessions_query = session.query(
                 GamingSession.id,
@@ -1273,6 +1281,7 @@ class GameStorage:
              .order_by(GamingSession.timestamp.desc())\
              .limit(limit)
 
+            print("DEBUG: Executing query...")
             rows = sessions_query.all()
             print(f"DEBUG: get_recent_gaming_sessions - Fetched rows: {rows}") # Debug print
 
@@ -1299,6 +1308,8 @@ class GameStorage:
 
         except Exception as e:
             print(f"Error getting recent gaming sessions: {e}")
+            import traceback
+            traceback.print_exc()
             return []
         finally:
             session.close()
@@ -1307,6 +1318,7 @@ class GameStorage:
         """Get the most recent bonus entries with user details."""
         session = self.Session()
         try:
+            print(f"DEBUG: Getting recent bonuses, limit: {limit}")
             # Fetch recent bonus entries
             bonuses_query = session.query(
                 Bonus.id,
@@ -1318,6 +1330,7 @@ class GameStorage:
             ).order_by(Bonus.timestamp.desc())\
              .limit(limit)
 
+            print("DEBUG: Executing query...")
             rows = bonuses_query.all()
             print(f"DEBUG: get_recent_bonuses - Fetched rows: {rows}") # Debug print
 
@@ -1345,6 +1358,8 @@ class GameStorage:
 
         except Exception as e:
             print(f"Error getting recent bonuses: {e}")
+            import traceback
+            traceback.print_exc()
             return []
         finally:
             session.close()
