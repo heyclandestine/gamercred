@@ -1,0 +1,18 @@
+services:
+  - type: web
+    name: discord-companion
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn app:app
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.0
+      - key: DATABASE_URL
+        fromDatabase:
+          name: discord-companion-db
+          property: connectionString
+
+databases:
+  - name: discord-companion-db
+    databaseName: discord_companion
+    user: discord_companion_user 

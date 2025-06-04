@@ -10,15 +10,20 @@ from discord.ext import commands
 from commands import GamingCommands
 from constants import TOKEN, COMMAND_PREFIX
 from keepalive import keep_alive
+import asyncio
+from storage import GameStorage  # Add this import
+
+print("main.py started")
 
 # Singleton check to prevent multiple instances
 def is_bot_already_running():
     """Check if another instance of the bot is already running"""
     try:
-        # Try to create a socket with a unique name
-        socket_name = "discord_gamer_cred_bot_socket"
-        sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-        sock.bind('\0' + socket_name)
+        # Try to create a TCP socket and bind to a specific port
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        # Set SO_REUSEADDR to avoid "Address already in use" errors when restarting
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        sock.bind(('localhost', 50000))  # Use port 50000 for instance checking
         return False  # Socket created successfully, no other instance running
     except socket.error:
         return True  # Socket creation failed, another instance is running
@@ -34,9 +39,24 @@ bot = commands.Bot(command_prefix=COMMAND_PREFIX, intents=intents)
 async def on_ready():
     print(f'Bot is ready! Logged in as {bot.user.name}')
     print(f'Connected to {len(bot.guilds)} servers')
-
-    # Add commands
-    await bot.add_cog(GamingCommands(bot))
+    
+    if not hasattr(bot, 'commands_added'):
+        print('Initializing commands...')
+        try:
+            gaming_commands = GamingCommands(bot)
+            await bot.add_cog(gaming_commands)
+            bot.commands_added = True
+            print('Commands initialized successfully!')
+            print(f'Command prefix is: {bot.command_prefix}')
+            print('Available commands:')
+            for command in bot.commands:
+                print(f'  {command.name}: {command.help}')
+        except Exception as e:
+            print(f'Error initializing commands: {str(e)}')
+            print('Full error details:', file=sys.stderr)
+            import traceback
+            traceback.print_exc()
+            raise  # Re-raise the exception to see the full error
 
 @bot.event
 async def on_command_error(ctx, error):
@@ -45,9 +65,14 @@ async def on_command_error(ctx, error):
     elif isinstance(error, commands.errors.CommandNotFound):
         await ctx.send(f"❌ Command not found. Use `!help` to see available commands.")
     else:
+        print(f"Error occurred: {str(error)}")  # Add debug logging
+        print(f"Full error details: {error.__class__.__name__}")  # Print error class name
+        print(f"Error traceback:", file=sys.stderr)  # Print full traceback
+        import traceback
+        traceback.print_exc()
         await ctx.send(f"❌ An error occurred: {str(error)}")
 
-def main():
+async def async_main():
     # Check if bot is already running
     if is_bot_already_running():
         print("Error: Bot is already running! Exiting to prevent duplicate instances.")
@@ -59,15 +84,36 @@ def main():
         return
 
     try:
-        print("Starting bot with single instance...")
+        print("Initializing database...")
+        # Initialize the database before starting the bot
+        storage = GameStorage()
+        print("Database initialized successfully!")
+        
+        print("Checking for running instance...")
+        print("No other instance running, continuing...")
         # Start the keep alive server
         keep_alive()
         # Run the bot
-        bot.run(TOKEN)
+        await bot.start(TOKEN)
     except discord.errors.LoginFailure:
         print("Error: Failed to login. Please check your Discord token.")
     except Exception as e:
         print(f"Error: An unexpected error occurred: {str(e)}")
+        print("Full error details:", file=sys.stderr)
+        import traceback
+        traceback.print_exc()
+
+def main():
+    try:
+        asyncio.run(async_main())
+    except KeyboardInterrupt:
+        print("\nBot shutdown requested...")
+    except Exception as e:
+        print(f"Fatal error: {str(e)}")
+        print("Full error details:", file=sys.stderr)
+        import traceback
+        traceback.print_exc()
+        sys.exit(1)
 
 if __name__ == "__main__":
     main()

@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Game - Gamer Cred</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap">
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+  <script src="search.js"></script>
+</head>
+<body>
+  <nav class="navbar">
+    <div class="nav-left">
+      <a href="index.html" class="site-title nav-home-btn">Gamer Cred</a>
+    </div>
+    <div class="nav-center">
+      <input type="text" class="search-bar" placeholder="Search players, games...">
+    </div>
+    <div class="nav-right">
+      <button class="discord-login"><i class="fab fa-discord"></i> Login with Discord</button>
+    </div>
+  </nav>
+  <main class="game-main">
+    <section class="game-header-section card">
+      <div class="game-header">
+        <img class="game-cover" src="" alt="Game Cover">
+        <div class="game-info-and-description-container">
+          <h1>Loading...</h1>
+          <div class="stats-and-description-container">
+            <div class="game-info">
+              <div class="game-stats">
+                <div class="stat">
+                  <span class="stat-label">Total Players</span>
+                  <span class="stat-value">-</span>
+                </div>
+                <div class="stat">
+                  <span class="stat-label">Total Hours</span>
+                  <span class="stat-value">-</span>
+                </div>
+                <div class="stat">
+                  <span class="stat-label">CPH</span>
+                  <span class="stat-value">-</span>
+                </div>
+              </div>
+            </div>
+            <div class="game-details-right">
+              <div class="game-details-extra" style="display: none;">
+                <h3><i class="fas fa-file-alt"></i> Description</h3>
+                <p class="game-desc">Loading game description...</p>
+                <button class="more-button" style="display: none;">More</button>
+                <button class="less-button" style="display: none;">Less</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <a href="#" class="game-link backloggd-link-below-cover" style="display: none;">Check it out on Backloggd</a>
+    </section>
+
+    <section class="game-playing card">
+      <h3><i class="fas fa-users"></i> Currently Playing</h3>
+      <div class="loading-spinner"><i class="fas fa-spinner fa-spin"></i> Loading players...</div>
+      <ul class="players-list" style="display: none;">
+        <!-- Players will be populated here -->
+      </ul>
+    </section>
+
+    <section class="game-activity card">
+      <h2><i class="fas fa-gamepad"></i> Recent Activity</h2>
+      <div class="loading-spinner"><i class="fas fa-spinner fa-spin"></i> Loading activity...</div>
+      <ul class="activity-list" style="display: none;">
+        <!-- Activity will be populated here -->
+      </ul>
+    </section>
+
+    <a href="index.html" class="back-link">&larr; Back to Home</a>
+  </main>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      const urlParams = new URLSearchParams(window.location.search);
+      const gameName = urlParams.get('game');
+
+      if (!gameName) {
+        showError('No game specified');
+        return;
+      }
+
+      // Fetch game data
+      fetch(`/api/game?name=${encodeURIComponent(gameName)}`)
+        .then(response => {
+          console.log('Game API Response:', response);
+          return response.json();
+        })
+        .then(data => {
+          console.log('Game Data:', data);
+          if (data.error) {
+            showError(data.error);
+            return;
+          }
+          updateGameInfo(data);
+        })
+        .catch(error => {
+          console.error('Error fetching game data:', error);
+          showError('Failed to load game information');
+        });
+
+      // Fetch current players
+      fetch(`/api/game/players?name=${encodeURIComponent(gameName)}`)
+        .then(response => response.json())
+        .then(data => {
+          const playersList = document.querySelector('.players-list');
+          const loadingSpinner = document.querySelector('.game-playing .loading-spinner');
+          
+          if (data.error) {
+            playersList.innerHTML = `<li>Error loading players: ${data.error}</li>`;
+          } else if (data.length === 0) {
+            playersList.innerHTML = '<li>No one is currently playing this game</li>';
+          } else {
+            playersList.innerHTML = data.map(player => `
+              <li>
+                <img class="avatar-sm" src="${player.avatar_url}" alt="${player.username}">
+                <a class="user-link" href="user.html?user=${player.user_id}">${player.username}</a>
+              </li>
+            `).join('');
+          }
+          
+          loadingSpinner.style.display = 'none';
+          playersList.style.display = 'flex';
+        })
+        .catch(error => {
+          console.error('Error fetching players:', error);
+          document.querySelector('.game-playing .loading-spinner').style.display = 'none';
+          document.querySelector('.players-list').innerHTML = '<li>Error loading players</li>';
+          document.querySelector('.players-list').style.display = 'block';
+        });
+
+      // Fetch recent activity
+      fetch(`/api/game/activity?name=${encodeURIComponent(gameName)}`)
+        .then(response => response.json())
+        .then(data => {
+          const activityList = document.querySelector('.activity-list');
+          const loadingSpinner = document.querySelector('.game-activity .loading-spinner');
+          
+          if (data.error) {
+            activityList.innerHTML = `<li>Error loading activity: ${data.error}</li>`;
+          } else if (data.length === 0) {
+            activityList.innerHTML = '<li>No recent activity</li>';
+          } else {
+            activityList.innerHTML = data.map(activity => `
+              <li>
+                <img class="avatar-sm" src="${activity.avatar_url}" alt="${activity.username}">
+                <div class="activity-details">
+                  <a class="user-link" href="user.html?user=${activity.user_id}">${activity.username}</a>
+                  <span class="activity-text">played for ${formatHours(activity.hours)}</span>
+                </div>
+                <span class="activity-time">${formatTimeAgo(activity.timestamp)}</span>
+              </li>
+            `).join('');
+          }
+          
+          loadingSpinner.style.display = 'none';
+          activityList.style.display = 'block';
+        })
+        .catch(error => {
+          console.error('Error fetching activity:', error);
+          document.querySelector('.game-activity .loading-spinner').style.display = 'none';
+          document.querySelector('.activity-list').innerHTML = '<li>Error loading activity</li>';
+          document.querySelector('.activity-list').style.display = 'block';
+        });
+    });
+
+    function updateGameInfo(data) {
+      console.log('Updating game info with:', data);
+      console.log('Game description data:', data.description);
+      document.title = `${data.name} - Gamer Cred`;
+      document.querySelector('.game-cover').src = data.cover_image_url;
+      document.querySelector('.game-cover').alt = data.name;
+      document.querySelector('.game-info-and-description-container h1').textContent = capitalizeWords(data.name);
+
+      // Update stats
+      document.querySelector('.stat:nth-child(1) .stat-value').textContent = formatNumber(data.total_players);
+      document.querySelector('.stat:nth-child(2) .stat-value').textContent = formatHours(data.total_hours);
+      document.querySelector('.stat:nth-child(3) .stat-value').textContent = data.credits_per_hour.toFixed(1);
+
+      // Update backloggd link
+      const backloggdLinkBelowCover = document.querySelector('.backloggd-link-below-cover');
+      if (data.backloggd_url) {
+        backloggdLinkBelowCover.href = data.backloggd_url;
+        backloggdLinkBelowCover.style.display = 'block';
+      } else {
+        backloggdLinkBelowCover.style.display = 'none';
+      }
+
+      // Update description using the new container and implement truncation
+      const gameDetailsExtra = document.querySelector('.game-details-extra');
+      const gameDescElement = gameDetailsExtra.querySelector('.game-desc');
+      const gameDetailsRight = document.querySelector('.game-details-right');
+      const moreButton = gameDetailsExtra.querySelector('.more-button');
+      const lessButton = gameDetailsExtra.querySelector('.less-button');
+
+      console.log('DEBUG: Description data from API:', data.description);
+      
+      if (data.description && data.description !== 'No description available.') {
+        gameDescElement.textContent = data.description;
+        gameDetailsExtra.style.display = 'block';
+        gameDetailsRight.style.display = 'block';
+      } else {
+        gameDescElement.textContent = 'No description available.';
+        gameDetailsExtra.style.display = 'block';
+        gameDetailsRight.style.display = 'block';
+      }
+
+      // Implement description truncation
+      if (gameDetailsExtra.style.display !== 'none') { // Only apply if description is displayed
+        // Allow browser to render text before checking height
+        setTimeout(() => {
+          if (gameDescElement.scrollHeight > gameDescElement.clientHeight) {
+            // Show More button if content overflows
+            moreButton.style.display = 'block';
+            lessButton.style.display = 'none'; // Hide Less button initially
+          } else {
+              // Hide both buttons if content does not overflow
+              moreButton.style.display = 'none';
+              lessButton.style.display = 'none';
+          }
+        }, 0); // Use setTimeout to allow rendering
+        
+        // Add event listeners to buttons
+        moreButton.onclick = () => {
+            gameDescElement.style.maxHeight = 'none'; // Show full text
+            moreButton.style.display = 'none'; // Hide More button
+            lessButton.style.display = 'block'; // Show Less button
+        };
+        
+        lessButton.onclick = () => {
+            // Restore the original max-height (from CSS)
+            gameDescElement.style.maxHeight = '200px'; // Restore the original max-height from CSS
+            moreButton.style.display = 'block'; // Show More button
+            lessButton.style.display = 'none'; // Hide Less button
+        };
+      }
+    }
+
+    function showError(message) {
+      console.error('Showing error:', message);
+      document.querySelector('.game-info-and-description-container h1').textContent = 'Error';
+      document.querySelector('.game-desc').textContent = message;
+      document.querySelector('.game-cover').style.display = 'none';
+      document.querySelector('.game-link').style.display = 'none';
+      document.querySelector('.game-stats').style.display = 'none';
+    }
+
+    function formatNumber(num) {
+      return num.toLocaleString();
+    }
+
+    function formatHours(hours) {
+      const wholeHours = Math.floor(hours);
+      const minutes = Math.round((hours - wholeHours) * 60);
+      let timeDisplay = '';
+      if (wholeHours > 0) {
+        timeDisplay += `${wholeHours}h `;
+      }
+      if (minutes > 0 || wholeHours === 0) {
+        timeDisplay += `${minutes}m`;
+      }
+      return timeDisplay.trim();
+    }
+
+    function formatTimeAgo(timestamp) {
+      const date = new Date(timestamp);
+      const now = new Date();
+      const diffInSeconds = Math.floor((now - date) / 1000);
+      
+      if (diffInSeconds < 60) return 'just now';
+      if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)}m ago`;
+      if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)}h ago`;
+      if (diffInSeconds < 604800) return `${Math.floor(diffInSeconds / 86400)}d ago`;
+      return date.toLocaleDateString();
+    }
+
+    // Helper function to capitalize the first letter of each word
+    function capitalizeWords(str) {
+      if (!str) return '';
+      return str.replace(/\b\w/g, char => char.toUpperCase());
+    }
+  </script>
+</body>
+</html> 

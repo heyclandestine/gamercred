@@ -1,4 +1,3 @@
-
 import json
 import sys
 from sqlalchemy import create_engine
@@ -24,7 +23,7 @@ class UserStats(Base):
     __tablename__ = 'user_stats'
 
     id = Column(Integer, primary_key=True)
-    user_id = Column(BigInteger, unique=True, nullable=False)  # Discord user ID
+    user_id = Column(String, unique=True, nullable=False)  # Store as string to preserve precision
     total_credits = Column(Float, default=0.0)
 
 class GamingSession(Base):
