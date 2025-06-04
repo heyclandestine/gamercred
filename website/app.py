@@ -2,6 +2,7 @@ from flask import Flask, render_template, jsonify, request
 import os
 import sys # Import the sys module
 import re # Import re for HTML cleaning
+from dotenv import load_dotenv
 print("sys.path before storage import:", sys.path) # Print sys.path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))) # Add parent directory to path
 from storage import GameStorage # Import GameStorage
@@ -13,8 +14,8 @@ import aiohttp # Import aiohttp for async requests
 from datetime import datetime # Import datetime
 from models import LeaderboardType # Import LeaderboardType
 
-# Load environment variables (assuming this is done elsewhere, but ensure here if needed)
-# load_dotenv()
+# Load environment variables
+load_dotenv()
 
 app = Flask(__name__, static_folder='public', static_url_path='')
 storage = GameStorage() # Instantiate GameStorage
@@ -642,4 +643,6 @@ def search_api():
     return jsonify({'games': games, 'users': users})
 
 if __name__ == '__main__':
-    app.run(debug=True) 
+    # In production, this won't be used as gunicorn will run the app
+    port = int(os.environ.get('PORT', 10000))
+    app.run(host='0.0.0.0', port=port) 
