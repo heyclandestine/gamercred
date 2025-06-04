@@ -1,7 +1,7 @@
 import os
 from datetime import datetime, timedelta
 from typing import Dict, List, Tuple, Optional, Any
-from sqlalchemy import create_engine, func, DateTime as sqlalchemy_DateTime, and_
+from sqlalchemy import create_engine, func, DateTime as sqlalchemy_DateTime, and_, Integer, String, BigInteger
 from sqlalchemy.orm import sessionmaker, scoped_session
 from models import Base, Game, UserStats, GamingSession, LeaderboardHistory, LeaderboardType, LeaderboardPeriod, Bonus # Removed User import
 import pytz
@@ -47,13 +47,18 @@ class GameStorage:
 
                 # Update the DATABASE_URL with the proper path
                 self.database_url = f'sqlite:///{db_path}'
-                print(f"Using database path: {db_path}")
-
-            # Create the engine with the updated URL
-            self.engine = create_engine(
-                self.database_url,
-                connect_args={'check_same_thread': False}
-            )
+                print(f"Using SQLite database path: {db_path}")
+                
+                # Create the engine with SQLite-specific settings
+                self.engine = create_engine(
+                    self.database_url,
+                    connect_args={'check_same_thread': False}
+                )
+            else:
+                # PostgreSQL connection
+                print("Using PostgreSQL database")
+                # Create engine without SQLite-specific arguments
+                self.engine = create_engine(self.database_url)
 
             # Create tables if they don't exist
             Base.metadata.create_all(self.engine)
@@ -197,8 +202,13 @@ class GameStorage:
                 .first()
 
             if not period:
-                # Create a new period
+                # Get the next available ID
+                next_id = session.query(func.max(LeaderboardPeriod.id)).scalar()
+                next_id = (next_id or 0) + 1
+
+                # Create a new period with explicit ID
                 period = LeaderboardPeriod(
+                    id=next_id,
                     leaderboard_type=leaderboard_type,
                     start_time=period_start,
                     end_time=period_end,
@@ -333,29 +343,31 @@ class GameStorage:
             suffix = {1: 'st', 2: 'nd', 3: 'rd'}.get(number % 10, 'th')
         return suffix
 
-    def get_user_placement_history(self, user_id: int, leaderboard_type: Optional[LeaderboardType] = None) -> List[Dict]:
-        """Get history of user's placements in leaderboards"""
+    def get_user_placement_history(self, user_id: str, leaderboard_type: Optional[LeaderboardType] = None) -> List[Dict]:
+        """Get user's leaderboard placement history"""
         session = self.Session()
         try:
-            query = session.query(LeaderboardHistory, LeaderboardPeriod)\
-                .join(LeaderboardPeriod)\
-                .filter(LeaderboardHistory.user_id == user_id)
-
+            # Convert user_id to integer for database query
+            user_id_int = int(user_id)
+            
+            query = session.query(LeaderboardHistory)\
+                .filter(LeaderboardHistory.user_id == user_id_int)
+            
             if leaderboard_type:
                 query = query.filter(LeaderboardHistory.leaderboard_type == leaderboard_type)
-
-            history = query.order_by(LeaderboardHistory.timestamp.desc()).all()
-
+            
+            history = query.order_by(LeaderboardHistory.period_id.desc()).all()
+            
             return [{
-                'type': h.LeaderboardHistory.leaderboard_type.value,
-                'period_start': h.LeaderboardPeriod.start_time,
-                'period_end': h.LeaderboardPeriod.end_time,
-                'placement': h.LeaderboardHistory.placement,
-                'credits': h.LeaderboardHistory.credits,
-                'games_played': h.LeaderboardHistory.games_played,
-                'most_played_game': h.LeaderboardHistory.most_played_game,
-                'most_played_hours': h.LeaderboardHistory.most_played_hours,
-                'timestamp': h.LeaderboardHistory.timestamp
+                'period_id': h.period_id,
+                'leaderboard_type': h.leaderboard_type.value,
+                'placement': h.placement,
+                'credits': float(h.credits),
+                'games_played': h.games_played,
+                'most_played_game': h.most_played_game,
+                'most_played_hours': float(h.most_played_hours),
+                'start_time': h.period.start_time.isoformat(),
+                'end_time': h.period.end_time.isoformat()
             } for h in history]
         finally:
             session.close()
@@ -364,84 +376,42 @@ class GameStorage:
         """Get user's recent gaming sessions with game details"""
         session = self.Session()
         try:
-            # Ensure user_id is a string
-            user_id_str = str(user_id)
-            print(f"DEBUG: get_user_gaming_history called for user_id: {user_id_str}")
+            # Keep user_id as string since that's how it's stored in the database
+            print(f"DEBUG: get_user_gaming_history called for user_id: {user_id}")
             
-            # Debug: Check for sessions with this user ID in different formats
-            print("\nDEBUG: Checking for sessions with different user ID formats:")
+            # Query with string user_id
+            sessions = session.query(
+                GamingSession,
+                Game
+            ).join(Game)\
+                .filter(GamingSession.user_id == user_id)\
+                .order_by(GamingSession.timestamp.desc())\
+                .limit(limit)\
+                .all()
             
-            # First, let's check the database structure
-            try:
-                # Check as string
-                str_count = session.query(GamingSession).filter(GamingSession.user_id == user_id_str).count()
-                print(f"DEBUG: Sessions with user_id as string: {str_count}")
-                
-                # Check as integer
-                try:
-                    int_id = int(user_id_str)
-                    int_count = session.query(GamingSession).filter(GamingSession.user_id == int_id).count()
-                    print(f"DEBUG: Sessions with user_id as integer: {int_count}")
-                except ValueError:
-                    print("DEBUG: Could not convert user_id to integer")
-                
-                # Check for any sessions with this user ID in any format
-                all_sessions = session.query(GamingSession).all()
-                print(f"DEBUG: Total sessions in database: {len(all_sessions)}")
-                
-                # Safely check for matching sessions
-                matching_sessions = []
-                for s in all_sessions:
-                    if s is not None and hasattr(s, 'user_id'):
-                        try:
-                            if str(s.user_id) == user_id_str:
-                                matching_sessions.append(s)
-                        except Exception as e:
-                            print(f"DEBUG: Error comparing session {s.id}: {str(e)}")
-                
-                print(f"DEBUG: Sessions matching user_id after string conversion: {len(matching_sessions)}")
-                
-                if matching_sessions:
-                    print("\nDEBUG: Found matching sessions with different format:")
-                    for s in matching_sessions[:3]:  # Show first 3 matches
-                        print(f"DEBUG: Session ID: {s.id}, User ID: {s.user_id} (type: {type(s.user_id)})")
-                
-                # Try the original query with error handling
-                try:
-                    sessions = session.query(GamingSession, Game)\
-                        .join(Game)\
-                        .filter(GamingSession.user_id == user_id_str)\
-                        .order_by(GamingSession.timestamp.desc())\
-                        .limit(limit)\
-                        .all()
-                    
-                    print(f"\nDEBUG: Found {len(sessions)} sessions for user {user_id_str}")
-                    
-                    if not sessions:
-                        print(f"DEBUG: No gaming sessions found for user {user_id_str}")
-                        return []
-
-                    # Log the first session details for debugging
-                    if sessions:
-                        first_session = sessions[0]
-                        print(f"DEBUG: First session details - User ID: {first_session.GamingSession.user_id}, "
-                              f"Game: {first_session.Game.name}, Hours: {first_session.GamingSession.hours}, "
-                              f"Timestamp: {first_session.GamingSession.timestamp}")
-
-                    return [{
-                        'game': s.Game.name,
-                        'hours': float(s.GamingSession.hours),
-                        'credits_earned': float(s.GamingSession.credits_earned),
-                        'timestamp': s.GamingSession.timestamp,
-                        'rate': float(s.Game.credits_per_hour)
-                    } for s in sessions]
-                except Exception as e:
-                    print(f"DEBUG: Error in main query: {str(e)}")
-                    return []
-                    
-            except Exception as e:
-                print(f"DEBUG: Error checking database structure: {str(e)}")
+            print(f"\nDEBUG: Found {len(sessions)} sessions for user {user_id}")
+            
+            if not sessions:
+                print(f"DEBUG: No gaming sessions found for user {user_id}")
                 return []
+
+            # Log the first session details for debugging
+            if sessions:
+                first_session = sessions[0]
+                print(f"DEBUG: First session details - User ID: {first_session.GamingSession.user_id}, "
+                      f"Game: {first_session.Game.name}, Hours: {first_session.GamingSession.hours}, "
+                      f"Credits: {first_session.GamingSession.credits_earned}, "
+                      f"Box Art: {first_session.Game.box_art_url}, "
+                      f"Timestamp: {first_session.GamingSession.timestamp}")
+
+            return [{
+                'game': s.Game.name,
+                'hours': float(s.GamingSession.hours),
+                'credits_earned': float(s.GamingSession.credits_earned),
+                'timestamp': s.GamingSession.timestamp,
+                'rate': float(s.Game.credits_per_hour),
+                'box_art_url': s.Game.box_art_url
+            } for s in sessions]
                 
         except Exception as e:
             print(f"Error in get_user_gaming_history for user {user_id}: {str(e)}")
@@ -1006,7 +976,7 @@ class GameStorage:
         finally:
             session.close()
 
-    def get_user_game_summaries(self, user_id: int) -> List[Dict]:
+    def get_user_game_summaries(self, user_id: str) -> List[Dict]:
         """Get summary of total hours and credits per game for a user"""
         session = self.Session()
         try:
@@ -1018,22 +988,29 @@ class GameStorage:
             for game in session.query(Game).all():
                 games_dict[game.id] = game
 
-            # Get the raw gaming sessions
-            summaries = session.query(
-                Game.id,
-                Game.name,
-                func.sum(GamingSession.hours).label('total_hours'),
-                func.count(GamingSession.id).label('sessions')
-            ).join(GamingSession)\
-             .filter(GamingSession.user_id == user_id)\
-             .group_by(Game.id, Game.name)\
-             .order_by(func.sum(GamingSession.hours).desc())\
-             .all()
+            # Use raw SQL with simple string comparison
+            raw_sql = """
+                SELECT 
+                    g.id as game_id,
+                    g.name as game_name,
+                    SUM(gs.hours) as total_hours,
+                    COUNT(gs.id) as sessions
+                FROM games g
+                JOIN gaming_sessions gs ON g.id = gs.game_id
+                WHERE gs.user_id = :user_id
+                GROUP BY g.id, g.name
+                ORDER BY SUM(gs.hours) DESC
+            """
+            
+            summaries = session.execute(raw_sql, {'user_id': user_id}).fetchall()
 
-            # Get total bonus credits for the user
-            bonus_credits = session.query(func.sum(Bonus.credits))\
-                .filter(Bonus.user_id == user_id)\
-                .scalar() or 0.0
+            # Get total bonus credits for the user using raw SQL
+            bonus_sql = """
+                SELECT COALESCE(SUM(credits), 0) as total_bonus
+                FROM bonuses
+                WHERE user_id = :user_id
+            """
+            bonus_credits = session.execute(bonus_sql, {'user_id': user_id}).scalar() or 0.0
 
             # Calculate credits using current rates
             result = []
@@ -1242,8 +1219,8 @@ class GameStorage:
                 # Ensure comparison is between timezone-aware datetimes
                 query = query.filter(GamingSession.timestamp >= start_time) # Filter by timestamp in GamingSession
 
-            # Group by game name after joining
-            query = query.group_by(Game.name)
+            # Group by both game name and box_art_url
+            query = query.group_by(Game.name, Game.box_art_url)
 
             results = query.all()
             return results
