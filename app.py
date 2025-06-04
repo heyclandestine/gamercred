@@ -312,6 +312,10 @@ def get_leaderboard():
             leaderboard_type = LeaderboardType.WEEKLY
         elif timeframe == 'monthly':
             leaderboard_type = LeaderboardType.MONTHLY
+        elif timeframe == 'alltime':
+            # Handle alltime case
+            leaderboard_data = storage.get_leaderboard()
+            return jsonify(leaderboard_data)
         else:
             return jsonify({'error': 'Invalid timeframe'}), 400
 
