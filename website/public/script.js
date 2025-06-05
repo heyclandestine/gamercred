@@ -395,21 +395,16 @@ document.addEventListener('DOMContentLoaded', function() {
 
   // Fetch leaderboard data
   function fetchLeaderboardData(timeframe) {
-    const leaderboardContainer = document.querySelector('.leaderboard ol');
-    if (!leaderboardContainer) return;
-
-    // Show loading state
-    leaderboardContainer.innerHTML = `
-      <div class="loading-spinner">
-        <i class="fas fa-spinner fa-spin"></i> Loading leaderboard...
-      </div>
-    `;
-
+    const leaderboardContent = document.getElementById('leaderboard-content');
+    if (!leaderboardContent) return;
+    
+    leaderboardContent.innerHTML = '<div class="loading">Loading...</div>';
+    
     fetch(`/data/leaderboard?timeframe=${timeframe}`)
       .then(res => res.json())
       .then(data => {
         if (!data || data.length === 0) {
-          leaderboardContainer.innerHTML = '<p>No leaderboard data available</p>';
+          leaderboardContent.innerHTML = '<p>No leaderboard data available</p>';
           return;
         }
         const leaderboardList = data.map((entry, index) => `
@@ -427,31 +422,26 @@ document.addEventListener('DOMContentLoaded', function() {
             </div>
           </li>
         `).join('');
-        leaderboardContainer.innerHTML = leaderboardList;
+        leaderboardContent.innerHTML = leaderboardList;
       })
       .catch(error => {
         console.error(`Error fetching ${timeframe} leaderboard data:`, error);
-        leaderboardContainer.innerHTML = '<p>Error loading leaderboard data</p>';
+        leaderboardContent.innerHTML = '<p>Error loading leaderboard data</p>';
       });
   }
 
   // Fetch popular games data
   function fetchPopularGames(timeframe) {
-    const popularGamesContainer = document.querySelector('.most-popular ol');
-    if (!popularGamesContainer) return;
-
-    // Show loading state
-    popularGamesContainer.innerHTML = `
-      <div class="loading-spinner">
-        <i class="fas fa-spinner fa-spin"></i> Loading popular games...
-      </div>
-    `;
-
+    const popularContent = document.getElementById('popular-content');
+    if (!popularContent) return;
+    
+    popularContent.innerHTML = '<div class="loading">Loading...</div>';
+    
     fetch(`/data/popular-games?timeframe=${timeframe}`)
       .then(res => res.json())
       .then(data => {
         if (!data || data.length === 0) {
-          popularGamesContainer.innerHTML = '<p>No popular games data available</p>';
+          popularContent.innerHTML = '<p>No popular games data available</p>';
           return;
         }
         const gamesList = data.map(game => `
@@ -465,31 +455,26 @@ document.addEventListener('DOMContentLoaded', function() {
             </div>
           </li>
         `).join('');
-        popularGamesContainer.innerHTML = gamesList;
+        popularContent.innerHTML = gamesList;
       })
       .catch(error => {
         console.error(`Error fetching ${timeframe} popular games data:`, error);
-        popularGamesContainer.innerHTML = '<p>Error loading popular games data</p>';
+        popularContent.innerHTML = '<p>Error loading popular games data</p>';
       });
   }
 
   // Fetch recent activity
   function fetchRecentActivity() {
-    const activityContainer = document.querySelector('.activity-carousel');
-    if (!activityContainer) return;
-
-    // Show loading state
-    activityContainer.innerHTML = `
-      <div class="loading-spinner">
-        <i class="fas fa-spinner fa-spin"></i> Loading recent activity...
-      </div>
-    `;
-
+    const activitySection = document.querySelector('.recent-activity');
+    if (!activitySection) return;
+    
+    activitySection.innerHTML = '<div class="loading">Loading...</div>';
+    
     fetch('/data/recent-activity')
       .then(res => res.json())
       .then(data => {
         if (!data || data.length === 0) {
-          activityContainer.innerHTML = '<p>No recent activity available</p>';
+          activitySection.innerHTML = '<p>No recent activity available</p>';
           return;
         }
         const activityList = data.map(activity => `
@@ -507,31 +492,26 @@ document.addEventListener('DOMContentLoaded', function() {
             </div>
           </div>
         `).join('');
-        activityContainer.innerHTML = activityList;
+        activitySection.innerHTML = activityList;
       })
       .catch(error => {
         console.error('Error fetching recent activity:', error);
-        activityContainer.innerHTML = '<p>Error loading recent activity</p>';
+        activitySection.innerHTML = '<p>Error loading recent activity</p>';
       });
   }
 
   // Fetch recent bonuses
   function fetchRecentBonuses() {
-    const bonusesContainer = document.querySelector('.bonuses');
-    if (!bonusesContainer) return;
-
-    // Show loading state
-    bonusesContainer.innerHTML = `
-      <div class="loading-spinner">
-        <i class="fas fa-spinner fa-spin"></i> Loading recent bonuses...
-      </div>
-    `;
-
+    const bonusesSection = document.querySelector('.bonuses');
+    if (!bonusesSection) return;
+    
+    bonusesSection.innerHTML = '<div class="loading">Loading...</div>';
+    
     fetch('/data/bonuses')
       .then(res => res.json())
       .then(data => {
         if (!data || data.length === 0) {
-          bonusesContainer.innerHTML = '<p>No recent bonuses</p>';
+          bonusesSection.innerHTML = '<p>No recent bonuses</p>';
           return;
         }
         const bonusesList = data.map(bonus => `
@@ -549,11 +529,11 @@ document.addEventListener('DOMContentLoaded', function() {
             </div>
           </li>
         `).join('');
-        bonusesContainer.innerHTML = `<ol>${bonusesList}</ol>`;
+        bonusesSection.innerHTML = `<ol>${bonusesList}</ol>`;
       })
       .catch(error => {
         console.error('Error fetching recent bonuses:', error);
-        bonusesContainer.innerHTML = '<p>Error loading recent bonuses</p>';
+        bonusesSection.innerHTML = '<p>Error loading recent bonuses</p>';
       });
   }
 
