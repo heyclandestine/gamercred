@@ -333,7 +333,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
   function fetchResults(query) {
     console.log('Autocomplete: fetchResults called with', query);
-    fetch(`/data/search?query=${encodeURIComponent(query)}`)
+    fetch(`/api/search?query=${encodeURIComponent(query)}`)
       .then(res => res.json())
       .then(data => {
         console.log('Autocomplete: fetchResults got data', data);
@@ -515,8 +515,51 @@ document.addEventListener('DOMContentLoaded', function() {
       });
   }
 
+  // Fetch recent bonuses
+  function fetchRecentBonuses() {
+    const bonusesContainer = document.querySelector('.bonuses');
+    if (!bonusesContainer) return;
+
+    // Show loading state
+    bonusesContainer.innerHTML = `
+      <div class="loading-spinner">
+        <i class="fas fa-spinner fa-spin"></i> Loading recent bonuses...
+      </div>
+    `;
+
+    fetch('/data/bonuses')
+      .then(res => res.json())
+      .then(data => {
+        if (!data || data.length === 0) {
+          bonusesContainer.innerHTML = '<p>No recent bonuses</p>';
+          return;
+        }
+        const bonusesList = data.map(bonus => `
+          <li>
+            <div class="bonus-card">
+              <div class="user-info">
+                <img src="${bonus.avatar_url}" alt="${bonus.username}" class="user-avatar">
+                <span class="username">${bonus.username}</span>
+              </div>
+              <div class="bonus-details">
+                <span class="credits">+${bonus.credits} credits</span>
+                <span class="reason">${bonus.reason}</span>
+              </div>
+              <div class="timestamp">${bonus.timestamp}</div>
+            </div>
+          </li>
+        `).join('');
+        bonusesContainer.innerHTML = `<ol>${bonusesList}</ol>`;
+      })
+      .catch(error => {
+        console.error('Error fetching recent bonuses:', error);
+        bonusesContainer.innerHTML = '<p>Error loading recent bonuses</p>';
+      });
+  }
+
   // Initial data load
   fetchLeaderboardData('weekly');
   fetchPopularGames('weekly');
   fetchRecentActivity();
+  fetchRecentBonuses();
 }); 
