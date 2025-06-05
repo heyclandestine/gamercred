@@ -3,33 +3,30 @@ document.addEventListener('DOMContentLoaded', function() {
   // Fetch and display recent bonuses
   const bonusesSection = document.querySelector('.bonuses');
   if (bonusesSection) {
-    fetch('/data/bonuses')
+    fetch('/api/recent-bonuses')
       .then(res => res.json())
       .then(bonuses => {
-        if (!bonuses || bonuses.length === 0) {
-          bonusesSection.innerHTML = '<p>No recent bonuses</p>';
-          return;
-        }
-        const bonusesList = bonuses.map(bonus => `
-          <li>
-            <div class="bonus-card">
-              <div class="user-info">
-                <img src="${bonus.avatar_url}" alt="${bonus.username}" class="user-avatar">
-                <span class="username">${bonus.username}</span>
-              </div>
-              <div class="bonus-details">
-                <span class="credits">+${bonus.credits} credits</span>
-                <span class="reason">${bonus.reason}</span>
-              </div>
-              <div class="timestamp">${bonus.timestamp}</div>
-            </div>
-          </li>
-        `).join('');
-        bonusesSection.innerHTML = `<ol>${bonusesList}</ol>`;
+        const spinner = bonusesSection.querySelector('.loading-spinner');
+        if (spinner) spinner.remove();
+        
+        const ul = document.createElement('ul');
+        bonuses.forEach(bonus => {
+          const li = document.createElement('li');
+          li.innerHTML = `
+            <img class="avatar-sm" src="${bonus.avatar_url || `https://cdn.discordapp.com/embed/avatars/${parseInt(bonus.user_id.slice(-1)) % 6}.png`}" alt="${bonus.username}">
+            <a class="user-link" href="user.html?user=${bonus.user_id}">${bonus.username}</a> earned 
+            <span class="bonus"><i class="fas fa-bolt"></i> "${bonus.reason}"</span>
+          `;
+          ul.appendChild(li);
+        });
+        bonusesSection.appendChild(ul);
       })
       .catch(error => {
-        console.error('Error fetching recent bonuses:', error);
-        bonusesSection.innerHTML = '<p>Error loading recent bonuses</p>';
+        console.error('Error fetching bonuses:', error);
+        const spinner = bonusesSection.querySelector('.loading-spinner');
+        if (spinner) {
+          spinner.innerHTML = '<i class="fas fa-exclamation-circle"></i> Error loading bonuses';
+        }
       });
   }
 
@@ -392,174 +389,4 @@ document.addEventListener('DOMContentLoaded', function() {
       dropdown.classList.remove('active');
     }
   });
-
-  // Fetch leaderboard data
-  function fetchLeaderboardData(timeframe) {
-    const leaderboardContainer = document.querySelector('.leaderboard ol');
-    if (!leaderboardContainer) return;
-
-    // Show loading state
-    leaderboardContainer.innerHTML = `
-      <div class="loading-spinner">
-        <i class="fas fa-spinner fa-spin"></i> Loading leaderboard...
-      </div>
-    `;
-
-    fetch(`/data/leaderboard?timeframe=${timeframe}`)
-      .then(res => res.json())
-      .then(data => {
-        if (!data || data.length === 0) {
-          leaderboardContainer.innerHTML = '<p>No leaderboard data available</p>';
-          return;
-        }
-        const leaderboardList = data.map((entry, index) => `
-          <li>
-            <div class="leaderboard-card">
-              <div class="rank">#${index + 1}</div>
-              <div class="user-info">
-                <img src="${entry.avatar_url}" alt="${entry.username}" class="user-avatar">
-                <span class="username">${entry.username}</span>
-              </div>
-              <div class="stats">
-                <span class="points">${entry.points} points</span>
-                <span class="games">${entry.games_played} games</span>
-              </div>
-            </div>
-          </li>
-        `).join('');
-        leaderboardContainer.innerHTML = leaderboardList;
-      })
-      .catch(error => {
-        console.error(`Error fetching ${timeframe} leaderboard data:`, error);
-        leaderboardContainer.innerHTML = '<p>Error loading leaderboard data</p>';
-      });
-  }
-
-  // Fetch popular games data
-  function fetchPopularGames(timeframe) {
-    const popularGamesContainer = document.querySelector('.most-popular ol');
-    if (!popularGamesContainer) return;
-
-    // Show loading state
-    popularGamesContainer.innerHTML = `
-      <div class="loading-spinner">
-        <i class="fas fa-spinner fa-spin"></i> Loading popular games...
-      </div>
-    `;
-
-    fetch(`/data/popular-games?timeframe=${timeframe}`)
-      .then(res => res.json())
-      .then(data => {
-        if (!data || data.length === 0) {
-          popularGamesContainer.innerHTML = '<p>No popular games data available</p>';
-          return;
-        }
-        const gamesList = data.map(game => `
-          <li>
-            <div class="game-card">
-              <img src="${game.box_art_url}" alt="${game.name}" class="game-image">
-              <div class="game-info">
-                <span class="game-name">${game.name}</span>
-                <span class="hours">${game.hours} hours</span>
-              </div>
-            </div>
-          </li>
-        `).join('');
-        popularGamesContainer.innerHTML = gamesList;
-      })
-      .catch(error => {
-        console.error(`Error fetching ${timeframe} popular games data:`, error);
-        popularGamesContainer.innerHTML = '<p>Error loading popular games data</p>';
-      });
-  }
-
-  // Fetch recent activity
-  function fetchRecentActivity() {
-    const activityContainer = document.querySelector('.activity-carousel');
-    if (!activityContainer) return;
-
-    // Show loading state
-    activityContainer.innerHTML = `
-      <div class="loading-spinner">
-        <i class="fas fa-spinner fa-spin"></i> Loading recent activity...
-      </div>
-    `;
-
-    fetch('/data/recent-activity')
-      .then(res => res.json())
-      .then(data => {
-        if (!data || data.length === 0) {
-          activityContainer.innerHTML = '<p>No recent activity available</p>';
-          return;
-        }
-        const activityList = data.map(activity => `
-          <div class="activity-card-wrap">
-            <div class="activity-card">
-              <div class="user-info">
-                <img src="${activity.avatar_url}" alt="${activity.username}" class="user-avatar">
-                <span class="username">${activity.username}</span>
-              </div>
-              <div class="activity-details">
-                <span class="game-name">${activity.game_name}</span>
-                <span class="hours">${activity.hours} hours</span>
-              </div>
-              <div class="timestamp">${activity.timestamp}</div>
-            </div>
-          </div>
-        `).join('');
-        activityContainer.innerHTML = activityList;
-      })
-      .catch(error => {
-        console.error('Error fetching recent activity:', error);
-        activityContainer.innerHTML = '<p>Error loading recent activity</p>';
-      });
-  }
-
-  // Fetch recent bonuses
-  function fetchRecentBonuses() {
-    const bonusesContainer = document.querySelector('.bonuses');
-    if (!bonusesContainer) return;
-
-    // Show loading state
-    bonusesContainer.innerHTML = `
-      <div class="loading-spinner">
-        <i class="fas fa-spinner fa-spin"></i> Loading recent bonuses...
-      </div>
-    `;
-
-    fetch('/data/bonuses')
-      .then(res => res.json())
-      .then(data => {
-        if (!data || data.length === 0) {
-          bonusesContainer.innerHTML = '<p>No recent bonuses</p>';
-          return;
-        }
-        const bonusesList = data.map(bonus => `
-          <li>
-            <div class="bonus-card">
-              <div class="user-info">
-                <img src="${bonus.avatar_url}" alt="${bonus.username}" class="user-avatar">
-                <span class="username">${bonus.username}</span>
-              </div>
-              <div class="bonus-details">
-                <span class="credits">+${bonus.credits} credits</span>
-                <span class="reason">${bonus.reason}</span>
-              </div>
-              <div class="timestamp">${bonus.timestamp}</div>
-            </div>
-          </li>
-        `).join('');
-        bonusesContainer.innerHTML = `<ol>${bonusesList}</ol>`;
-      })
-      .catch(error => {
-        console.error('Error fetching recent bonuses:', error);
-        bonusesContainer.innerHTML = '<p>Error loading recent bonuses</p>';
-      });
-  }
-
-  // Initial data load
-  fetchLeaderboardData('weekly');
-  fetchPopularGames('weekly');
-  fetchRecentActivity();
-  fetchRecentBonuses();
 }); 
