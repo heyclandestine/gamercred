@@ -24,6 +24,14 @@ app = Flask(__name__,
             static_url_path='',
             template_folder='public')
 
+# Add CORS headers to allow requests from any origin
+@app.after_request
+def after_request(response):
+    response.headers.add('Access-Control-Allow-Origin', '*')
+    response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
+    response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
+    return response
+
 # Add debug logging for database URL
 database_url = os.getenv('DATABASE_URL')
 print(f"DEBUG: Database URL: {database_url}")
@@ -306,157 +314,41 @@ def handle_error(error):
     return jsonify({'error': str(error)}), 500
 
 # Add endpoint to fetch leaderboard data
-@app.route('/api/leaderboard')
+@app.route('/data/leaderboard')
 def get_leaderboard():
     timeframe = request.args.get('timeframe', 'weekly')
-    print(f"Fetching leaderboard for timeframe: {timeframe}")
     try:
-        if timeframe == 'weekly' or timeframe == 'monthly':
-            leaderboard_type = LeaderboardType.WEEKLY if timeframe == 'weekly' else LeaderboardType.MONTHLY
-            # Get or create the current period for the requested timeframe
-            current_period = run_async(storage.get_or_create_current_period(leaderboard_type))
-            # Get the leaderboard data for the current period
-            leaderboard_data = run_async(storage.get_leaderboard_by_timeframe(leaderboard_type, period=current_period))
-            print(f"DEBUG: Raw data from storage.get_leaderboard_by_timeframe: {leaderboard_data}") # Debug print
-
-            # Format the data for the frontend
-            formatted_data = []
-            for user_id, credits, games_played, most_played_game, most_played_hours in leaderboard_data:
-                # Convert user_id to string immediately
-                user_id_str = str(user_id)
-                # Use cached Discord user info
-                discord_info = get_cached_discord_user_info(user_id_str)
-                if discord_info:
-                    avatar_url = discord_info['avatar_url']
-                    username = discord_info['username']
-                else:
-                    avatar_url = "https://www.gravatar.com/avatar/?d=mp&s=50"
-                    username = f"User{user_id_str}"
-                
-                formatted_data.append({
-                    'user_id': user_id_str,
-                    'username': username,
-                    'avatar_url': avatar_url,
-                    'points': credits,
-                    'games_played': games_played,
-                    'most_played_game': most_played_game,
-                    'most_played_hours': most_played_hours
-                })
-        elif timeframe == 'alltime':
-            # Get all-time leaderboard data
-            alltime_leaderboard_data = storage.get_leaderboard()
-            print(f"DEBUG: Raw data from storage.get_leaderboard: {alltime_leaderboard_data}") # Debug print
-
-            # Format the data for the frontend
-            formatted_data = []
-            for index, (user_id, total_credits) in enumerate(alltime_leaderboard_data):
-                # Convert user_id to string immediately
-                user_id_str = str(user_id)
-                # Use cached Discord user info
-                discord_info = get_cached_discord_user_info(user_id_str)
-                if discord_info:
-                    avatar_url = discord_info['avatar_url']
-                    username = discord_info['username']
-                else:
-                    avatar_url = "https://www.gravatar.com/avatar/?d=mp&s=50"
-                    username = f"User{user_id_str}"
-
-                formatted_data.append({
-                    'user_id': user_id_str,
-                    'username': username,
-                    'avatar_url': avatar_url,
-                    'points': total_credits,
-                    'games_played': 0,
-                    'most_played_game': 'N/A',
-                    'most_played_hours': 0
-                })
-
-        else:
-            return jsonify({'error': 'Invalid timeframe specified'}), 400
-
-        return jsonify(formatted_data)
+        # Convert timeframe to LeaderboardType
+        leaderboard_type = LeaderboardType.WEEKLY if timeframe == 'weekly' else LeaderboardType.MONTHLY
+        # Get or create the current period
+        current_period = run_async(storage.get_or_create_current_period(leaderboard_type))
+        # Get the leaderboard data
+        data = run_async(storage.get_leaderboard_by_timeframe(leaderboard_type, period=current_period))
+        return jsonify(data)
     except Exception as e:
-        print(f"Error getting leaderboard data: {str(e)}")
-        print("Full traceback:")
-        traceback.print_exc()
-        return jsonify({'error': 'Failed to get leaderboard data'}), 500
+        print(f"Error in get_leaderboard: {e}")
+        return jsonify({'error': str(e)}), 500
 
 # Add endpoint to fetch recent bonuses
-@app.route('/api/recent-bonuses')
+@app.route('/data/bonuses')
 def get_recent_bonuses_endpoint():
     try:
-        # Use run_async to handle the async storage function
-        # storage.get_recent_bonuses now returns core session data with user_id
-        recent_bonuses_data = run_async(storage.get_recent_bonuses(limit=10))
-
-        formatted_bonuses = []
-        for bonus_data in recent_bonuses_data:
-            user_id = bonus_data['user_id']
-
-            # Fetch Discord user info using the cached function
-            discord_info = get_cached_discord_user_info(user_id)
-
-            username = discord_info['username'] if discord_info else f'User{user_id}'
-            avatar_url = discord_info['avatar_url'] if discord_info else f'https://randomuser.me/api/portraits/men/{user_id}.jpg' # Fallback
-
-            # Format timestamp
-            timestamp = bonus_data['timestamp']
-            timestamp_str = timestamp.strftime('%Y-%m-%d %H:%M:%S') if isinstance(timestamp, datetime) else str(timestamp)
-
-            formatted_bonuses.append({
-                'id': bonus_data['id'],
-                'user_id': user_id,
-                'credits': bonus_data['credits'],
-                'reason': bonus_data['reason'],
-                'granted_by': bonus_data['granted_by'],
-                'timestamp': timestamp_str,
-                'username': username,
-                'avatar_url': avatar_url,
-            })
-
-        # Limit the results to the top 5 entries
-        final_bonuses = formatted_bonuses[:5]
-
-        print(f"DEBUG: /api/recent-bonuses returning: {final_bonuses}")
-        return jsonify(final_bonuses)
+        data = run_async(storage.get_recent_bonuses(limit=10))
+        return jsonify(data)
     except Exception as e:
-        print(f"Error processing /api/recent-bonuses: {e}")
-        print("Full traceback:")
-        traceback.print_exc()
-        return jsonify({'error': 'Internal server error'}), 500
+        print(f"Error in get_recent_bonuses_endpoint: {e}")
+        return jsonify({'error': str(e)}), 500
 
 # Add endpoint to fetch popular games data
-@app.route('/api/popular-games')
+@app.route('/data/popular-games')
 def get_popular_games():
     timeframe = request.args.get('timeframe', 'weekly')
-    print(f"Fetching popular games for timeframe: {timeframe}")
     try:
-        # Use run_async to handle the async storage function
-        # Assuming get_total_game_hours_by_timeframe exists and works
-        popular_games_data = run_async(storage.get_total_game_hours_by_timeframe(timeframe))
-        print(f"DEBUG: Raw popular games data from storage: {popular_games_data}") # Debug print
-
-        # Format the data for the frontend
-        formatted_data = []
-        for game_name, total_hours, box_art_url in popular_games_data:
-            formatted_data.append({
-                'name': game_name,
-                'hours': float(total_hours or 0),
-                'box_art_url': box_art_url
-            })
-
-        # Sort by hours descending and limit to top 5
-        formatted_data.sort(key=lambda x: x['hours'], reverse=True)
-        final_popular_games = formatted_data[:5]
-
-        print(f"DEBUG: /api/popular-games returning: {final_popular_games}") # Debug print
-        return jsonify(final_popular_games)
-
+        data = run_async(storage.get_total_game_hours_by_timeframe(timeframe))
+        return jsonify(data)
     except Exception as e:
-        print(f"Error getting popular games data: {str(e)}")
-        print("Full traceback:")
-        traceback.print_exc()
-        return jsonify({'error': 'Failed to get popular games data'}), 500
+        print(f"Error in get_popular_games: {e}")
+        return jsonify({'error': str(e)}), 500
 
 # Add endpoint to fetch user overall stats
 @app.route('/api/user-stats/<user_identifier>')
@@ -648,54 +540,15 @@ def get_user_leaderboard_history(user_identifier):
         print(f"Traceback: {traceback.format_exc()}")
         return jsonify({'error': 'Internal server error'}), 500
 
-# Add endpoint to fetch recent gaming sessions
-# This route seems redundant with /api/user-stats/<user_identifier>/history
-# Keeping it for now but may need to be removed later.
-@app.route('/api/recent-activity')
+# Add endpoint to fetch recent activity
+@app.route('/data/recent-activity')
 def recent_activity():
-    print(f"DEBUG: /api/recent-activity endpoint hit with args: {request.args}") # Debug print
     try:
-        # Use run_async to handle the async storage function
-        # storage.get_recent_gaming_sessions now returns core session data with user_id
-        recent_sessions_data = run_async(storage.get_recent_gaming_sessions()) # This fetches *all* recent sessions, not user-specific
-
-        # This endpoint name /api/recent-activity seems to imply *all* recent activity globally,
-        # while the user page needs *user-specific* recent activity.
-        # The /api/user-stats/<user_identifier>/history endpoint seems more appropriate for the user page.
-        # Let's keep this one as is for potentially other uses, and ensure the user page uses the user-specific one.
-
-        formatted_sessions = []
-        for session_data in recent_sessions_data: # This loop formats global recent activity
-            user_id = session_data['user_id']
-
-            # Fetch Discord user info using the cached function
-            discord_info = get_cached_discord_user_info(user_id)
-
-            username = discord_info['username'] if discord_info else f'User{user_id}'
-            avatar_url = discord_info['avatar_url'] if discord_info else f'https://randomuser.me/api/portraits/men/{user_id}.jpg' # Fallback
-
-            # Format timestamp for better display on the frontend
-            # Ensure timestamp is a datetime object before formatting
-            timestamp = session_data['timestamp']
-            timestamp_str = timestamp.strftime('%Y-%m-%d %H:%M:%S') if isinstance(timestamp, datetime) else str(timestamp)
-
-            formatted_sessions.append({
-                'id': session_data['id'],
-                'user_id': user_id,
-                'game_id': session_data['game_id'],
-                'hours': session_data['hours'],
-                'timestamp': timestamp_str,
-                'username': username,
-                'avatar_url': avatar_url,
-                'game_name': session_data['game_name'],
-                'box_art_url': session_data['box_art_url'] # This can be None, frontend should handle fallback
-            })
-
-        return jsonify(formatted_sessions)
-
+        data = run_async(storage.get_recent_gaming_sessions(limit=10))
+        return jsonify(data)
     except Exception as e:
-        print(f"Error getting recent gaming sessions: {e}")
-        return jsonify({'error': 'Failed to get recent activity data'}), 500
+        print(f"Error in recent_activity: {e}")
+        return jsonify({'error': str(e)}), 500
 
 @app.route('/api/search')
 def search_api():
