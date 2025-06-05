@@ -389,4 +389,87 @@ document.addEventListener('DOMContentLoaded', function() {
       dropdown.classList.remove('active');
     }
   });
+
+  // Fetch leaderboard data
+  function fetchLeaderboardData(timeframe) {
+    const leaderboardContainer = document.querySelector('.leaderboard ol');
+    if (!leaderboardContainer) return;
+
+    // Show loading state
+    leaderboardContainer.innerHTML = `
+      <div class="loading-spinner">
+        <i class="fas fa-spinner fa-spin"></i> Loading leaderboard...
+      </div>
+    `;
+
+    fetch(`/api/leaderboard?timeframe=${timeframe}`)
+      .then(res => res.json())
+      .then(data => {
+        // ... existing code ...
+      })
+      .catch(error => {
+        console.error('Error fetching leaderboard data:', error);
+        const spinner = leaderboardContainer.querySelector('.loading-spinner');
+        if (spinner) {
+          spinner.innerHTML = '<i class="fas fa-exclamation-circle"></i> Error loading leaderboard';
+        }
+      });
+  }
+
+  // Fetch popular games data
+  function fetchPopularGames(timeframe) {
+    const popularGamesContainer = document.querySelector('.most-popular ol');
+    if (!popularGamesContainer) return;
+
+    // Show loading state
+    popularGamesContainer.innerHTML = `
+      <div class="loading-spinner">
+        <i class="fas fa-spinner fa-spin"></i> Loading popular games...
+      </div>
+    `;
+
+    fetch(`/api/popular-games?timeframe=${timeframe}`)
+      .then(res => res.json())
+      .then(data => {
+        // ... existing code ...
+      })
+      .catch(error => {
+        console.error('Error fetching popular games data:', error);
+        const spinner = popularGamesContainer.querySelector('.loading-spinner');
+        if (spinner) {
+          spinner.innerHTML = '<i class="fas fa-exclamation-circle"></i> Error loading popular games';
+        }
+      });
+  }
+
+  // Fetch recent activity
+  function fetchRecentActivity() {
+    const activityContainer = document.querySelector('.activity-carousel');
+    if (!activityContainer) return;
+
+    // Show loading state
+    activityContainer.innerHTML = `
+      <div class="loading-spinner">
+        <i class="fas fa-spinner fa-spin"></i> Loading recent activity...
+      </div>
+    `;
+
+    fetch('/api/recent-activity')
+      .then(res => res.json())
+      .then(data => {
+        // ... existing code ...
+      })
+      .catch(error => {
+        console.error('Error fetching recent activity:', error);
+        const spinner = activityContainer.querySelector('.loading-spinner');
+        if (spinner) {
+          spinner.innerHTML = '<i class="fas fa-exclamation-circle"></i> Error loading recent activity';
+        }
+      });
+  }
+
+  // Initial data load
+  fetchLeaderboardData('weekly');
+  fetchPopularGames('weekly');
+  fetchRecentActivity();
 }); 
