@@ -52,32 +52,8 @@
         <button class="tab-btn" data-tab="monthly">Monthly</button>
         <button class="tab-btn" data-tab="alltime">All-Time</button>
       </div>
-      <div class="tab-content" id="weekly">
-        <ol>
-          <li><span class="rank">1</span> <img class="avatar" src="https://randomuser.me/api/portraits/men/1.jpg" alt="PlayerOne"> <a class="user-link" href="user.html?user=170327552525729792">PlayerOne</a> <span class="score">400 pts</span></li>
-          <li><span class="rank">2</span> <img class="avatar" src="https://randomuser.me/api/portraits/men/2.jpg" alt="PlayerTwo"> <a class="user-link" href="user.html?user=170327552525729793">PlayerTwo</a> <span class="score">390 pts</span></li>
-          <li><span class="rank">3</span> <img class="avatar" src="https://randomuser.me/api/portraits/men/3.jpg" alt="PlayerThree"> <a class="user-link" href="user.html?user=170327552525729794">PlayerThree</a> <span class="score">370 pts</span></li>
-          <li><span class="rank">4</span> <img class="avatar" src="https://randomuser.me/api/portraits/men/4.jpg" alt="PlayerFour"> <a class="user-link" href="user.html?user=170327552525729795">PlayerFour</a> <span class="score">350 pts</span></li>
-          <li><span class="rank">5</span> <img class="avatar" src="https://randomuser.me/api/portraits/men/5.jpg" alt="PlayerFive"> <a class="user-link" href="user.html?user=170327552525729796">PlayerFive</a> <span class="score">340 pts</span></li>
-        </ol>
-      </div>
-      <div class="tab-content" id="monthly" style="display:none;">
-        <ol>
-          <li><span class="rank">1</span> <img class="avatar" src="https://randomuser.me/api/portraits/men/1.jpg" alt="PlayerOne"> <a class="user-link" href="user.html?user=170327552525729792">PlayerOne</a> <span class="score">1,800 pts</span></li>
-          <li><span class="rank">2</span> <img class="avatar" src="https://randomuser.me/api/portraits/men/2.jpg" alt="PlayerTwo"> <a class="user-link" href="user.html?user=170327552525729793">PlayerTwo</a> <span class="score">1,700 pts</span></li>
-          <li><span class="rank">3</span> <img class="avatar" src="https://randomuser.me/api/portraits/men/3.jpg" alt="PlayerThree"> <a class="user-link" href="user.html?user=170327552525729794">PlayerThree</a> <span class="score">1,600 pts</span></li>
-          <li><span class="rank">4</span> <img class="avatar" src="https://randomuser.me/api/portraits/men/4.jpg" alt="PlayerFour"> <a class="user-link" href="user.html?user=170327552525729795">PlayerFour</a> <span class="score">1,550 pts</span></li>
-          <li><span class="rank">5</span> <img class="avatar" src="https://randomuser.me/api/portraits/men/5.jpg" alt="PlayerFive"> <a class="user-link" href="user.html?user=170327552525729796">PlayerFive</a> <span class="score">1,500 pts</span></li>
-        </ol>
-      </div>
-      <div class="tab-content" id="alltime" style="display:none;">
-        <ol>
-          <li><span class="rank">1</span> <img class="avatar" src="https://randomuser.me/api/portraits/men/1.jpg" alt="PlayerOne"> <a class="user-link" href="user.html?user=170327552525729792">PlayerOne</a> <span class="score">9,000 pts</span></li>
-          <li><span class="rank">2</span> <img class="avatar" src="https://randomuser.me/api/portraits/men/2.jpg" alt="PlayerTwo"> <a class="user-link" href="user.html?user=170327552525729793">PlayerTwo</a> <span class="score">8,500 pts</span></li>
-          <li><span class="rank">3</span> <img class="avatar" src="https://randomuser.me/api/portraits/men/3.jpg" alt="PlayerThree"> <a class="user-link" href="user.html?user=170327552525729794">PlayerThree</a> <span class="score">8,000 pts</span></li>
-          <li><span class="rank">4</span> <img class="avatar" src="https://randomuser.me/api/portraits/men/4.jpg" alt="PlayerFour"> <a class="user-link" href="user.html?user=170327552525729795">PlayerFour</a> <span class="score">7,800 pts</span></li>
-          <li><span class="rank">5</span> <img class="avatar" src="https://randomuser.me/api/portraits/men/5.jpg" alt="PlayerFive"> <a class="user-link" href="user.html?user=170327552525729796">PlayerFive</a> <span class="score">7,700 pts</span></li>
-        </ol>
+      <div id="leaderboard-content" class="tab-content">
+        <div class="loading">Loading...</div>
       </div>
     </section>
     <section class="most-popular card">
@@ -87,49 +63,21 @@
         <button class="tab-btn" data-tab="popular-monthly">Monthly</button>
         <button class="tab-btn" data-tab="popular-alltime">All-Time</button>
       </div>
-      <div class="tab-content" id="popular-weekly">
-        <ol class="popular-games-list">
-          <li><span class="rank">1</span> <img class="game-cover-sm" src="https://static-cdn.jtvnw.net/ttv-boxart/27471-144x192.jpg" alt="Stardew Valley"> <a class="game-link" href="game.html?game=StardewValley">Stardew Valley</a> <span class="hours">80 hrs</span></li>
-          <li><span class="rank">2</span> <img class="game-cover-sm" src="https://static-cdn.jtvnw.net/ttv-boxart/516575-144x192.jpg" alt="Elden Ring"> <a class="game-link" href="game.html?game=EldenRing">Elden Ring</a> <span class="hours">75 hrs</span></li>
-          <li><span class="rank">3</span> <img class="game-cover-sm" src="https://static-cdn.jtvnw.net/ttv-boxart/2748-144x192.jpg" alt="Minecraft"> <a class="game-link" href="game.html?game=Minecraft">Minecraft</a> <span class="hours">60 hrs</span></li>
-          <li><span class="rank">4</span> <img class="game-cover-sm" src="https://static-cdn.jtvnw.net/ttv-boxart/33214-144x192.jpg" alt="DOOM"> <a class="game-link" href="game.html?game=DOOM">DOOM</a> <span class="hours">55 hrs</span></li>
-          <li><span class="rank">5</span> <img class="game-cover-sm" src="https://static-cdn.jtvnw.net/ttv-boxart/493057-144x192.jpg" alt="Portal"> <a class="game-link" href="game.html?game=Portal">Portal</a> <span class="hours">50 hrs</span></li>
-        </ol>
-      </div>
-      <div class="tab-content" id="popular-monthly" style="display:none;">
-        <ol class="popular-games-list">
-          <li><span class="rank">1</span> <img class="game-cover-sm" src="https://static-cdn.jtvnw.net/ttv-boxart/516575-144x192.jpg" alt="Elden Ring"> <a class="game-link" href="game.html?game=EldenRing">Elden Ring</a> <span class="hours">320 hrs</span></li>
-          <li><span class="rank">2</span> <img class="game-cover-sm" src="https://static-cdn.jtvnw.net/ttv-boxart/27471-144x192.jpg" alt="Stardew Valley"> <a class="game-link" href="game.html?game=StardewValley">Stardew Valley</a> <span class="hours">290 hrs</span></li>
-          <li><span class="rank">3</span> <img class="game-cover-sm" src="https://static-cdn.jtvnw.net/ttv-boxart/2748-144x192.jpg" alt="Minecraft"> <a class="game-link" href="game.html?game=Minecraft">Minecraft</a> <span class="hours">250 hrs</span></li>
-          <li><span class="rank">4</span> <img class="game-cover-sm" src="https://static-cdn.jtvnw.net/ttv-boxart/33214-144x192.jpg" alt="DOOM"> <a class="game-link" href="game.html?game=DOOM">DOOM</a> <span class="hours">200 hrs</span></li>
-          <li><span class="rank">5</span> <img class="game-cover-sm" src="https://static-cdn.jtvnw.net/ttv-boxart/493057-144x192.jpg" alt="Portal"> <a class="game-link" href="game.html?game=Portal">Portal</a> <span class="hours">180 hrs</span></li>
-        </ol>
-      </div>
-      <div class="tab-content" id="popular-alltime" style="display:none;">
-        <ol class="popular-games-list">
-          <li><span class="rank">1</span> <img class="game-cover-sm" src="https://static-cdn.jtvnw.net/ttv-boxart/2748-144x192.jpg" alt="Minecraft"> <a class="game-link" href="game.html?game=Minecraft">Minecraft</a> <span class="hours">5,000 hrs</span></li>
-          <li><span class="rank">2</span> <img class="game-cover-sm" src="https://static-cdn.jtvnw.net/ttv-boxart/516575-144x192.jpg" alt="Elden Ring"> <a class="game-link" href="game.html?game=EldenRing">Elden Ring</a> <span class="hours">4,200 hrs</span></li>
-          <li><span class="rank">3</span> <img class="game-cover-sm" src="https://static-cdn.jtvnw.net/ttv-boxart/27471-144x192.jpg" alt="Stardew Valley"> <a class="game-link" href="game.html?game=StardewValley">Stardew Valley</a> <span class="hours">4,100 hrs</span></li>
-          <li><span class="rank">4</span> <img class="game-cover-sm" src="https://static-cdn.jtvnw.net/ttv-boxart/33214-144x192.jpg" alt="DOOM"> <a class="game-link" href="game.html?game=DOOM">DOOM</a> <span class="hours">3,900 hrs</span></li>
-          <li><span class="rank">5</span> <img class="game-cover-sm" src="https://static-cdn.jtvnw.net/ttv-boxart/493057-144x192.jpg" alt="Portal"> <a class="game-link" href="game.html?game=Portal">Portal</a> <span class="hours">3,500 hrs</span></li>
-        </ol>
+      <div id="popular-content" class="tab-content">
+        <div class="loading">Loading...</div>
       </div>
     </section>
     <section class="activity card activity-wide">
       <h2><i class="fas fa-gamepad"></i> Recent Activity</h2>
       <button class="carousel-arrow left" aria-label="Scroll left"><i class="fas fa-chevron-left"></i></button>
-      <div class="activity-carousel">
-        <div class="loading-spinner">
-          <i class="fas fa-spinner fa-spin"></i> Loading recent activity...
-        </div>
+      <div class="recent-activity">
+        <div class="loading">Loading...</div>
       </div>
       <button class="carousel-arrow right" aria-label="Scroll right"><i class="fas fa-chevron-right"></i></button>
     </section>
     <section class="bonuses card bonuses-bottom">
       <h2><i class="fas fa-gift"></i> Recent Bonuses</h2>
-      <div class="loading-spinner">
-        <i class="fas fa-spinner fa-spin"></i> Loading recent bonuses...
-      </div>
+      <div class="loading">Loading...</div>
     </section>
   </main>
   <footer>
