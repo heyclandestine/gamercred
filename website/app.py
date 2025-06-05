@@ -24,9 +24,18 @@ app = Flask(__name__,
             static_url_path='',
             template_folder='public')
 
+# Add debug logging
+@app.before_request
+def log_request_info():
+    print('Request URL:', request.url)
+    print('Request Method:', request.method)
+    print('Request Headers:', dict(request.headers))
+
 # Add CORS headers to allow requests from any origin
 @app.after_request
 def after_request(response):
+    print('Response Status:', response.status)
+    print('Response Headers:', dict(response.headers))
     response.headers.add('Access-Control-Allow-Origin', '*')
     response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
     response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
