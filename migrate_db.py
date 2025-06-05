@@ -58,14 +58,15 @@ def migrate_data():
         for game in games:
             # Use upsert for games
             stmt = text("""
-                INSERT INTO games (id, name, credits_per_hour, backloggd_url, rawg_id, box_art_url)
-                VALUES (:id, :name, :credits_per_hour, :backloggd_url, :rawg_id, :box_art_url)
+                INSERT INTO games (id, name, credits_per_hour, backloggd_url, rawg_id, box_art_url, added_by)
+                VALUES (:id, :name, :credits_per_hour, :backloggd_url, :rawg_id, :box_art_url, :added_by)
                 ON CONFLICT (id) DO UPDATE SET
                     name = EXCLUDED.name,
                     credits_per_hour = EXCLUDED.credits_per_hour,
                     backloggd_url = EXCLUDED.backloggd_url,
                     rawg_id = EXCLUDED.rawg_id,
-                    box_art_url = EXCLUDED.box_art_url
+                    box_art_url = EXCLUDED.box_art_url,
+                    added_by = EXCLUDED.added_by
             """)
             postgres_session.execute(stmt, {
                 'id': game.id,
@@ -73,7 +74,8 @@ def migrate_data():
                 'credits_per_hour': game.credits_per_hour,
                 'backloggd_url': game.backloggd_url,
                 'rawg_id': game.rawg_id,
-                'box_art_url': game.box_art_url
+                'box_art_url': game.box_art_url,
+                'added_by': game.added_by
             })
         postgres_session.commit()
         print(f"Migrated {len(games)} games to PostgreSQL")

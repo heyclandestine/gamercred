@@ -1,13 +1,14 @@
 import os
 from datetime import datetime, timedelta
 from typing import Dict, List, Tuple, Optional, Any
-from sqlalchemy import create_engine, func, DateTime as sqlalchemy_DateTime, and_, Integer, String, BigInteger
+from sqlalchemy import create_engine, func, DateTime as sqlalchemy_DateTime, and_, Integer, String, BigInteger, text
 from sqlalchemy.orm import sessionmaker, scoped_session
 from models import Base, Game, UserStats, GamingSession, LeaderboardHistory, LeaderboardType, LeaderboardPeriod, Bonus # Removed User import
 import pytz
 import discord
 from dotenv import load_dotenv
 import aiohttp
+import asyncio
 
 # Load environment variables
 load_dotenv()
@@ -324,12 +325,12 @@ class GameStorage:
             
             query = session.query(LeaderboardHistory)\
                 .filter(LeaderboardHistory.user_id == user_id_int)
-            
+
             if leaderboard_type:
                 query = query.filter(LeaderboardHistory.leaderboard_type == leaderboard_type)
-            
+
             history = query.order_by(LeaderboardHistory.period_id.desc()).all()
-            
+
             return [{
                 'period_id': h.period_id,
                 'leaderboard_type': h.leaderboard_type.value,
@@ -345,52 +346,34 @@ class GameStorage:
             session.close()
 
     def get_user_gaming_history(self, user_id: str, limit: int = 10) -> List[Dict]:
-        """Get user's recent gaming sessions with game details"""
+        """Get user's recent gaming history"""
         session = self.Session()
         try:
-            # Keep user_id as string since that's how it's stored in the database
-            print(f"DEBUG: get_user_gaming_history called for user_id: {user_id}")
-            
-            # Query with string user_id
-            sessions = session.query(
-                GamingSession,
-                Game
-            ).join(Game)\
-                .filter(GamingSession.user_id == user_id)\
-                .order_by(GamingSession.timestamp.desc())\
-                .limit(limit)\
-                .all()
-            
-            print(f"\nDEBUG: Found {len(sessions)} sessions for user {user_id}")
-            
-            if not sessions:
-                print(f"DEBUG: No gaming sessions found for user {user_id}")
-                return []
-
-            # Log the first session details for debugging
-            if sessions:
-                first_session = sessions[0]
-                print(f"DEBUG: First session details - User ID: {first_session.GamingSession.user_id}, "
-                      f"Game: {first_session.Game.name}, Hours: {first_session.GamingSession.hours}, "
-                      f"Credits: {first_session.GamingSession.credits_earned}, "
-                      f"Box Art: {first_session.Game.box_art_url}, "
-                      f"Timestamp: {first_session.GamingSession.timestamp}")
+            # Get recent sessions with game info in a single query
+            results = session.execute(text("""
+                SELECT 
+                    g.name as game,
+                    gs.hours,
+                    gs.credits_earned,
+                    g.credits_per_hour as rate,
+                    gs.timestamp
+                FROM gaming_sessions gs
+                JOIN games g ON g.id = gs.game_id
+                WHERE gs.user_id = :user_id
+                ORDER BY gs.timestamp DESC
+                LIMIT :limit
+            """), {
+                "user_id": user_id,
+                "limit": limit
+            }).fetchall()
 
             return [{
-                'game': s.Game.name,
-                'hours': float(s.GamingSession.hours),
-                'credits_earned': float(s.GamingSession.credits_earned),
-                'timestamp': s.GamingSession.timestamp,
-                'rate': float(s.Game.credits_per_hour),
-                'box_art_url': s.Game.box_art_url
-            } for s in sessions]
-                
-        except Exception as e:
-            print(f"Error in get_user_gaming_history for user {user_id}: {str(e)}")
-            print(f"Error type: {type(e)}")
-            import traceback
-            print(f"Traceback: {traceback.format_exc()}")
-            return []
+                "game": row.game,
+                "hours": float(row.hours),
+                "credits_earned": float(row.credits_earned),
+                "rate": float(row.rate),
+                "timestamp": row.timestamp
+            } for row in results]
         finally:
             session.close()
 
@@ -525,55 +508,101 @@ class GameStorage:
         finally:
             session.close()
 
-    def set_game_credits_per_hour(self, game_name: str, credits: float, user_id: int) -> bool:
+    async def set_game_credits_per_hour(self, game_name: str, credits: float, user_id: int) -> bool:
         """Set credits per hour for a game and update all existing sessions"""
         if credits < 0.1:  # Only keep minimum limit
             return False
 
-        session = self.Session()
-        try:
-            # Case-insensitive search for existing game
-            game = session.query(Game).filter(func.lower(Game.name) == func.lower(game_name)).first()
+        print(f"Starting set_game_credits_per_hour for {game_name}")
+        
+        # Try up to 3 times with a new session each time
+        for attempt in range(3):
+            print(f"Attempt {attempt + 1} of 3")
+            session = self.Session()
+            try:
+                # Case-insensitive search for existing game
+                print(f"Searching for existing game: {game_name}")
+                game = session.query(Game).filter(func.lower(Game.name) == func.lower(game_name)).first()
 
-            if game:
-                # Update game rate
-                game.credits_per_hour = credits
-                session.commit()
+                if game:
+                    print(f"Found existing game: {game.name}")
+                    # Update existing game
+                    game.credits_per_hour = credits
+                    game.added_by = user_id
+                    print("Committing update...")
+                    session.commit()
+                    print("Update committed successfully")
+                    return True
+                else:
+                    print(f"Game not found, creating new game: {game_name}")
+                    # Create new game
+                    formatted_name = game_name.strip()
+                    
+                    # Create the Backloggd URL
+                    url_name = formatted_name.lower()
+                    url_name = url_name.replace("'", "").replace('"', "")
+                    url_name = ''.join(c if c.isalnum() else '-' for c in url_name)
+                    url_name = '-'.join(filter(None, url_name.split('-')))
+                    
+                    backloggd_url = f"https://www.backloggd.com/games/{url_name}/"
+                    
+                    # Fetch RAWG data
+                    print("Fetching RAWG data...")
+                    rawg_data = await self.fetch_game_details_from_rawg(formatted_name)
+                    print(f"DEBUG: RAWG data received: {rawg_data}")
+                    
+                    rawg_id = rawg_data.get('id') if rawg_data else None
+                    box_art_url = rawg_data.get('box_art_url') if rawg_data else None
+                    print(f"DEBUG: Extracted rawg_id: {rawg_id}")
+                    print(f"DEBUG: Extracted box_art_url: {box_art_url}")
+                    
+                    print("Creating new game object...")
+                    game = Game(
+                        name=formatted_name, 
+                        credits_per_hour=credits, 
+                        added_by=user_id,
+                        backloggd_url=backloggd_url,
+                        rawg_id=rawg_id,
+                        box_art_url=box_art_url
+                    )
+                    print(f"DEBUG: Created game object with box_art_url: {game.box_art_url}")
+                    print("Adding game to session...")
+                    session.add(game)
+                    print("Committing new game...")
+                    
+                    # Set a timeout for the commit
+                    from sqlalchemy.exc import SQLAlchemyError
+                    try:
+                        session.commit()
+                        print("New game committed successfully")
+                        # Verify the data was saved
+                        saved_game = session.query(Game).filter(Game.name == formatted_name).first()
+                        print(f"DEBUG: Saved game box_art_url: {saved_game.box_art_url}")
+                        return True
+                    except SQLAlchemyError as e:
+                        print(f"Database error during commit: {str(e)}")
+                        session.rollback()
+                        if attempt < 2:  # If not the last attempt
+                            print("Retrying with new session...")
+                            continue
+                        raise  # Re-raise on last attempt
 
-                # Recalculate all credits after rate change
-                self.recalculate_all_credits()
-            else:
-                # Create new game with specified rate
-                formatted_name = game_name.strip().capitalize()
-                
-                # Create the Backloggd URL by replacing spaces with hyphens and converting to lowercase
-                # Also handle special characters and apostrophes
-                url_name = formatted_name.lower()
-                # Replace apostrophes and quotes with empty string
-                url_name = url_name.replace("'", "").replace('"', "")
-                # Replace spaces and special characters with hyphens
-                url_name = ''.join(c if c.isalnum() else '-' for c in url_name)
-                # Replace multiple hyphens with a single hyphen
-                url_name = '-'.join(filter(None, url_name.split('-')))
-                
-                backloggd_url = f"https://www.backloggd.com/games/{url_name}/"
-                
-                game = Game(
-                    name=formatted_name, 
-                    credits_per_hour=credits, 
-                    added_by=user_id,
-                    backloggd_url=backloggd_url
-                )
-                session.add(game)
-                session.commit()
-
-            return True
-        except Exception as e:
-            print(f"Error updating game credits: {str(e)}")
-            session.rollback()
-            return False
-        finally:
-            session.close()
+            except Exception as e:
+                print(f"Error in set_game_credits_per_hour: {str(e)}")
+                print(f"Error type: {type(e)}")
+                import traceback
+                print(f"Traceback: {traceback.format_exc()}")
+                session.rollback()
+                if attempt < 2:  # If not the last attempt
+                    print("Retrying with new session...")
+                    continue
+                return False
+            finally:
+                print("Closing session...")
+                session.close()
+                print("Session closed")
+        
+        return False  # If we get here, all attempts failed
 
     def _check_and_update_credits(self, session) -> bool:
         """Check if any game rates have changed in the database and update credits if needed"""
@@ -731,50 +760,53 @@ class GameStorage:
         finally:
             session.close()
 
-    def add_gaming_hours(self, user_id: int, hours: float, game_name: str) -> float:
-        """Add gaming hours and return earned credits. Supports negative hours for corrections."""
+    async def add_gaming_hours(self, user_id: int, hours: float, game_name: str) -> float:
+        """Add gaming hours for a user and return credits earned"""
         session = self.Session()
         try:
-            # Check for direct database changes first
-            self._check_and_update_credits(session)
-
-            # Get game by name
+            # Get or create the game
             game = session.query(Game).filter(func.lower(Game.name) == func.lower(game_name)).first()
             if not game:
-                # Check if this is a renamed game before creating a new one
-                latest_session = session.query(GamingSession)\
-                    .join(Game)\
-                    .filter(func.lower(Game.name) == func.lower(game_name))\
-                    .order_by(GamingSession.timestamp.desc())\
-                    .first()
+                # Create new game with default credits per hour
+                game = Game(
+                    name=game_name,
+                    credits_per_hour=1.0,
+                    added_by=user_id
+                )
+                session.add(game)
+                session.commit()
 
-                if latest_session:
-                    game = latest_session.game
-                else:
-                    game = Game(name=game_name.strip().capitalize(), credits_per_hour=1.0, added_by=user_id)
-                    session.add(game)
-                    session.commit()
+            # Calculate credits earned
+            credits_earned = hours * game.credits_per_hour
 
-            # Calculate credits using current rate
-            credits = hours * game.credits_per_hour
+            # Get the next available ID for gaming_sessions
+            next_id = session.query(func.max(GamingSession.id)).scalar() or 0
+            next_id += 1
 
-            # Get naive current time and localize to CST
-            naive_now = datetime.now()
-            now_cst = self.cst.localize(naive_now)
-
-            # Record gaming session with CST timestamp
+            # Create gaming session
             gaming_session = GamingSession(
+                id=next_id,
                 user_id=user_id,
                 game_id=game.id,
                 hours=hours,
-                credits_earned=credits,
-                timestamp=now_cst
+                credits_earned=credits_earned,
+                timestamp=datetime.now(self.cst)
             )
             session.add(gaming_session)
-            session.commit()
 
-            # Update total credits from all sessions
-            total_credits = self.update_user_total_credits(user_id)
+            # Get or create user stats
+            user_stats = session.query(UserStats).filter(UserStats.user_id == user_id).first()
+            if not user_stats:
+                user_stats = UserStats(
+                    user_id=user_id,
+                    total_credits=0.0
+                )
+                session.add(user_stats)
+
+            # Update user's total credits
+            user_stats.total_credits += credits_earned
+
+            session.commit()
 
             # Update leaderboard history for active periods
             active_periods = session.query(LeaderboardPeriod)\
@@ -783,12 +815,17 @@ class GameStorage:
 
             for period in active_periods:
                 # Get current leaderboard data for this period
-                leaderboard_data = self.get_leaderboard_by_timeframe(period.leaderboard_type)
+                leaderboard_data = await self.get_leaderboard_by_timeframe(period.leaderboard_type, period=period)
                 if leaderboard_data:
                     # Record the updated placements
-                    self.record_leaderboard_placements(period.leaderboard_type, leaderboard_data, period)
+                    await self.record_leaderboard_placements(period.leaderboard_type, leaderboard_data, period)
 
-            return credits
+            return credits_earned
+
+        except Exception as e:
+            print(f"Error adding gaming hours: {str(e)}")
+            session.rollback()
+            raise
         finally:
             session.close()
 
@@ -823,226 +860,212 @@ class GameStorage:
         """Get sorted list of (user_id, credits) tuples"""
         session = self.Session()
         try:
-            # Check for direct database changes
-            self._check_and_update_credits(session)
-
-            # Get all users with either gaming sessions or bonuses
-            users = session.query(UserStats).all()
+            # Get all users ordered by total credits
+            users = session.query(UserStats)\
+                .order_by(UserStats.total_credits.desc())\
+                .all()
             
-            # Calculate total credits for each user
-            leaderboard = []
-            for user in users:
-                # Get gaming session credits
-                session_credits = session.query(func.sum(GamingSession.credits_earned))\
-                    .filter(GamingSession.user_id == user.user_id)\
-                    .scalar() or 0.0
-                
-                # Get bonus credits
-                bonus_credits = session.query(func.sum(Bonus.credits))\
-                    .filter(Bonus.user_id == user.user_id)\
-                    .scalar() or 0.0
-                
-                # Total credits is sum of both
-                total_credits = session_credits + bonus_credits
-                
-                # Update user stats if needed
-                if abs(user.total_credits - total_credits) > 0.001:
-                    user.total_credits = total_credits
-                    session.commit()
-                
-                leaderboard.append((user.user_id, total_credits))
-            
-            # Sort by total credits in descending order
-            leaderboard.sort(key=lambda x: x[1], reverse=True)
-            print(f"DEBUG: Raw all-time leaderboard data: {leaderboard}")
-            return leaderboard
+            # Return list of (user_id, total_credits) tuples
+            return [(user.user_id, user.total_credits) for user in users]
         finally:
             session.close()
 
     def get_game_info(self, game_name: str) -> Optional[Dict]:
-        """Get game information including credits per hour"""
+        """Get basic information about a game"""
         session = self.Session()
         try:
-            # Check for direct database changes
-            self._check_and_update_credits(session)
+            # Get game info without joining users table
+            result = session.execute(text("""
+                SELECT 
+                    g.*
+                FROM games g
+                WHERE LOWER(g.name) = LOWER(:game_name)
+            """), {"game_name": game_name}).first()
 
-            game = session.query(Game).filter(func.lower(Game.name) == func.lower(game_name)).first()
-            if game:
-                return {
-                    'name': game.name,
-                    'credits_per_hour': game.credits_per_hour,
-                    'added_by': game.added_by,
-                    'backloggd_url': game.backloggd_url
-                }
-            return None
+            if not result:
+                return None
+
+            return {
+                "name": result.name,
+                "credits_per_hour": float(result.credits_per_hour),
+                "added_by": result.added_by,
+                "backloggd_url": result.backloggd_url
+            }
         finally:
             session.close()
 
     def get_user_overall_stats(self, user_id: str) -> Dict[str, Any]:
-        """Get user's overall stats including total credits and rank"""
+        """Get overall gaming statistics for a user"""
         session = self.Session()
         try:
-            # First try to get existing stats
-            user_stats = session.query(UserStats).filter_by(user_id=str(user_id)).first()
-            
-            if not user_stats:
-                # If no stats exist, return default values without creating a new user
-                return {'total_credits': 0, 'rank': None}
+            # Get all stats in a single query
+            result = session.execute(text("""
+                WITH user_stats AS (
+                    SELECT 
+                        COALESCE(SUM(hours), 0) as total_hours,
+                        COALESCE(SUM(credits_earned), 0) as total_credits,
+                        COUNT(DISTINCT game_id) as games_played,
+                        COUNT(*) as total_sessions,
+                        MIN(timestamp) as first_played,
+                        MAX(timestamp) as last_played
+                    FROM gaming_sessions
+                    WHERE user_id = :user_id
+                ),
+                most_played AS (
+                    SELECT 
+                        g.name,
+                        SUM(gs.hours) as total_hours
+                    FROM gaming_sessions gs
+                    JOIN games g ON g.id = gs.game_id
+                    WHERE gs.user_id = :user_id
+                    GROUP BY g.id, g.name
+                    ORDER BY total_hours DESC
+                    LIMIT 1
+                ),
+                user_rank AS (
+                    SELECT 
+                        user_id,
+                        RANK() OVER (ORDER BY COALESCE(SUM(credits_earned), 0) DESC) as rank
+                    FROM gaming_sessions
+                    GROUP BY user_id
+                )
+                SELECT 
+                    us.*,
+                    mp.name as most_played_game,
+                    mp.total_hours as most_played_hours,
+                    ur.rank
+                FROM user_stats us
+                LEFT JOIN most_played mp ON true
+                LEFT JOIN user_rank ur ON ur.user_id = :user_id
+            """), {"user_id": user_id}).first()
 
-            # Get user's rank
-            rank_query = session.query(
-                UserStats.user_id,
-                func.rank().over(order_by=UserStats.total_credits.desc()).label('rank')
-            ).subquery()
-            
-            user_rank = session.query(rank_query.c.rank)\
-                .filter(rank_query.c.user_id == str(user_id))\
-                .scalar()
-            
+            if not result:
+                return {
+                    "total_hours": 0,
+                    "total_credits": 0,
+                    "games_played": 0,
+                    "total_sessions": 0,
+                    "first_played": None,
+                    "last_played": None,
+                    "most_played_game": None,
+                    "most_played_hours": 0,
+                    "rank": None
+                }
+
             return {
-                'total_credits': user_stats.total_credits,
-                'rank': user_rank
+                "total_hours": float(result.total_hours),
+                "total_credits": float(result.total_credits),
+                "games_played": result.games_played,
+                "total_sessions": result.total_sessions,
+                "first_played": result.first_played,
+                "last_played": result.last_played,
+                "most_played_game": result.most_played_game,
+                "most_played_hours": float(result.most_played_hours) if result.most_played_hours else 0,
+                "rank": result.rank
             }
-        except Exception as e:
-            print(f"Error getting user overall stats for user ID {user_id}: {e}")
-            return {'total_credits': 0, 'rank': None}
         finally:
             session.close()
 
     def get_game_stats(self, game_name: str) -> Optional[Dict]:
-        """Get detailed statistics for a specific game"""
+        """Get overall statistics for a game"""
         session = self.Session()
         try:
-            # Find the game by name (case-insensitive search might be needed here)
-            print(f"DEBUG: get_game_stats querying for game_name: '{game_name}'") # Debug print
+            # Get game info
             game = session.query(Game).filter(func.lower(Game.name) == func.lower(game_name)).first()
-
             if not game:
-                print(f"DEBUG: Game '{game_name}' not found in Game table.")
                 return None
 
-            print(f"DEBUG: get_game_stats found game: {game.name}") # Debug print
+            # Get game stats
+            result = session.execute(text("""
+                SELECT 
+                    COALESCE(SUM(hours), 0) as total_hours,
+                    COALESCE(SUM(credits_earned), 0) as total_credits,
+                    COUNT(*) as total_sessions,
+                    COUNT(DISTINCT user_id) as unique_players
+                FROM gaming_sessions
+                WHERE game_id = :game_id
+            """), {"game_id": game.id}).first()
 
-            # Get total hours and credits for this game
-            stats = session.query(
-                func.sum(GamingSession.hours).label('total_hours'),
-                func.sum(GamingSession.credits_earned).label('total_credits'),
-                func.count(GamingSession.id.distinct()).label('total_sessions'),
-                func.count(GamingSession.user_id.distinct()).label('unique_players')
-            ).filter(GamingSession.game_id == game.id).first()
+            if not result:
+                return None
 
-            game_db_info = {
-                'name': game.name,
-                'credits_per_hour': game.credits_per_hour,
-                'total_hours': float(stats.total_hours or 0),
-                'total_credits': float(stats.total_credits or 0),
-                'total_sessions': stats.total_sessions,
-                'unique_players': stats.unique_players,
-                'added_by': game.added_by,
-                'backloggd_url': game.backloggd_url,
-                'cover_image_url': game.box_art_url, # Include box art URL
-                'rawg_id': game.rawg_id # Include rawg_id
+            return {
+                "name": game.name,
+                "total_hours": float(result.total_hours),
+                "total_credits": float(result.total_credits),
+                "total_sessions": result.total_sessions,
+                "unique_players": result.unique_players,
+                "credits_per_hour": game.credits_per_hour,
+                "added_by": game.added_by,
+                "backloggd_url": game.backloggd_url,
+                "box_art_url": game.box_art_url,
+                "rawg_id": game.rawg_id
             }
-            print(f"DEBUG: get_game_stats returning game_db_info: {game_db_info}") # Debug print
-            return game_db_info
         finally:
             session.close()
 
     def get_user_game_summaries(self, user_id: str) -> List[Dict]:
-        """Get summary of total hours and credits per game for a user"""
+        """Get summaries of all games played by a user"""
         session = self.Session()
         try:
-            # Check for direct database changes
-            self._check_and_update_credits(session)
-
-            # First get all games and their current rates
-            games_dict = {}
-            for game in session.query(Game).all():
-                games_dict[game.id] = game
-
-            # Use raw SQL with simple string comparison
-            raw_sql = """
+            results = session.execute(text("""
                 SELECT 
-                    g.id as game_id,
-                    g.name as game_name,
-                    SUM(gs.hours) as total_hours,
-                    COUNT(gs.id) as sessions
-                FROM games g
-                JOIN gaming_sessions gs ON g.id = gs.game_id
+                    g.name,
+                    COALESCE(SUM(gs.hours), 0) as total_hours,
+                    COALESCE(SUM(gs.credits_earned), 0) as total_credits,
+                    COUNT(*) as sessions
+                FROM gaming_sessions gs
+                JOIN games g ON g.id = gs.game_id
                 WHERE gs.user_id = :user_id
                 GROUP BY g.id, g.name
-                ORDER BY SUM(gs.hours) DESC
-            """
-            
-            summaries = session.execute(raw_sql, {'user_id': user_id}).fetchall()
+                ORDER BY total_hours DESC
+            """), {"user_id": user_id}).fetchall()
 
-            # Get total bonus credits for the user using raw SQL
-            bonus_sql = """
-                SELECT COALESCE(SUM(credits), 0) as total_bonus
-                FROM bonuses
-                WHERE user_id = :user_id
-            """
-            bonus_credits = session.execute(bonus_sql, {'user_id': user_id}).scalar() or 0.0
-
-            # Calculate credits using current rates
-            result = []
-            for game_id, name, total_hours, sessions in summaries:
-                game = games_dict.get(game_id)
-                if game:
-                    result.append({
-                        'game': name,
-                        'total_hours': float(total_hours),
-                        'total_credits': float(total_hours * game.credits_per_hour),
-                        'sessions': sessions,
-                        'rate': game.credits_per_hour
-                    })
-
-            # Add bonus credits to the first game's total credits if there are any games
-            if result and bonus_credits > 0:
-                result[0]['total_credits'] += float(bonus_credits)
-
-            return result
+            return [{
+                "game": row.name,
+                "total_hours": float(row.total_hours),
+                "total_credits": float(row.total_credits),
+                "sessions": row.sessions
+            } for row in results]
         finally:
             session.close()
 
     def get_user_game_stats(self, user_id: str, game_name: str) -> Optional[Dict]:
-        """Get detailed statistics for a specific game for a specific user"""
+        """Get game-specific statistics for a user"""
         session = self.Session()
         try:
-            # Check for direct database changes
-            self._check_and_update_credits(session)
-
+            # Get game info
             game = session.query(Game).filter(func.lower(Game.name) == func.lower(game_name)).first()
             if not game:
                 return None
 
-            # Get user-specific stats for this game
-            stats = session.query(
-                func.sum(GamingSession.hours).label('total_hours'),
-                func.count(GamingSession.id).label('total_sessions'),
-                func.min(GamingSession.timestamp).label('first_played'),
-                func.max(GamingSession.timestamp).label('last_played')
-            ).filter(
-                GamingSession.game_id == game.id,
-                GamingSession.user_id == user_id
-            ).first()
+            # Get user's stats for this game
+            result = session.execute(text("""
+                SELECT 
+                    COALESCE(SUM(hours), 0) as total_hours,
+                    COALESCE(SUM(credits_earned), 0) as total_credits,
+                    COUNT(*) as total_sessions,
+                    MIN(timestamp) as first_played,
+                    MAX(timestamp) as last_played
+                FROM gaming_sessions
+                WHERE user_id = :user_id AND game_id = :game_id
+            """), {
+                "user_id": user_id,
+                "game_id": game.id
+            }).first()
 
-            if not stats.total_hours:  # User hasn't played this game
+            if not result:
                 return None
 
-            # Calculate credits using current rate
-            total_credits = float(stats.total_hours) * game.credits_per_hour
-
             return {
-                'name': game.name,
-                'credits_per_hour': game.credits_per_hour,
-                'total_hours': float(stats.total_hours),
-                'total_credits': total_credits,
-                'total_sessions': stats.total_sessions,
-                'first_played': stats.first_played,
-                'last_played': stats.last_played,
-                'added_by': game.added_by,
-                'backloggd_url': game.backloggd_url
+                "name": game.name,
+                "total_hours": float(result.total_hours),
+                "total_credits": float(result.total_credits),
+                "total_sessions": result.total_sessions,
+                "first_played": result.first_played,
+                "last_played": result.last_played,
+                "credits_per_hour": game.credits_per_hour,
+                "backloggd_url": game.backloggd_url
             }
         finally:
             session.close()
@@ -1164,6 +1187,7 @@ class GameStorage:
         """Get the total hours played for each game within a given timeframe."""
         session = self.Session()
         try:
+            print(f"DEBUG: Getting total game hours for timeframe: {timeframe}")
             query = session.query(
                 Game.name,  # Select the game name from the Game table
                 func.sum(GamingSession.hours),
@@ -1181,24 +1205,30 @@ class GameStorage:
                     hour=0, minute=0, second=0, microsecond=0
                 )
                 start_time = self.cst.localize(naive_start)
+                print(f"DEBUG: Weekly start time: {start_time}")
             elif timeframe == 'monthly':
                 # Start from 1st of current month CST
                 naive_start = naive_now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
                 start_time = self.cst.localize(naive_start)
+                print(f"DEBUG: Monthly start time: {start_time}")
             # For 'alltime', no time filter is needed, start_time remains None
 
             if start_time:
                 # Ensure comparison is between timezone-aware datetimes
                 query = query.filter(GamingSession.timestamp >= start_time) # Filter by timestamp in GamingSession
+                print(f"DEBUG: Added time filter: {start_time}")
 
             # Group by both game name and box_art_url
             query = query.group_by(Game.name, Game.box_art_url)
 
             results = query.all()
+            print(f"DEBUG: Query results: {results}")
             return results
 
         except Exception as e:
             print(f"Error getting total game hours for timeframe {timeframe}: {str(e)}")
+            import traceback
+            traceback.print_exc()
             return []
         finally:
             session.close()
@@ -1208,6 +1238,10 @@ class GameStorage:
         rawg_api_key = os.getenv('RAWG_API_KEY') # Get RAWG API key
         rawg_api_url = os.getenv('RAWG_API_URL', 'https://api.rawg.io/api') # Get RAWG API URL
 
+        print(f"DEBUG: Fetching RAWG data for game: {game_name}")
+        print(f"DEBUG: RAWG API Key present: {bool(rawg_api_key)}")
+        print(f"DEBUG: RAWG API URL: {rawg_api_url}")
+
         if not rawg_api_key:
             print("RAWG_API_KEY not set. Cannot fetch game details from RAWG.")
             return None
@@ -1216,12 +1250,16 @@ class GameStorage:
             # Step 1: Search for the game by name
             search_url = f'{rawg_api_url}/games'
             search_params = {'key': rawg_api_key, 'search': game_name, 'page_size': 1}
+            print(f"DEBUG: Searching RAWG with URL: {search_url}")
+            print(f"DEBUG: Search params: {search_params}")
+            
             async with aiohttp.ClientSession() as session:
                 async with session.get(search_url, params=search_params) as response:
                     if response.status != 200:
                         print(f"RAWG search API error for '{game_name}': {response.status}")
                         return None
                     search_data = await response.json()
+                    print(f"DEBUG: RAWG search response: {search_data}")
 
             if not search_data or not search_data['results']:
                 print(f"No RAWG search results found for '{game_name}'.")
@@ -1230,36 +1268,46 @@ class GameStorage:
             # Get the ID of the first result
             game_id = search_data['results'][0]['id']
             rawg_display_name = search_data['results'][0].get('name', game_name)
+            print(f"DEBUG: Found game ID: {game_id}")
+            print(f"DEBUG: RAWG display name: {rawg_display_name}")
 
             # Step 2: Get full game details by ID
             details_url = f'{rawg_api_url}/games/{game_id}'
             details_params = {'key': rawg_api_key}
+            print(f"DEBUG: Fetching game details from: {details_url}")
+            
             async with aiohttp.ClientSession() as session:
                 async with session.get(details_url, params=details_params) as response:
                     if response.status != 200:
                         print(f"RAWG details API error for ID {game_id}: {response.status}")
                         return None
                     details_data = await response.json()
+                    print(f"DEBUG: RAWG details response: {details_data}")
 
             # Get box art URL and description
             box_art_url = details_data.get('background_image')
             description = details_data.get('description_raw', 'No description available.')
+            print(f"DEBUG: Box art URL: {box_art_url}")
+            print(f"DEBUG: Description length: {len(description)}")
 
             return {
-                'rawg_id': game_id,
+                'id': game_id,  # Changed from 'rawg_id' to 'id' to match the database column
                 'display_name': rawg_display_name,
-                'box_art_url': box_art_url,
+                'box_art_url': box_art_url,  # Changed from 'background_image' to 'box_art_url'
                 'description': description
             }
 
         except Exception as e:
             print(f"Error fetching game details from RAWG for '{game_name}': {e}")
+            import traceback
+            print(f"DEBUG: Full traceback: {traceback.format_exc()}")
             return None
 
     async def get_recent_gaming_sessions(self, limit: int = 20) -> List[Dict[str, Any]]:
         """Get the most recent gaming sessions with game details and user_id."""
         session = self.Session()
         try:
+            print(f"DEBUG: Getting recent gaming sessions, limit: {limit}")
             # Fetch recent gaming sessions and join with Game to get game details
             sessions_query = session.query(
                 GamingSession.id,
@@ -1273,6 +1321,7 @@ class GameStorage:
              .order_by(GamingSession.timestamp.desc())\
              .limit(limit)
 
+            print("DEBUG: Executing query...")
             rows = sessions_query.all()
             print(f"DEBUG: get_recent_gaming_sessions - Fetched rows: {rows}") # Debug print
 
@@ -1299,6 +1348,8 @@ class GameStorage:
 
         except Exception as e:
             print(f"Error getting recent gaming sessions: {e}")
+            import traceback
+            traceback.print_exc()
             return []
         finally:
             session.close()
@@ -1307,6 +1358,7 @@ class GameStorage:
         """Get the most recent bonus entries with user details."""
         session = self.Session()
         try:
+            print(f"DEBUG: Getting recent bonuses, limit: {limit}")
             # Fetch recent bonus entries
             bonuses_query = session.query(
                 Bonus.id,
@@ -1318,6 +1370,7 @@ class GameStorage:
             ).order_by(Bonus.timestamp.desc())\
              .limit(limit)
 
+            print("DEBUG: Executing query...")
             rows = bonuses_query.all()
             print(f"DEBUG: get_recent_bonuses - Fetched rows: {rows}") # Debug print
 
@@ -1345,6 +1398,8 @@ class GameStorage:
 
         except Exception as e:
             print(f"Error getting recent bonuses: {e}")
+            import traceback
+            traceback.print_exc()
             return []
         finally:
             session.close()
@@ -1511,7 +1566,7 @@ class GameStorage:
         try:
             games = session.query(Game).filter(Game.name.in_(game_names)).all()
             return {game.name: {
-                'cover_image_url': game.box_art_url,
+                'box_art_url': game.box_art_url,
                 # add any other fields you need
             } for game in games}
         finally:
@@ -1534,7 +1589,7 @@ class GameStorage:
         try:
             users = session.query(UserStats).filter(UserStats.username.ilike(f"%{query}%")).limit(limit).all()
             return [{
-                'user_id': user.user_id,
+                'user_id': str(user.user_id),  # Convert BigInteger to string
                 'username': user.username,
                 'avatar_url': user.avatar_url
             } for user in users]

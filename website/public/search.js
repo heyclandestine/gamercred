@@ -58,14 +58,16 @@ document.addEventListener('DOMContentLoaded', function() {
       results.users.forEach((user, i) => {
         const item = document.createElement('li');
         item.className = 'autocomplete-item';
+        // Ensure user_id is treated as a string
+        const userId = String(user.user_id);
         item.innerHTML = `
-          <img class="autocomplete-avatar" src="${user.avatar_url || `https://cdn.discordapp.com/embed/avatars/${parseInt(user.user_id.slice(-1)) % 6}.png`}" alt="User">
-          <span class="autocomplete-title">${user.username || user.user_id}</span>
+          <img class="autocomplete-avatar" src="${user.avatar_url || `https://cdn.discordapp.com/embed/avatars/${parseInt(userId.slice(-1)) % 6}.png`}" alt="User">
+          <span class="autocomplete-title">${user.username || userId}</span>
           <span class="autocomplete-type">User</span>
         `;
         item.addEventListener('mousedown', e => {
           e.preventDefault();
-          window.location.href = `user.html?user=${encodeURIComponent(user.user_id)}`;
+          window.location.href = `user.html?user=${encodeURIComponent(userId)}`;
         });
         list.appendChild(item);
         flatResults.push(item);

@@ -13,6 +13,7 @@ import asyncio
 import aiohttp # Import aiohttp for async requests
 from datetime import datetime # Import datetime
 from models import LeaderboardType # Import LeaderboardType
+import traceback
 
 # Load environment variables
 load_dotenv()
@@ -197,7 +198,7 @@ def get_game():
 
         # Use the correct game name from the database for the API call
         correct_game_name = game_db_info.get('name', game_name)
-        cover_image_url = game_db_info.get('cover_image_url')
+        box_art_url = game_db_info.get('box_art_url')
         backloggd_url = game_db_info.get('backloggd_url')
         description = 'No description available.'
 
@@ -208,19 +209,19 @@ def get_game():
             rawg_details = run_async(storage.fetch_game_details_from_rawg(correct_game_name))
             if rawg_details:
                 description = rawg_details.get('description', description)
-                # Optionally update cover_image_url if RAWG returned a better one
+                # Optionally update box_art_url if RAWG returned a better one
                 if rawg_details.get('box_art_url'):
-                    cover_image_url = rawg_details.get('box_art_url')
+                    box_art_url = rawg_details.get('box_art_url')
 
         print(f"DEBUG: Description after RAWG fetch: {description}") # Debug print
 
         # Combine database info with API info
         final_game_data = {
             'name': correct_game_name,
-            'cover_image_url': cover_image_url,
-            'description': description,  # Make sure description is included
+            'box_art_url': box_art_url,
+            'description': description,
             'backloggd_url': backloggd_url,
-            'total_players': game_db_info.get('unique_players', 0),
+            'unique_players': game_db_info.get('unique_players', 0),
             'total_hours': game_db_info.get('total_hours', 0.0),
             'credits_per_hour': game_db_info.get('credits_per_hour', 1.0),
             'avg_hours': game_db_info.get('total_hours', 0.0) / game_db_info.get('unique_players', 1) if game_db_info.get('unique_players', 0) > 0 else 0.0,
@@ -296,6 +297,14 @@ def get_game_activity():
         print(f"Error processing /api/game/activity: {e}")
         return jsonify({'error': 'Internal server error'}), 500
 
+@app.errorhandler(Exception)
+def handle_error(error):
+    """Global error handler for all routes"""
+    print(f"ERROR: {str(error)}")
+    print("Full traceback:")
+    traceback.print_exc()
+    return jsonify({'error': str(error)}), 500
+
 # Add endpoint to fetch leaderboard data
 @app.route('/api/leaderboard')
 def get_leaderboard():
@@ -304,10 +313,10 @@ def get_leaderboard():
     try:
         if timeframe == 'weekly' or timeframe == 'monthly':
             leaderboard_type = LeaderboardType.WEEKLY if timeframe == 'weekly' else LeaderboardType.MONTHLY
-            # Get the current active period for the requested timeframe
-            # current_period = run_async(storage.get_or_create_current_period(leaderboard_type))
+            # Get or create the current period for the requested timeframe
+            current_period = run_async(storage.get_or_create_current_period(leaderboard_type))
             # Get the leaderboard data for the current period
-            leaderboard_data = run_async(storage.get_leaderboard_by_timeframe(leaderboard_type))
+            leaderboard_data = run_async(storage.get_leaderboard_by_timeframe(leaderboard_type, period=current_period))
             print(f"DEBUG: Raw data from storage.get_leaderboard_by_timeframe: {leaderboard_data}") # Debug print
 
             # Format the data for the frontend
@@ -368,6 +377,8 @@ def get_leaderboard():
         return jsonify(formatted_data)
     except Exception as e:
         print(f"Error getting leaderboard data: {str(e)}")
+        print("Full traceback:")
+        traceback.print_exc()
         return jsonify({'error': 'Failed to get leaderboard data'}), 500
 
 # Add endpoint to fetch recent bonuses
@@ -410,6 +421,8 @@ def get_recent_bonuses_endpoint():
         return jsonify(final_bonuses)
     except Exception as e:
         print(f"Error processing /api/recent-bonuses: {e}")
+        print("Full traceback:")
+        traceback.print_exc()
         return jsonify({'error': 'Internal server error'}), 500
 
 # Add endpoint to fetch popular games data
@@ -441,6 +454,8 @@ def get_popular_games():
 
     except Exception as e:
         print(f"Error getting popular games data: {str(e)}")
+        print("Full traceback:")
+        traceback.print_exc()
         return jsonify({'error': 'Failed to get popular games data'}), 500
 
 # Add endpoint to fetch user overall stats
@@ -456,6 +471,7 @@ def get_user_stats_endpoint(user_identifier):
         
         # Get overall stats from storage (this always gets all-time total_credits and rank)
         user_overall_stats = storage.get_user_overall_stats(user_id_str)
+        print(f"DEBUG: User overall stats: {user_overall_stats}") # Debug print
 
         if not user_overall_stats:
             # Even if no stats, we might still have Discord info
@@ -463,9 +479,11 @@ def get_user_stats_endpoint(user_identifier):
 
         # Get most played game for the specified timeframe (fetch top 3)
         most_played_games_data = run_async(storage.get_user_most_played_game_by_timeframe(user_id_str, timeframe, limit=3))
+        print(f"DEBUG: Most played games data: {most_played_games_data}") # Debug print
 
         # Fetch Discord user info using the cached function
         discord_info = get_cached_discord_user_info(user_id_str)  # Use string version
+        print(f"DEBUG: Discord info: {discord_info}") # Debug print
 
         # --- Update username in DB if missing or outdated ---
         if discord_info and discord_info.get('username'):
@@ -478,10 +496,10 @@ def get_user_stats_endpoint(user_identifier):
         # Combine stats with Discord info and most played game data
         formatted_stats = {
             'user_id': user_id_str,  # Use string version
-            'total_credits': user_overall_stats['total_credits'],
-            'rank': user_overall_stats['rank'],
-            'username': discord_info['username'] if discord_info else f'User{user_id_str}', # Use fetched username or fallback
-            'avatar_url': discord_info['avatar_url'] if discord_info else f'https://randomuser.me/api/portraits/men/{user_id_str}.jpg', # Use fetched avatar or fallback
+            'total_credits': user_overall_stats.get('total_credits', 0),
+            'rank': user_overall_stats.get('rank'),
+            'username': discord_info.get('username', f'User{user_id_str}'), # Use fetched username or fallback
+            'avatar_url': discord_info.get('avatar_url', f'https://randomuser.me/api/portraits/men/{user_id_str}.jpg'), # Use fetched avatar or fallback
             'most_played': most_played_games_data # Include list of most played games data
         }
 
@@ -489,6 +507,8 @@ def get_user_stats_endpoint(user_identifier):
         return jsonify(formatted_stats)
     except Exception as e:
         print(f"Error processing /api/user-stats/{user_identifier}: {e}")
+        import traceback
+        print(f"Traceback: {traceback.format_exc()}")
         return jsonify({'error': 'Internal server error'}), 500
 
 # Add endpoint to fetch user gaming history (recent activity)
@@ -532,7 +552,7 @@ def get_user_history_endpoint(user_identifier):
             try:
                 game_name = entry.get('game')
                 game_info = game_info_map.get(game_name, {})
-                box_art_url = game_info.get('cover_image_url')
+                box_art_url = game_info.get('box_art_url')
                 
                 # Get Discord info for the user
                 discord_info = get_cached_discord_user_info(user_id_str)
@@ -593,19 +613,30 @@ def get_user_leaderboard_history(user_identifier):
 
         # Get leaderboard history from storage, optionally filtered by type
         leaderboard_history = storage.get_user_placement_history(user_id_str, leaderboard_type=leaderboard_type)
+        print(f"DEBUG: Raw leaderboard history: {leaderboard_history}") # Debug print
 
         # Format the history data with Discord info
         formatted_history = []
         for entry in leaderboard_history:
             # Get Discord info for the user
             discord_info = get_cached_discord_user_info(user_id_str)
-            username = discord_info['username'] if discord_info else f'User{user_id_str}'
-            avatar_url = discord_info['avatar_url'] if discord_info else f'https://randomuser.me/api/portraits/men/{user_id_str}.jpg'
+            username = discord_info.get('username', f'User{user_id_str}')
+            avatar_url = discord_info.get('avatar_url', f'https://randomuser.me/api/portraits/men/{user_id_str}.jpg')
 
+            # Format the dates properly
+            start_date = entry.get('start_time')
+            end_date = entry.get('end_time')
+            
+            # Format dates as strings in YYYY-MM-DD format
+            start_date_str = start_date.split('T')[0] if start_date else None
+            end_date_str = end_date.split('T')[0] if end_date else None
+            
             formatted_entry = {
                 **entry,
                 'username': username,
-                'avatar_url': avatar_url
+                'avatar_url': avatar_url,
+                'start_date': start_date_str,
+                'end_date': end_date_str
             }
             formatted_history.append(formatted_entry)
 
@@ -613,6 +644,8 @@ def get_user_leaderboard_history(user_identifier):
         return jsonify(formatted_history)
     except Exception as e:
         print(f"Error processing /api/user-stats/{user_identifier}/leaderboard-history: {e}")
+        import traceback
+        print(f"Traceback: {traceback.format_exc()}")
         return jsonify({'error': 'Internal server error'}), 500
 
 # Add endpoint to fetch recent gaming sessions

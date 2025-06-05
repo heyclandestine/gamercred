@@ -46,73 +46,49 @@ class GamingCommands(commands.Cog):
         return dt.astimezone(cst).strftime('%Y-%m-%d')
 
     @commands.command(name='log')
-    async def log_hours(self, ctx, hours: Optional[str] = None, *, game: Optional[str] = None):
-        """Log gaming hours and earn credits"""
+    async def log_hours(self, ctx, hours: float, *, game: str):
+        """Log gaming hours"""
         try:
-            # Validate input
-            if not hours or not game:
-                await ctx.send(MESSAGES['invalid_game'])
+            # Validate hours
+            if hours <= 0:
+                await ctx.send("Hours must be greater than 0!")
                 return
 
-            try:
-                hours_float = float(hours)
-            except ValueError:
-                await ctx.send(MESSAGES['invalid_hours'])
-                return
+            # Add gaming hours
+            credits_earned = await self.storage.add_gaming_hours(ctx.author.id, hours, game)
 
-            # Get game info before logging
+            # Get game info for the response
             game_info = self.storage.get_game_info(game)
+            if not game_info:
+                await ctx.send(f"Error: Could not find game '{game}'")
+                return
 
-            # Log hours and get earned credits
-            credits = self.storage.add_gaming_hours(ctx.author.id, hours_float, game)
-
-            # Determine if this is an addition or reduction
-            action_word = "logged" if hours_float > 0 else "removed"
-            hours_display = abs(hours_float)  # Use absolute value for display
-            credits_display = abs(credits)  # Use absolute value for display
-
-            # Create detailed response
-            if game_info:
-                await ctx.send(
-                    f"✅ Successfully {action_word} {hours_display:,.1f} hours for {game}!\n"
-                    f"📊 Rate: {game_info['credits_per_hour']:,.1f} cred/hour\n"
-                    f"💎 {'Earned' if credits > 0 else 'Removed'} {credits_display:,.1f} cred!\n"
-                    f"🎮 View on Backloggd: {game_info['backloggd_url']}"
-                )
-            else:
-                await ctx.send(MESSAGES['success_log'].format(
-                    action=action_word,
-                    hours=f"{hours_display:,.1f}",
-                    game=game,
-                    credits=f"{credits_display:,.1f}",
-                    earned="Earned" if credits > 0 else "Removed"
-                ))
+            # Send success message with original format
+            await ctx.send(
+                f"✅ Successfully logged {hours:,.1f} hours for {game_info['name']}!\n"
+                f"📊 Rate: {game_info['credits_per_hour']:,.1f} cred/hour\n"
+                f"💎 Earned {credits_earned:,.1f} cred!\n"
+                f"🎮 View on Backloggd: {game_info['backloggd_url']}"
+            )
 
         except Exception as e:
             await ctx.send(MESSAGES['error'].format(error=str(e)))
 
     @commands.command(name='setrate')
-    async def set_game_rate(self, ctx, credits: Optional[str] = None, *, game: Optional[str] = None):
+    async def set_game_credits_per_hour(self, ctx, credits: float, *, game: str):
         """Set credits per hour for a game"""
         try:
-            if not credits or not game:
-                await ctx.send("❌ Please provide both credits per hour and game name (!setrate <credits> <game>)")
+            # Validate credits
+            if credits < 0.1:
+                await ctx.send("Credits per hour must be at least 0.1!")
                 return
 
-            try:
-                credits_float = float(credits)
-                if credits_float < 0.1:
-                    await ctx.send("❌ Credits per hour must be at least 0.1")
-                    return
-            except ValueError:
-                await ctx.send("❌ Please provide a valid number for credits per hour")
-                return
-
-            if self.storage.set_game_credits_per_hour(game, credits_float, ctx.author.id):
-                await ctx.send(f"✅ Set rate for {game} to {credits_float:,.1f} cred/hour!")
+            # Set credits per hour
+            success = await self.storage.set_game_credits_per_hour(game, credits, ctx.author.id)
+            if success:
+                await ctx.send(f"✅ Successfully set rate for {game} to {credits:,.1f} credits per hour!")
             else:
-                await ctx.send("❌ Failed to set game rate")
-
+                await ctx.send(f"❌ Failed to set rate for {game}. Please try again.")
         except Exception as e:
             await ctx.send(MESSAGES['error'].format(error=str(e)))
 
@@ -126,9 +102,15 @@ class GamingCommands(commands.Cog):
 
             game_info = self.storage.get_game_info(game)
             if game_info:
+                # Get the user who set the rate
+                setter = None
+                if game_info['added_by']:
+                    setter = ctx.guild.get_member(int(game_info['added_by']))
+                setter_name = setter.display_name if setter else f"Unknown User"
+
                 await ctx.send(
                     f"📊 Rate for {game}: {game_info['credits_per_hour']:,.1f} cred/hour\n"
-                    f"👤 Set by: <@{game_info['added_by']}>\n"
+                    f"👤 Set by: {setter_name}\n"
                     f"🎮 View the game on [Backloggd]({game_info['backloggd_url']})"
                 )
             else:
@@ -180,15 +162,15 @@ class GamingCommands(commands.Cog):
         """Show the weekly gamer cred leaderboard"""
         try:
             # Get current period and leaderboard
-            leaderboard = await self.storage.get_leaderboard_by_timeframe(LeaderboardType.WEEKLY, self.bot)
             period = await self.storage.get_or_create_current_period(LeaderboardType.WEEKLY, self.bot)
+            leaderboard = await self.storage.get_leaderboard_by_timeframe(LeaderboardType.WEEKLY, self.bot, period=period)
 
             if not leaderboard:
                 await ctx.send("No gaming activity in the current week!")
                 return
 
             # Record the placements in history
-            await self.storage.record_leaderboard_placements(LeaderboardType.WEEKLY, leaderboard)
+            await self.storage.record_leaderboard_placements(LeaderboardType.WEEKLY, leaderboard, period)
 
             embed = Embed(
                 title="📅 Weekly Gamer Cred Leaderboard",
@@ -215,15 +197,15 @@ class GamingCommands(commands.Cog):
         """Show the monthly gamer cred leaderboard"""
         try:
             # Get current period and leaderboard
-            leaderboard = await self.storage.get_leaderboard_by_timeframe(LeaderboardType.MONTHLY, self.bot)
             period = await self.storage.get_or_create_current_period(LeaderboardType.MONTHLY, self.bot)
+            leaderboard = await self.storage.get_leaderboard_by_timeframe(LeaderboardType.MONTHLY, self.bot, period=period)
 
             if not leaderboard:
                 await ctx.send("No gaming activity in the current month!")
                 return
 
             # Record the placements in history
-            await self.storage.record_leaderboard_placements(LeaderboardType.MONTHLY, leaderboard)
+            await self.storage.record_leaderboard_placements(LeaderboardType.MONTHLY, leaderboard, period)
 
             embed = Embed(
                 title="📅 Monthly Gamer Cred Leaderboard",
@@ -304,20 +286,20 @@ class GamingCommands(commands.Cog):
     async def show_history(self, ctx):
         """Show your gaming history and totals per game"""
         try:
-            history = self.storage.get_user_gaming_history(ctx.author.id)
-            summaries = self.storage.get_user_game_summaries(ctx.author.id)
+            history = self.storage.get_user_gaming_history(str(ctx.author.id))
+            summaries = self.storage.get_user_game_summaries(str(ctx.author.id))
 
             if not history:
                 await ctx.send("You haven't logged any gaming sessions yet!")
                 return
 
-            # Create embed for recent sessions
+            # Create embed for recent sessions (limit to 10)
             sessions_embed = Embed(
                 title=f"🎮 Recent Gaming Sessions for {ctx.author.display_name}",
                 color=0x0088ff
             )
 
-            for session in history:
+            for session in history[:10]:  # Limit to 10 sessions
                 sessions_embed.add_field(
                     name=f"{session['game']} ({session['timestamp'].strftime('%Y-%m-%d')})",
                     value=f"Hours: {session['hours']:,.1f}\nCredits: {session['credits_earned']:,.1f}\nRate: {session['rate']:,.1f} cred/hour",
@@ -326,14 +308,14 @@ class GamingCommands(commands.Cog):
 
             await ctx.send(embed=sessions_embed)
 
-            # Create embed for game summaries
+            # Create embed for game summaries (limit to 20 games)
             if summaries:
                 summary_embed = Embed(
                     title=f"📊 Game Totals for {ctx.author.display_name}",
                     color=0x00ff00
                 )
 
-                for summary in summaries:
+                for summary in summaries[:20]:  # Limit to 20 games
                     summary_embed.add_field(
                         name=summary['game'],
                         value=f"⏱️ {summary['total_hours']:,.1f} hours in {summary['sessions']} sessions\n💎 {summary['total_credits']:,.1f} cred earned",
@@ -544,108 +526,55 @@ class GamingCommands(commands.Cog):
 
     @commands.command(name='mystats')
     async def show_my_stats(self, ctx, *, game: Optional[str] = None):
-        """Show your personal gaming statistics, optionally for a specific game"""
+        """Show your gaming statistics (overall or per game)"""
         try:
             if game:
-                # If game is specified, show game-specific stats
+                # Show game-specific stats
                 await self.show_my_game_stats(ctx, game)
                 return
 
-            # Get user's overall stats
-            summaries = self.storage.get_user_game_summaries(ctx.author.id)
-            if not summaries:
+            # Get overall stats
+            stats = self.storage.get_user_overall_stats(str(ctx.author.id))
+            if not stats:
                 await ctx.send("You haven't logged any gaming sessions yet!")
                 return
 
-            # Calculate overall stats
-            total_hours = sum(s['total_hours'] for s in summaries)
-            total_credits = sum(s['total_credits'] for s in summaries)
-            unique_games = len(summaries)
-            avg_credits_per_hour = total_credits / total_hours if total_hours > 0 else 0
-
-            # Sort games by hours played to find most played
-            sorted_games = sorted(summaries, key=lambda x: x['total_hours'], reverse=True)
-            top_games = sorted_games[:5]  # Get top 5 most played games
-
-            # Get placement history
-            history = self.storage.get_user_placement_history(ctx.author.id)
-            weekly_history = [h for h in history if h['type'] == 'weekly'][:3]  # Last 3 weekly placements
-            monthly_history = [h for h in history if h['type'] == 'monthly'][:3]  # Last 3 monthly placements
-
-            # Create embed for stats
+            # Create embed
             embed = Embed(
                 title=f"📊 Gaming Stats for {ctx.author.display_name}",
                 color=0x00ff00
             )
 
-            # Overall stats section
-            stats_section = (
-                f"⏱️ **Total Time:** {total_hours:,.1f} hours\n"
-                f"💎 **Total Credits:** {total_credits:,.1f} cred\n"
-                f"🎮 **Games Played:** {unique_games:,} different games\n"
-                f"📈 **Average Rate:** {avg_credits_per_hour:,.1f} cred/hour\n"
-            )
-            embed.add_field(name="Overall Statistics", value=stats_section, inline=False)
-
-            # Recent placements section
-            if weekly_history or monthly_history:
-                placements_section = ""
-                
-                if weekly_history:
-                    placements_section += "**Weekly Rankings:**\n"
-                    for h in weekly_history:
-                        placements_section += (
-                            f"• {self.get_ordinal_suffix(h['placement'])} Place ({self.format_cst_time(h['period_start'])})\n"
-                            f"  💎 {h['credits']:,.1f} cred • 🎮 {h['games_played']} games\n"
-                        )
-                
-                if monthly_history:
-                    if weekly_history:
-                        placements_section += "\n"  # Add spacing between weekly and monthly
-                    placements_section += "**Monthly Rankings:**\n"
-                    for h in monthly_history:
-                        placements_section += (
-                            f"• {self.get_ordinal_suffix(h['placement'])} Place ({self.format_cst_time(h['period_start'])})\n"
-                            f"  💎 {h['credits']:,.1f} cred • 🎮 {h['games_played']} games\n"
-                        )
-                
-                embed.add_field(
-                    name="🏆 Recent Rankings",
-                    value=placements_section,
-                    inline=False
-                )
-
-            # Most played games section
-            if top_games:
-                most_played = ""
-                for i, game in enumerate(top_games, 1):
-                    most_played += (
-                        f"{'═' * 40}\n"  # Top border
-                        f"**#{i} │ {game['game']}**\n"
-                        f"──────────────────\n"  # Separator under title
-                        f"⏱️ **Time:** {game['total_hours']:,.1f} hours\n"
-                        f"💎 **Credits:** {game['total_credits']:,.1f} cred\n"
-                        f"📊 **Rate:** {game['rate']:,.1f} cred/hour\n"
-                        f"🎲 **Sessions:** {game['sessions']}\n"
-                    )
-                # Add final border
-                most_played += f"{'═' * 40}"
-                
-                embed.add_field(
-                    name="🏆 Most Played Games",
-                    value=most_played,
-                    inline=False
-                )
-
-            # Get achievements
-            achievements = self.storage.get_user_achievements(ctx.author.id)
-            achieved = sum(1 for v in achievements.values() if v)
-            total = len(achievements)
+            # Add overall stats
             embed.add_field(
-                name="🌟 Achievements Progress",
-                value=f"{achieved} out of {total} achievements unlocked",
+                name="Overall Stats",
+                value=(
+                    f"⏱️ Total Hours: {stats['total_hours']:,.1f}\n"
+                    f"💎 Total Credits: {stats['total_credits']:,.1f}\n"
+                    f"🎮 Games Played: {stats['games_played']}\n"
+                    f"📅 Sessions: {stats['total_sessions']}"
+                ),
                 inline=False
             )
+
+            # Add time range
+            if stats['first_played'] and stats['last_played']:
+                embed.add_field(
+                    name="Time Range",
+                    value=(
+                        f"📅 First Played: {self.format_cst_time(stats['first_played'])}\n"
+                        f"🕒 Last Played: {self.format_cst_time(stats['last_played'])}"
+                    ),
+                    inline=False
+                )
+
+            # Add most played game
+            if stats['most_played_game']:
+                embed.add_field(
+                    name="Most Played Game",
+                    value=f"🎮 {stats['most_played_game']} ({stats['most_played_hours']:,.1f}h)",
+                    inline=False
+                )
 
             await ctx.send(embed=embed)
 

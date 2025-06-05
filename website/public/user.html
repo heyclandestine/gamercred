@@ -369,8 +369,10 @@
           mostPlayedCarousel.innerHTML = ''; // Clear previous content
 
           const mostPlayedData = userData.most_played; // This is now a list of games
+          console.log('Most played data:', mostPlayedData); // Debug log
           if (mostPlayedData && mostPlayedData.length > 0) {
                mostPlayedData.forEach(game => {
+                   console.log('Processing game:', game); // Debug log
                    const hoursPlayed = game.total_hours;
                    const timePlayedDisplay = hoursPlayed >= 1 ? `${hoursPlayed.toFixed(1)} hrs` : `${(hoursPlayed * 60).toFixed(0)} mins`;
 
@@ -504,98 +506,76 @@
       }
 
       // Function to fetch and display leaderboard history
-      async function fetchLeaderboardHistory(userIdentifier, timeframe) {
-        console.log(`DEBUG: fetchLeaderboardHistory called for user: ${userIdentifier}, timeframe: ${timeframe}`); // Debug print
-          const leaderboardList = document.querySelector(`#leaderboard-${timeframe} ol`);
-          if (!leaderboardList) {
-              console.error(`Leaderboard list element not found for timeframe: ${timeframe}.`);
-              return;
+      async function fetchLeaderboardHistory(userIdentifier, type = 'weekly') {
+        try {
+          const response = await fetch(`/api/user-stats/${userIdentifier}/leaderboard-history?type=${type}`);
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+          const history = await response.json();
+          console.log('Leaderboard history:', history); // Debug log
+
+          const historyList = document.querySelector(`.leaderboard-history-list.${type}`);
+          if (!historyList) {
+            console.error(`History list element not found for type: ${type}`);
+            return;
           }
 
-          setLoadingState(leaderboardList, true);
+          historyList.innerHTML = ''; // Clear previous content
 
-          try {
-              console.log(`Fetching leaderboard history for user: ${userIdentifier}, timeframe: ${timeframe}`);
-              // Note: The backend endpoint currently doesn't take timeframe, it returns all history.
-              // We'll fetch all and filter/display as needed on the frontend or update backend later.
-              const response = await fetch(`/api/user-stats/${userIdentifier}/leaderboard-history`);
-
-              if (!response.ok) {
-                  throw new Error(`HTTP error! status: ${response.status}`);
-              }
-              const historyData = await response.json();
-              console.log('Received leaderboard history data:', historyData); // Debug print received data
-
-              leaderboardList.innerHTML = ''; // Clear loading state
-
-              if (!historyData || historyData.length === 0) {
-                  leaderboardList.innerHTML = '<li>No past placements found for this timeframe.</li>';
-                  return;
-              }
-
-              // Filter by timeframe on the frontend (as backend doesn't support it yet for this endpoint)
-              const filteredHistory = historyData.filter(placement => {
-                  const placementDate = new Date(placement.timestamp);
-                  const now = new Date();
-                  let isMatch = false;
-
-                  if (timeframe === 'weekly') {
-                      // Check if within the last 7 days (simple weekly check)
-                      const sevenDaysAgo = new Date(now);
-                      sevenDaysAgo.setDate(now.getDate() - 7);
-                      isMatch = placementDate >= sevenDaysAgo;
-                  } else if (timeframe === 'monthly') {
-                      // Check if within the last 30 days (simple monthly check)
-                      const thirtyDaysAgo = new Date(now);
-                      thirtyDaysAgo.setDate(now.getDate() - 30);
-                       isMatch = placementDate >= thirtyDaysAgo;
-                  } else { // 'alltime' or other - display all
-                      isMatch = true;
-                  }
-
-                  // Also filter by leaderboard type if backend provides it and frontend needs to distinguish
-                  // Assuming backend data includes a 'type' field like 'weekly' or 'monthly'
-                  // if (placement.type && placement.type.toLowerCase() !== timeframe) {
-                  //     isMatch = false;
-                  // }
-                  return isMatch;
-              });
-
-              // Sort by timestamp descending (most recent first)
-              filteredHistory.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-
-              if (filteredHistory.length === 0) {
-                   leaderboardList.innerHTML = '<li>No past placements found for this timeframe.</li>';
-                  return;
-              }
-
-              // Display the filtered history (limit to a reasonable number if needed, e.g., 5)
-              filteredHistory.slice(0, 5).forEach(placement => {
-                  // Get ordinal suffix for placement
-                  let suffix = 'th';
-                  if (placement.placement % 10 === 1 && placement.placement % 100 !== 11) suffix = 'st';
-                  else if (placement.placement % 10 === 2 && placement.placement % 100 !== 12) suffix = 'nd';
-                  else if (placement.placement % 10 === 3 && placement.placement % 100 !== 13) suffix = 'rd';
-
-                  const listItem = document.createElement('li');
-                   // Format period start and end dates from backend timestamp
-                  const placementDate = new Date(placement.timestamp);
-
-                  // Note: Backend is returning timestamp of when placement was recorded, not period start/end.
-                  // We might need to update backend to return period dates if they are stored.
-                  // For now, display just the placement date.
-                  const dateDisplay = placementDate.toLocaleDateString(); // Use date of placement
-
-                  listItem.innerHTML = `
-                      <span class="rank">#${placement.placement}${suffix}</span> ${dateDisplay}
-                  `;
-                  leaderboardList.appendChild(listItem);
-              });
-
-          } catch (error) {
-              console.error(`Error fetching leaderboard history for timeframe ${timeframe}:`, error);
-              leaderboardList.innerHTML = '<li>Error loading past placements.</li>';
+          if (history.length === 0) {
+            historyList.innerHTML = '<li>No leaderboard history available.</li>';
+            return;
           }
+
+          history.forEach(entry => {
+            console.log('Processing entry:', entry); // Debug log
+            const startDate = entry.start_date ? new Date(entry.start_date) : null;
+            const endDate = entry.end_date ? new Date(entry.end_date) : null;
+            
+            const periodDisplay = startDate && endDate 
+              ? `${startDate.toLocaleDateString()} - ${endDate.toLocaleDateString()}`
+              : 'Period not available';
+
+            const placement = entry.placement;
+            let placementDisplay = `${placement}${getOrdinalSuffix(placement)}`;
+            
+            // Only add medal emoji for top 3 placements
+            if (placement === 1) {
+              placementDisplay = `🥇 ${placementDisplay}`;
+            } else if (placement === 2) {
+              placementDisplay = `🥈 ${placementDisplay}`;
+            } else if (placement === 3) {
+              placementDisplay = `🥉 ${placementDisplay}`;
+            }
+
+            const li = document.createElement('li');
+            li.innerHTML = `
+              <div class="period">${periodDisplay}</div>
+              <div>
+                <span class="placement">${placementDisplay}</span>
+              </div>
+              <div class="credits">${formatNumberWithCommas(entry.credits)} credits earned</div>
+              <div class="most-played">Most played: ${entry.most_played_game} (${entry.most_played_hours.toFixed(1)}h)</div>
+            `;
+            historyList.appendChild(li);
+          });
+        } catch (error) {
+          console.error('Error fetching leaderboard history:', error);
+          const historyList = document.querySelector(`.leaderboard-history-list.${type}`);
+          if (historyList) {
+            historyList.innerHTML = '<li>Error loading leaderboard history.</li>';
+          }
+        }
+      }
+
+      function getOrdinalSuffix(num) {
+        const j = num % 10;
+        const k = num % 100;
+        if (j == 1 && k != 11) return 'st';
+        if (j == 2 && k != 12) return 'nd';
+        if (j == 3 && k != 13) return 'rd';
+        return 'th';
       }
 
       // Initial calls to fetch data when the page loads
@@ -603,8 +583,8 @@
       if (userIdentifier) {
           fetchUserProfile(userIdentifier, 'alltime');
           fetchRecentActivity(userIdentifier);
-          fetchWeeklyLeaderboardHistory(userIdentifier);
-          fetchMonthlyLeaderboardHistory(userIdentifier);
+          fetchLeaderboardHistory(userIdentifier, 'weekly');
+          fetchLeaderboardHistory(userIdentifier, 'monthly');
       }
 
       // Initialize tab switching logic
