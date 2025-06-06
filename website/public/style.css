@@ -417,6 +417,7 @@ footer {
   gap: 1.5rem;
   margin-bottom: 0;
   flex-wrap: wrap;
+  position: relative;
 }
 .game-cover {
   width: 285px;
@@ -1382,12 +1383,22 @@ a:hover .game-cover-carousel, .activity-card:hover .game-cover-carousel {
 
 .backloggd-link-below-cover {
   display: block;
-  position: absolute;
-  top: calc(380px + 2rem);
-  left: 2rem;
+  margin-top: 1rem;
   height: 42px;
   width: 285px;
   text-align: center;
+  line-height: 42px;
+  text-decoration: none;
+  color: #ffb86c;
+  background-color: #29293a;
+  border-radius: 8px;
+  font-size: large;
+  font-weight: 800;
+  transition: background-color 0.2s;
+}
+
+.backloggd-link-below-cover:hover {
+  background: #6272a4;
 }
 
 .game-desc-below-header {
@@ -1525,12 +1536,4 @@ a:hover .game-cover-carousel, .activity-card:hover .game-cover-carousel {
   font-size: 0.92em;
   margin-left: auto;
   font-weight: 500;
-}
-
-.hidden-content {
-  display: none;
-}
-
-.hidden-content.visible {
-  display: block;
 }
