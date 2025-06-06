@@ -15,13 +15,27 @@ load_dotenv()
 
 class GameStorage:
     def __init__(self):
-        # Try to get database URL from environment variables
-        self.database_url = os.getenv('DATABASE_URL')
-        if not self.database_url:
-            raise ValueError("DATABASE_URL environment variable not set")
-        self._initialize_db()
-        # Set CST timezone as a class variable for consistent use
-        self.cst = pytz.timezone('America/Chicago')
+        print("DEBUG: Initializing GameStorage")
+        database_url = os.getenv('DATABASE_URL')
+        print(f"DEBUG: Using database URL: {database_url}")
+        
+        try:
+            self.engine = create_engine(database_url)
+            print("DEBUG: Database engine created successfully")
+            
+            # Test the connection
+            with self.engine.connect() as connection:
+                connection.execute(text("SELECT 1"))
+                print("DEBUG: Database connection test successful")
+        except Exception as e:
+            print(f"ERROR: Failed to initialize database connection: {str(e)}")
+            print("Full traceback:")
+            import traceback
+            traceback.print_exc()
+            raise
+
+    def Session(self):
+        return sessionmaker(bind=self.engine)()
 
     def _initialize_db(self):
         """Initialize the database connection"""
