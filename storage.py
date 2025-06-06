@@ -1587,7 +1587,7 @@ class GameStorage:
         finally:
             session.close()
 
-    def get_recent_activity_for_game(self, game_name: str, limit: int = 10) -> List[Dict[str, Any]]:
+    def get_recent_activity_for_game(self, game_name: str, limit: int = 15) -> List[Dict[str, Any]]:
         """Get the most recent gaming sessions for a specific game."""
         session = self.Session()
         try:

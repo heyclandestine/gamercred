@@ -136,11 +136,11 @@
           console.error('Error fetching players:', error);
           document.querySelector('.game-playing .loading-spinner').style.display = 'none';
           document.querySelector('.players-list').innerHTML = '<li>Error loading players</li>';
-          document.querySelector('.players-list').style.display = 'block';
+          document.querySelector('.players-list').style.display = 'flex';
         });
 
       // Fetch recent activity
-      fetch(`/api/game/activity?name=${encodeURIComponent(gameName)}`)
+      fetch(`/api/game/activity?name=${encodeURIComponent(gameName)}&limit=15`)
         .then(response => response.json())
         .then(data => {
           const activityList = document.querySelector('.activity-list');
@@ -164,13 +164,13 @@
           }
           
           loadingSpinner.style.display = 'none';
-          activityList.style.display = 'block';
+          activityList.style.display = 'grid';
         })
         .catch(error => {
           console.error('Error fetching activity:', error);
           document.querySelector('.game-activity .loading-spinner').style.display = 'none';
           document.querySelector('.activity-list').innerHTML = '<li>Error loading activity</li>';
-          document.querySelector('.activity-list').style.display = 'block';
+          document.querySelector('.activity-list').style.display = 'grid';
         });
     });
 

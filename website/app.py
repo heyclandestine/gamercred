@@ -327,11 +327,12 @@ def get_game_players():
 def get_game_activity():
     try:
         game_name = request.args.get('name')
+        limit = int(request.args.get('limit', 15))  # Get limit from query params, default to 15
         if not game_name:
             return jsonify({'error': 'Game name parameter missing'}), 400
 
         print(f"DEBUG: Getting activity for game: {game_name}") # Debug print
-        activity_data = storage.get_recent_activity_for_game(game_name, limit=10)
+        activity_data = storage.get_recent_activity_for_game(game_name, limit=limit)
         print(f"DEBUG: Activity data: {activity_data}") # Debug print
 
         # Fetch Discord info for users in activity
@@ -823,6 +824,4 @@ def get_all_games():
         return jsonify({'error': 'Failed to get all games'}), 500
 
 if __name__ == '__main__':
-    # In production, this won't be used as gunicorn will run the app
-    port = int(os.environ.get('PORT', 10000))
-    app.run(host='0.0.0.0', port=port) 
+    app.run(host='0.0.0.0', port=5000, debug=True) 

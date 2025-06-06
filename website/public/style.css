@@ -4,6 +4,9 @@ body {
   font-family: 'Inter', Arial, sans-serif;
   margin: 0;
   padding: 0;
+  overflow-x: hidden;
+  width: 100%;
+  position: relative;
 }
 
 .navbar {
@@ -694,32 +697,80 @@ footer {
   list-style: none;
   padding: 0;
   margin: 0;
-  overflow-x: auto;
-  white-space: nowrap;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
 }
 
 .activity-list li {
   display: flex;
   align-items: center;
-  gap: 1.5rem;
-  padding: 1rem;
+  gap: 0.8rem;
+  padding: 0.8rem;
+  background: #29293a;
+  border-radius: 10px;
+  box-shadow: 0 1px 4px rgba(255,111,174,0.04);
+}
+
+.activity-list li:last-child {
+  border-bottom: none;
+}
+
+.activity-list .game-cover-sm {
+  width: 48px;
+  height: 48px;
   border-radius: 8px;
-  transition: background-color 0.2s;
-  white-space: normal;
+  flex-shrink: 0;
 }
 
-.activity-list li:hover {
-  background: #2d2d36;
+.activity-list .activity-content {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
 }
 
-.activity-text {
-  color: #f8f8f2;
+/* Index page specific activity styles */
+.activity-wide .activity-list li {
+  position: relative;
 }
 
-.activity-time {
-  margin-left: auto;
-  color: #6272a4;
+.activity-wide .activity-list .user-link {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: calc(100% - 48px - 0.8rem); /* Account for cover art and gap */
+  display: inline-block;
+}
+
+.activity-wide .activity-list .activity-text {
   font-size: 0.9rem;
+  color: #e0e0e0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: calc(100% - 48px - 0.8rem); /* Account for cover art and gap */
+}
+
+.activity-wide .activity-list .activity-time {
+  font-size: 0.8rem;
+  color: #888;
+  margin-left: auto;
+  white-space: nowrap;
+}
+
+/* Clear the float after every 3 items */
+.game-page .game-activity .activity-list::after {
+  content: "" !important;
+  display: table !important;
+  clear: both !important;
+}
+
+/* Ensure the game activity card has proper padding */
+.game-page .game-activity.card {
+  padding: 1.5rem !important;
+  box-sizing: border-box !important;
 }
 
 .loading-spinner {
@@ -841,12 +892,11 @@ footer {
 
 .activity-list li {
   display: flex;
-  min-width: fit-content;
   align-items: center;
   gap: 1.7em;
   margin-bottom: 0.7em;
   font-size: 1.05rem;
-  background: #23232b;
+  background: #29293a;
   border-radius: 10px;
   padding: 0.5em 1em;
 }
@@ -1132,7 +1182,17 @@ a:hover .game-cover-carousel, .activity-card:hover .game-cover-carousel {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  max-width: 100px; /* Reduced from 120px to make ellipsis appear sooner */
+}
+
+.activity-player .user-link {
+  display: block;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
   max-width: 100%;
+  color: #8be9fd;
+  text-decoration: none;
 }
 
 .activity-hours {
@@ -1146,16 +1206,8 @@ a:hover .game-cover-carousel, .activity-card:hover .game-cover-carousel {
   max-width: 100%;
 }
 
-.activity-player .user-link {
-  display: block;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 100%;
-}
-
 .activity-time {
-  margin-left: 0;
+  margin-left: unset;
   margin-top: 0.1em;
   font-size: 0.95em;
 }
@@ -1512,11 +1564,11 @@ a:hover .game-cover-carousel, .activity-card:hover .game-cover-carousel {
 .more-button {
     background: #4f46e5;
     color: white;
-    border: none;
+  border: none;
     padding: 0.5rem 1.5rem;
     border-radius: 20px;
     font-weight: 600;
-    cursor: pointer;
+  cursor: pointer;
     transition: background-color 0.2s;
     min-width: 120px;
 }
@@ -1920,4 +1972,395 @@ a:hover .game-cover-carousel, .activity-card:hover .game-cover-carousel {
 .game-card-content:hover {
     transform: scale(1.02);
     box-shadow: 0 8px 16px rgba(255, 111, 174, 0.3);
+}
+
+/* Mobile Navigation */
+@media (max-width: 768px) {
+  body {
+    font-size: 14px;
+    padding: 0;
+    margin: 0;
+  }
+
+  .navbar {
+    padding: 0.8rem 1rem;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    margin: 0;
+    width: 100%;
+  }
+
+  .nav-left {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .mobile-menu-toggle {
+    display: block;
+    font-size: 1.2rem;
+    padding: 0.4rem;
+    margin-right: 0.5rem;
+  }
+
+  .nav-home-btn {
+    font-size: 0.9rem;
+    padding: 0.4rem 0.8rem;
+  }
+
+  .nav-center {
+    display: none;
+    width: 100%;
+    margin: 0.8rem 0 0;
+    flex-direction: column;
+    gap: 0.8rem;
+    padding: 0.8rem;
+    background: #19191f;
+    border-radius: 8px;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    z-index: 1000;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+  }
+
+  .nav-center.active {
+    display: flex;
+  }
+
+  .search-bar {
+    width: 100%;
+    max-width: none;
+    font-size: 0.9rem;
+    padding: 0.5rem 1rem;
+  }
+
+  .nav-right {
+    margin-left: 0;
+  }
+
+  .discord-login {
+    padding: 0.4rem 0.8rem;
+    font-size: 0.8rem;
+  }
+
+  /* Mobile Main Content */
+  .main-grid {
+    display: flex;
+    flex-direction: column;
+    padding: 0.8rem 0.5rem;
+    gap: 0.8rem;
+    margin-top: 0.8rem;
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  .card {
+    padding: 0.8rem;
+    margin-bottom: 0.8rem;
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  /* Override the grid layout for mobile */
+  .main-grid > * {
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  /* Ensure leaderboard and popular games sections take full width */
+  .leaderboard,
+  .popular-games {
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  .card h2 {
+    font-size: 1rem;
+    margin-bottom: 0.8rem;
+  }
+
+  /* Mobile Leaderboard and Game Cards - Consistent Styling */
+  .leaderboard li,
+  .popular-games-list li {
+    padding: 0.5rem;
+    height: auto;
+    min-height: 50px;
+    font-size: 0.9rem;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  .leaderboard .avatar,
+  .game-cover-sm {
+    width: 32px;
+    height: 32px;
+    border-radius: 6px;
+    flex-shrink: 0;
+  }
+
+  .leaderboard .rank,
+  .popular-games-list .rank {
+    font-size: 0.9rem;
+    min-width: 18px;
+    flex-shrink: 0;
+  }
+
+  .leaderboard .score,
+  .popular-games-list .hours {
+    font-size: 0.9rem;
+    margin-left: auto;
+    flex-shrink: 0;
+    padding-left: 0.4rem;
+  }
+
+  .leaderboard .user-link,
+  .popular-games-list .game-link {
+    font-size: 0.9rem;
+    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    min-width: 0;
+    padding: 0 0.2rem;
+  }
+
+  /* Mobile Tabs */
+  .leaderboard-tabs,
+  .popular-tabs {
+    gap: 0.4rem;
+    margin-bottom: 0.8rem;
+    overflow-x: auto;
+    padding-bottom: 0.4rem;
+    -webkit-overflow-scrolling: touch;
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  .tab-btn {
+    padding: 0.3rem 0.8rem;
+    font-size: 0.8rem;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  /* Mobile Game Cards */
+  .game-card {
+    padding: 0.6rem;
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  .game-card-image {
+    width: 70px;
+    height: 70px;
+    flex-shrink: 0;
+  }
+
+  .game-card-info {
+    padding: 0.3rem;
+    min-width: 0;
+  }
+
+  .game-card-title {
+    font-size: 0.95rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .game-card-stats {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.3rem;
+    width: 100%;
+  }
+
+  .game-card-stats .stat {
+    padding: 0.3rem;
+    min-width: 0;
+  }
+
+  .game-card-stats .stat-label {
+    font-size: 0.7rem;
+  }
+
+  .game-card-stats .stat-value {
+    font-size: 0.85rem;
+  }
+
+  /* Mobile Activity List */
+  .activity-list li {
+    padding: 0.5rem;
+    font-size: 0.9rem;
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  .activity-time {
+    font-size: 0.8rem;
+  }
+
+  /* Mobile Game Header */
+  .game-header {
+    gap: 0.6rem;
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  .game-cover {
+    width: 120px;
+    height: 160px;
+    flex-shrink: 0;
+  }
+
+  .game-info-and-description-container {
+    min-width: 0;
+  }
+
+  .game-info-and-description-container h1 {
+    font-size: 1.2rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .game-stats {
+    gap: 0.3rem;
+    flex-wrap: wrap;
+  }
+
+  .stat {
+    padding: 0.3rem;
+    min-width: 80px;
+    flex: 1;
+  }
+
+  .stat-label {
+    font-size: 0.7rem;
+  }
+
+  .stat-value {
+    font-size: 0.9rem;
+  }
+}
+
+/* Additional Mobile Optimizations */
+@media (max-width: 480px) {
+  .navbar {
+    padding: 0.6rem 0.5rem;
+  }
+
+  .main-grid {
+    padding: 0.6rem 0.4rem;
+  }
+
+  .card {
+    padding: 0.6rem;
+  }
+
+  .leaderboard-tabs,
+  .popular-tabs {
+    justify-content: flex-start;
+    padding-bottom: 0.3rem;
+  }
+
+  .tab-btn {
+    padding: 0.3rem 0.5rem;
+    font-size: 0.8rem;
+  }
+}
+
+/* Mobile Menu Toggle */
+.mobile-menu-toggle {
+  display: none;
+  background: none;
+  border: none;
+  color: #fff;
+  font-size: 1.5rem;
+  cursor: pointer;
+  padding: 0.5rem;
+  margin-right: 1rem;
+}
+
+@media (max-width: 768px) {
+  .mobile-menu-toggle {
+    display: block;
+  }
+
+  .nav-center {
+    display: none;
+    width: 100%;
+    margin-top: 1rem;
+  }
+
+  .nav-center.active {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .nav-center .search-bar {
+    width: 100%;
+    max-width: none;
+  }
+
+  .nav-center .nav-link {
+    width: 100%;
+    text-align: center;
+  }
+}
+
+/* Mobile/Desktop Element Visibility */
+.mobile-only {
+  display: none;
+}
+
+.desktop-only {
+  display: block;
+}
+
+/* Mobile Navigation */
+@media (max-width: 768px) {
+  .mobile-only {
+    display: block;
+  }
+
+  .desktop-only {
+    display: none;
+  }
+
+  .navbar {
+    padding: 1rem;
+    flex-wrap: wrap;
+  }
+
+  .nav-center {
+    order: 3;
+    width: 100%;
+    margin-top: 1rem;
+    justify-content: space-between;
+  }
+
+  .search-bar {
+    width: 100%;
+    max-width: 200px;
+  }
+
+  .nav-right {
+    margin-left: auto;
+  }
+
+  .discord-login {
+    padding: 0.5rem 1rem;
+    font-size: 0.9rem;
+  }
+
+  .nav-home-btn {
+    font-size: 1rem;
+    padding: 0.5rem 1rem;
+  }
 }
