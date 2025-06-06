@@ -3,6 +3,7 @@ import os
 import sys # Import the sys module
 import re # Import re for HTML cleaning
 from dotenv import load_dotenv
+from flask_cors import CORS
 print("sys.path before storage import:", sys.path) # Print sys.path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))) # Add parent directory to path
 from storage import GameStorage # Import GameStorage
@@ -23,6 +24,9 @@ app = Flask(__name__,
             static_folder='public',
             static_url_path='',
             template_folder='public')
+
+# Enable CORS for all routes
+CORS(app, resources={r"/*": {"origins": "*"}})
 
 # Add debug logging for database URL
 database_url = os.getenv('DATABASE_URL')
@@ -172,6 +176,10 @@ def clean_and_truncate_description(html_text):
 @app.route('/')
 def index():
     return send_from_directory(app.static_folder, 'index.html')
+
+@app.route('/<path:path>')
+def serve_static(path):
+    return send_from_directory(app.static_folder, path)
 
 @app.route('/game.html')
 def game():
