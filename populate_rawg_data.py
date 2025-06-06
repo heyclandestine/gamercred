@@ -48,12 +48,12 @@ async def populate_rawg_data_for_existing_games():
 
         # Debug print values for first few games
         for i, game in enumerate(all_games[:5]):
-            print(f"Debug: Game {i+1}: {game.name}, rawg_id: {game.rawg_id}, box_art_url: {game.box_art_url}")
+            print(f"Debug: Game {i+1}: {game.name}, rawg_id: {game.rawg_id}, box_art_url: {game.box_art_url}, release_date: {game.release_date}")
 
         print(f"Found {len(all_games)} games to update.")
 
-        for game in all_games:
-            print(f"Processing game: {game.name}")
+        for i, game in enumerate(all_games, 1):
+            print(f"Processing game {i}/{len(all_games)}: {game.name}")
             
             # Fetch details from RAWG
             rawg_details = await storage.fetch_game_details_from_rawg(game.name)
@@ -62,13 +62,18 @@ async def populate_rawg_data_for_existing_games():
                 # Update game object with fetched data
                 game.rawg_id = rawg_details.get('rawg_id')
                 game.box_art_url = rawg_details.get('box_art_url')
+                game.release_date = rawg_details.get('release_date')  # Add release date
 
                 # Commit changes for this game
                 session.add(game)
                 session.commit()
                 print(f"  Successfully updated RAWG data for {game.name}.")
+                print(f"  Release date: {game.release_date}")
             else:
                 print(f"  Failed to fetch RAWG data for {game.name}. Skipping update.")
+            
+            # Add a small delay to avoid hitting RAWG API rate limits
+            await asyncio.sleep(0.5)
 
         print("RAWG data population script finished.")
 

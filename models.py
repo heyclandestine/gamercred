@@ -18,6 +18,7 @@ class Game(Base):
     backloggd_url = Column(String)
     rawg_id = Column(Integer)
     box_art_url = Column(String)
+    release_date = Column(String)  # Store the release date as a string in ISO format
     gaming_sessions = relationship("GamingSession", back_populates="game")
 
 class UserStats(Base):

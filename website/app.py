@@ -761,6 +761,30 @@ def search_api():
 
     return jsonify({'games': games, 'users': users})
 
+@app.route('/api/all-games')
+def get_all_games():
+    try:
+        # Get all games with their stats
+        games = storage.get_all_games_with_stats()
+        
+        # Format the response
+        formatted_games = []
+        for game in games:
+            formatted_games.append({
+                'name': game['name'],
+                'box_art_url': game['box_art_url'],
+                'total_hours': game['total_hours'],
+                'unique_players': game['unique_players'],
+                'credits_per_hour': game['credits_per_hour'],
+                'release_date': game.get('release_date'),  # Optional field
+                'backloggd_url': game['backloggd_url']
+            })
+        
+        return jsonify(formatted_games)
+    except Exception as e:
+        print(f"Error processing /api/all-games: {e}")
+        return jsonify({'error': 'Internal server error'}), 500
+
 if __name__ == '__main__':
     # In production, this won't be used as gunicorn will run the app
     port = int(os.environ.get('PORT', 10000))

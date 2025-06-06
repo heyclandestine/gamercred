@@ -1,7 +1,7 @@
 import os
 from datetime import datetime, timedelta
 from typing import Dict, List, Tuple, Optional, Any
-from sqlalchemy import create_engine, func, DateTime as sqlalchemy_DateTime, and_, Integer, String, BigInteger, text
+from sqlalchemy import create_engine, func, DateTime as sqlalchemy_DateTime, and_, Integer, String, BigInteger, text, distinct
 from sqlalchemy.orm import sessionmaker, scoped_session
 from models import Base, Game, UserStats, GamingSession, LeaderboardHistory, LeaderboardType, LeaderboardPeriod, Bonus # Removed User import
 import pytz
@@ -15,6 +15,15 @@ import traceback
 
 # Load environment variables
 load_dotenv()
+
+# Helper function to run async functions
+def run_async(coro):
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    try:
+        return loop.run_until_complete(coro)
+    finally:
+        loop.close()
 
 class GameStorage:
     def __init__(self):
@@ -185,7 +194,7 @@ class GameStorage:
             naive_now = datetime.now()
             current_time = self.cst.localize(naive_now)
             print(f"DEBUG: Current time in CST: {current_time}")
-
+            
             # Calculate period start time based on leaderboard type
             if leaderboard_type == LeaderboardType.WEEKLY:
                 # Start of current week (Monday)
@@ -221,17 +230,17 @@ class GameStorage:
             # Create new period
             print("DEBUG: Creating new period")
             new_period = LeaderboardPeriod(
-                leaderboard_type=leaderboard_type,
-                start_time=period_start,
-                end_time=period_end,
-                is_active=True
-            )
+                    leaderboard_type=leaderboard_type,
+                    start_time=period_start,
+                    end_time=period_end,
+                    is_active=True
+                )
             session.add(new_period)
-            session.commit()
+                session.commit()
             print(f"DEBUG: Created new period: {new_period}")
 
             # If we have a bot and this is a new period, announce it
-            if bot:
+                if bot:
                 asyncio.create_task(self.announce_period_end(bot, leaderboard_type, new_period))
 
             return new_period
@@ -271,7 +280,7 @@ class GameStorage:
                 and_(
                     GamingSession.timestamp >= current_period.start_time,
                     GamingSession.timestamp < current_period.end_time
-                )
+            )
             ).group_by(
                 GamingSession.user_id
             ).order_by(
@@ -279,7 +288,7 @@ class GameStorage:
             ).all()
 
             print(f"DEBUG: Found {len(results)} users in leaderboard")
-            
+
             # Format the results
             leaderboard = []
             for user_id, credits, games_played, most_played_game, most_played_hours in results:
@@ -780,12 +789,12 @@ class GameStorage:
                     .filter(GamingSession.user_id == user_id)\
                     .scalar() or 0.0
             
-                # Calculate total from bonuses
+                 # Calculate total from bonuses
                 bonus_credits = session.query(func.sum(Bonus.credits))\
                     .filter(Bonus.user_id == user_id)\
                     .scalar() or 0.0
                 
-                # Total credits is sum of both
+                 # Total credits is sum of both
                 total_credits = session_credits + bonus_credits
 
                 # Update or create user stats
@@ -1268,7 +1277,7 @@ class GameStorage:
 
             print("DEBUG: About to execute query...")
             print(f"DEBUG: Query SQL: {query.statement.compile(compile_kwargs={'literal_binds': True})}")
-            
+
             results = query.all()
             print(f"DEBUG: Query executed successfully. Number of results: {len(results)}")
             print(f"DEBUG: Raw query results: {results}")
@@ -1290,7 +1299,7 @@ class GameStorage:
             session.close()
 
     async def fetch_game_details_from_rawg(self, game_name: str) -> Optional[Dict]:
-        """Fetch game details from RAWG API, including box art and description."""
+        """Fetch game details from RAWG API, including box art, description, and release date."""
         rawg_api_key = os.getenv('RAWG_API_KEY') # Get RAWG API key
         rawg_api_url = os.getenv('RAWG_API_URL', 'https://api.rawg.io/api') # Get RAWG API URL
 
@@ -1340,17 +1349,20 @@ class GameStorage:
                     details_data = await response.json()
                     print(f"DEBUG: RAWG details response: {details_data}")
 
-            # Get box art URL and description
+            # Get box art URL, description, and release date
             box_art_url = details_data.get('background_image')
             description = details_data.get('description_raw', 'No description available.')
+            release_date = details_data.get('released')  # Get the release date
             print(f"DEBUG: Box art URL: {box_art_url}")
             print(f"DEBUG: Description length: {len(description)}")
+            print(f"DEBUG: Release date: {release_date}")
 
             return {
                 'rawg_id': game_id,  # Changed from 'id' to 'rawg_id' to match database column
                 'display_name': rawg_display_name,
                 'box_art_url': box_art_url,
-                'description': description
+                'description': description,
+                'release_date': release_date  # Include release date in the response
             }
 
         except Exception as e:
@@ -1725,3 +1737,45 @@ class GameStorage:
             raise
         finally:
             db_session.close()
+
+    def get_all_games_with_stats(self) -> List[Dict[str, Any]]:
+        """Get all games with their stats."""
+        session = self.Session()
+        try:
+            # Query all games with their stats
+            games_query = session.query(
+                Game.id,
+                Game.name,
+                Game.box_art_url,
+                Game.credits_per_hour,
+                Game.backloggd_url,
+                Game.release_date,  # Include release_date from database
+                func.count(distinct(GamingSession.user_id)).label('unique_players'),
+                func.sum(GamingSession.hours).label('total_hours')
+            ).outerjoin(GamingSession, Game.id == GamingSession.game_id)\
+             .group_by(Game.id)\
+             .order_by(Game.name)
+
+            rows = games_query.all()
+
+            # Format the results
+            games_data = []
+            for row in rows:
+                games_data.append({
+                    'id': row.id,
+                    'name': row.name,
+                    'box_art_url': row.box_art_url,
+                    'credits_per_hour': float(row.credits_per_hour),
+                    'backloggd_url': row.backloggd_url,
+                    'unique_players': row.unique_players or 0,
+                    'total_hours': float(row.total_hours or 0),
+                    'release_date': row.release_date  # Use release_date from database
+                })
+
+            return games_data
+
+        except Exception as e:
+            print(f"Error getting all games with stats: {e}")
+            return []
+        finally:
+            session.close()
