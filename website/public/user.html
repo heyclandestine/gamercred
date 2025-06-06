@@ -512,12 +512,15 @@
                   buttonContainer.style.justifyContent = 'center';
                   buttonContainer.style.marginTop = '1rem';
 
+                  // Store the current index in a data attribute
+                  buttonContainer.dataset.currentIndex = '5';
+
                   const moreButton = document.createElement('button');
                   moreButton.className = 'more-button';
                   moreButton.textContent = 'Show More';
                   moreButton.onclick = () => {
-                      const currentItems = activityList.querySelectorAll('li').length;
-                      const nextItems = activityData.slice(currentItems, currentItems + 5);
+                      const currentIndex = parseInt(buttonContainer.dataset.currentIndex);
+                      const nextItems = activityData.slice(currentIndex, currentIndex + 5);
                       
                       nextItems.forEach(activity => {
                           const hours = activity.hours;
@@ -541,8 +544,11 @@
                           activityList.insertBefore(listItem, buttonContainer);
                       });
 
+                      // Update the current index
+                      buttonContainer.dataset.currentIndex = currentIndex + 5;
+
                       // Hide the buttons if we've shown all items
-                      if (currentItems + 5 >= activityData.length) {
+                      if (currentIndex + 5 >= activityData.length) {
                           buttonContainer.style.display = 'none';
                       }
                   };
@@ -551,8 +557,8 @@
                   showAllButton.className = 'more-button';
                   showAllButton.textContent = 'Show All';
                   showAllButton.onclick = () => {
-                      const currentItems = activityList.querySelectorAll('li').length;
-                      const remainingItems = activityData.slice(currentItems);
+                      const currentIndex = parseInt(buttonContainer.dataset.currentIndex);
+                      const remainingItems = activityData.slice(currentIndex);
                       
                       remainingItems.forEach(activity => {
                           const hours = activity.hours;
