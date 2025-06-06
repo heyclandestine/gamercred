@@ -15,6 +15,7 @@ import aiohttp # Import aiohttp for async requests
 from datetime import datetime # Import datetime
 from models import LeaderboardType # Import LeaderboardType
 import traceback
+from sqlalchemy import text
 
 # Load environment variables
 load_dotenv()
@@ -32,10 +33,27 @@ CORS(app, resources={r"/*": {"origins": "*"}})
 database_url = os.getenv('DATABASE_URL')
 print(f"DEBUG: Database URL: {database_url}")
 
+if not database_url:
+    print("ERROR: No database URL found in environment variables!")
+    print("Please set DATABASE_URL to your PostgreSQL connection string")
+    raise ValueError("Database URL not configured")
+
 # Initialize storage with debug logging
 try:
     storage = GameStorage()
     print("DEBUG: GameStorage initialized successfully")
+    
+    # Test database connection
+    with storage.Session() as session:
+        result = session.execute(text("SELECT 1")).scalar()
+        print(f"DEBUG: Database connection test result: {result}")
+        if result != 1:
+            raise Exception("Database connection test failed")
+        print("DEBUG: Database connection test successful")
+        
+        # Print database version
+        version = session.execute(text("SELECT version()")).scalar()
+        print(f"DEBUG: Database version: {version}")
 except Exception as e:
     print(f"ERROR: Failed to initialize GameStorage: {str(e)}")
     print("Full traceback:")
@@ -327,27 +345,32 @@ def handle_error(error):
 # Add endpoint to fetch leaderboard data
 @app.route('/api/leaderboard')
 def get_leaderboard():
-    print("DEBUG: /api/leaderboard endpoint hit")
+    print("\n=== DEBUG: /api/leaderboard endpoint hit ===")
     timeframe = request.args.get('timeframe', 'weekly')
     print(f"DEBUG: Fetching leaderboard for timeframe: {timeframe}")
     try:
-        if timeframe == 'weekly' or timeframe == 'monthly':
-            leaderboard_type = LeaderboardType.WEEKLY if timeframe == 'weekly' else LeaderboardType.MONTHLY
-            print(f"DEBUG: Using leaderboard type: {leaderboard_type}")
-            # Get the current active period for the requested timeframe
-            current_period = run_async(storage.get_or_create_current_period(leaderboard_type))
-            print(f"DEBUG: Current period: {current_period}")
-            # Get the leaderboard data for the current period
-            leaderboard_data = run_async(storage.get_leaderboard_by_timeframe(leaderboard_type))
-            print(f"DEBUG: Leaderboard data: {leaderboard_data}")
+        if timeframe == 'alltime':
+            # Get all-time leaderboard data
+            print("DEBUG: Getting all-time leaderboard data...")
+            leaderboard_data = storage.get_alltime_leaderboard()
+            print(f"DEBUG: Raw leaderboard data: {leaderboard_data}")
+            print(f"DEBUG: Number of entries: {len(leaderboard_data)}")
+
+            if not leaderboard_data:
+                print("DEBUG: No leaderboard data found")
+                return jsonify([])
 
             # Format the data for the frontend
             formatted_data = []
             for user_id, credits, games_played, most_played_game, most_played_hours in leaderboard_data:
                 # Convert user_id to string immediately
                 user_id_str = str(user_id)
+                print(f"DEBUG: Processing user {user_id_str}")
+                
                 # Use cached Discord user info
                 discord_info = get_cached_discord_user_info(user_id_str)
+                print(f"DEBUG: Discord info for user {user_id_str}: {discord_info}")
+                
                 if discord_info:
                     avatar_url = discord_info['avatar_url']
                     username = discord_info['username']
@@ -355,18 +378,77 @@ def get_leaderboard():
                     avatar_url = "https://www.gravatar.com/avatar/?d=mp&s=50"
                     username = f"User{user_id_str}"
                 
-                formatted_data.append({
+                user_data = {
                     'user_id': user_id_str,
                     'username': username,
                     'avatar_url': avatar_url,
-                    'points': credits,
-                    'games_played': games_played,
+                    'points': float(credits),
+                    'games_played': int(games_played),
                     'most_played_game': most_played_game,
-                    'most_played_hours': most_played_hours
-                })
-            print(f"DEBUG: Formatted data: {formatted_data}")
+                    'most_played_hours': float(most_played_hours)
+                }
+                print(f"DEBUG: Formatted user data: {user_data}")
+                formatted_data.append(user_data)
+            
+            print(f"DEBUG: Final formatted data: {formatted_data}")
+            print(f"DEBUG: Number of formatted entries: {len(formatted_data)}")
+            return jsonify(formatted_data)
+        elif timeframe == 'weekly' or timeframe == 'monthly':
+            leaderboard_type = LeaderboardType.WEEKLY if timeframe == 'weekly' else LeaderboardType.MONTHLY
+            print(f"DEBUG: Using leaderboard type: {leaderboard_type}")
+            
+            # Get the current active period for the requested timeframe
+            print("DEBUG: Getting current period...")
+            current_period = storage.get_or_create_current_period(leaderboard_type)
+            print(f"DEBUG: Current period: {current_period}")
+            print(f"DEBUG: Period start: {current_period.start_time}")
+            print(f"DEBUG: Period end: {current_period.end_time}")
+            
+            # Get the leaderboard data for the current period
+            print("DEBUG: Getting leaderboard data...")
+            leaderboard_data = storage.get_leaderboard_by_timeframe(leaderboard_type)
+            print(f"DEBUG: Raw leaderboard data: {leaderboard_data}")
+            print(f"DEBUG: Number of entries: {len(leaderboard_data)}")
+
+            if not leaderboard_data:
+                print("DEBUG: No leaderboard data found")
+                return jsonify([])
+
+            # Format the data for the frontend
+            formatted_data = []
+            for user_id, credits, games_played, most_played_game, most_played_hours in leaderboard_data:
+                # Convert user_id to string immediately
+                user_id_str = str(user_id)
+                print(f"DEBUG: Processing user {user_id_str}")
+                
+                # Use cached Discord user info
+                discord_info = get_cached_discord_user_info(user_id_str)
+                print(f"DEBUG: Discord info for user {user_id_str}: {discord_info}")
+                
+                if discord_info:
+                    avatar_url = discord_info['avatar_url']
+                    username = discord_info['username']
+                else:
+                    avatar_url = "https://www.gravatar.com/avatar/?d=mp&s=50"
+                    username = f"User{user_id_str}"
+                
+                user_data = {
+                    'user_id': user_id_str,
+                    'username': username,
+                    'avatar_url': avatar_url,
+                    'points': float(credits),
+                    'games_played': int(games_played),
+                    'most_played_game': most_played_game,
+                    'most_played_hours': float(most_played_hours)
+                }
+                print(f"DEBUG: Formatted user data: {user_data}")
+                formatted_data.append(user_data)
+            
+            print(f"DEBUG: Final formatted data: {formatted_data}")
+            print(f"DEBUG: Number of formatted entries: {len(formatted_data)}")
             return jsonify(formatted_data)
         else:
+            print(f"DEBUG: Invalid timeframe specified: {timeframe}")
             return jsonify({'error': 'Invalid timeframe specified'}), 400
     except Exception as e:
         print(f"ERROR: Failed to get leaderboard data: {str(e)}")
@@ -652,9 +734,9 @@ def recent_activity():
                 'user_id': user_id,
                 'username': username,
                 'avatar_url': avatar_url,
-                'game': session_data['game'],
+                'game_name': session_data['game_name'],
                 'hours': session_data['hours'],
-                'credits_earned': session_data['credits_earned'],
+                'box_art_url': session_data['box_art_url'],
                 'timestamp': timestamp_str
             })
 
