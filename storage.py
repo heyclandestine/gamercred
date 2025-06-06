@@ -771,14 +771,13 @@ class GameStorage:
                     .filter(GamingSession.user_id == user_id)\
                     .scalar() or 0.0
             
-                 # Calculate total from bonuses
+                # Calculate total from bonuses
                 bonus_credits = session.query(func.sum(Bonus.credits))\
                     .filter(Bonus.user_id == user_id)\
                     .scalar() or 0.0
                 
-                 # Total credits is sum of both
+                # Total credits is sum of both
                 total_credits = session_credits + bonus_credits
-                session.commit()
 
                 # Update or create user stats
                 user_stats = session.query(UserStats).filter(UserStats.user_id == user_id).first()
@@ -790,12 +789,14 @@ class GameStorage:
 
                 print(f"Updated User {user_id}: {total_credits:,.1f} credits")
 
+            # Commit all changes at once
             session.commit()
             print("Credit recalculation complete!")
 
         except Exception as e:
             print(f"Error recalculating credits: {str(e)}")
             session.rollback()
+            raise
         finally:
             session.close()
 
@@ -832,20 +833,10 @@ class GameStorage:
                 timestamp=datetime.now(self.cst)
             )
             session.add(gaming_session)
-
-            # Get or create user stats
-            user_stats = session.query(UserStats).filter(UserStats.user_id == user_id).first()
-            if not user_stats:
-                user_stats = UserStats(
-                    user_id=user_id,
-                    total_credits=0.0
-                )
-                session.add(user_stats)
-
-            # Update user's total credits
-            user_stats.total_credits += credits_earned
-
             session.commit()
+
+            # Update user's total credits by recalculating from all sessions
+            self.update_user_total_credits(str(user_id))
 
             # Update leaderboard history for active periods
             active_periods = session.query(LeaderboardPeriod)\
