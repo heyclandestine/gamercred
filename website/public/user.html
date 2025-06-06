@@ -500,20 +500,11 @@
                       </div>
                     </div>
                   `;
-                  
                   activityList.appendChild(listItem);
               });
 
-              // If there are remaining items, create a hidden container and buttons
+              // If there are remaining items, create buttons
               if (remainingItems.length > 0) {
-                  const hiddenContainer = document.createElement('div');
-                  hiddenContainer.className = 'hidden-content';
-                  
-                  // Store remaining items in a data attribute
-                  hiddenContainer.dataset.remainingItems = JSON.stringify(remainingItems);
-                  hiddenContainer.dataset.currentIndex = 0;
-
-                  // Create button container
                   const buttonContainer = document.createElement('div');
                   buttonContainer.className = 'button-container';
                   buttonContainer.style.display = 'flex';
@@ -525,9 +516,8 @@
                   moreButton.className = 'more-button';
                   moreButton.textContent = 'Show More';
                   moreButton.onclick = () => {
-                      const items = JSON.parse(hiddenContainer.dataset.remainingItems);
-                      const currentIndex = parseInt(hiddenContainer.dataset.currentIndex);
-                      const nextItems = items.slice(currentIndex, currentIndex + 5);
+                      const currentItems = activityList.querySelectorAll('li').length;
+                      const nextItems = activityData.slice(currentItems, currentItems + 5);
                       
                       nextItems.forEach(activity => {
                           const hours = activity.hours;
@@ -548,15 +538,11 @@
                               </div>
                             </div>
                           `;
-                          
                           activityList.insertBefore(listItem, buttonContainer);
                       });
 
-                      // Update the current index
-                      hiddenContainer.dataset.currentIndex = currentIndex + 5;
-
                       // Hide the buttons if we've shown all items
-                      if (currentIndex + 5 >= items.length) {
+                      if (currentItems + 5 >= activityData.length) {
                           buttonContainer.style.display = 'none';
                       }
                   };
@@ -565,9 +551,8 @@
                   showAllButton.className = 'more-button';
                   showAllButton.textContent = 'Show All';
                   showAllButton.onclick = () => {
-                      const items = JSON.parse(hiddenContainer.dataset.remainingItems);
-                      const currentIndex = parseInt(hiddenContainer.dataset.currentIndex);
-                      const remainingItems = items.slice(currentIndex);
+                      const currentItems = activityList.querySelectorAll('li').length;
+                      const remainingItems = activityData.slice(currentItems);
                       
                       remainingItems.forEach(activity => {
                           const hours = activity.hours;
@@ -588,7 +573,6 @@
                               </div>
                             </div>
                           `;
-                          
                           activityList.insertBefore(listItem, buttonContainer);
                       });
 
