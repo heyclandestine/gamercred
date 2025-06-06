@@ -65,12 +65,17 @@
         // Fetch all games
         async function fetchGames() {
             try {
+                console.log('Fetching games from /api/all-games...');
                 const response = await fetch('/api/all-games');
+                console.log('Response status:', response.status);
                 const data = await response.json();
+                console.log('Response data:', data);
+                
                 if (data.error) {
                     throw new Error(data.error);
                 }
                 games = Array.isArray(data) ? data : [];
+                console.log('Processed games array:', games);
                 renderGames();
                 // Set initial sort direction icon
                 const icon = document.querySelector('#sortDirection i');
@@ -97,21 +102,28 @@
 
         // Render games with current sort and filter
         function renderGames() {
+            console.log('Starting renderGames...');
             const searchTerm = document.getElementById('gameSearch').value.toLowerCase();
+            console.log('Search term:', searchTerm);
+            
             const filteredGames = games.filter(game => 
                 game.name.toLowerCase().includes(searchTerm)
             );
+            console.log('Filtered games:', filteredGames);
 
             const sortedGames = sortGames(filteredGames);
+            console.log('Sorted games:', sortedGames);
             
             const gamesGrid = document.getElementById('gamesGrid');
             gamesGrid.innerHTML = '';
 
             if (sortedGames.length === 0) {
+                console.log('No games to display');
                 gamesGrid.innerHTML = '<div class="no-games">No games found</div>';
                 return;
             }
 
+            console.log('Creating game cards...');
             sortedGames.forEach(game => {
                 const gameCard = document.createElement('div');
                 gameCard.className = 'game-card';
@@ -146,6 +158,7 @@
                 `;
                 gamesGrid.appendChild(gameCard);
             });
+            console.log('Finished rendering games');
         }
 
         // Sort games based on current sort settings
