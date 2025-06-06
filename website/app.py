@@ -16,6 +16,8 @@ from datetime import datetime # Import datetime
 from models import LeaderboardType # Import LeaderboardType
 import traceback
 from sqlalchemy import text
+from sqlalchemy.ext.declarative import declarative_base
+from models import Base # Import Base for table creation
 
 # Load environment variables
 load_dotenv()
@@ -43,17 +45,27 @@ try:
     storage = GameStorage()
     print("DEBUG: GameStorage initialized successfully")
     
-    # Test database connection
+    # Test database connection and create tables if they don't exist
     with storage.Session() as session:
-        result = session.execute(text("SELECT 1")).scalar()
-        print(f"DEBUG: Database connection test result: {result}")
-        if result != 1:
-            raise Exception("Database connection test failed")
-        print("DEBUG: Database connection test successful")
-        
-        # Print database version
-        version = session.execute(text("SELECT version()")).scalar()
-        print(f"DEBUG: Database version: {version}")
+        try:
+            # Create tables if they don't exist
+            Base.metadata.create_all(storage.engine)
+            print("DEBUG: Database tables created/verified")
+            
+            result = session.execute(text("SELECT 1")).scalar()
+            print(f"DEBUG: Database connection test result: {result}")
+            if result != 1:
+                raise Exception("Database connection test failed")
+            print("DEBUG: Database connection test successful")
+            
+            # Print database version
+            version = session.execute(text("SELECT version()")).scalar()
+            print(f"DEBUG: Database version: {version}")
+        except Exception as e:
+            print(f"ERROR: Database initialization failed: {str(e)}")
+            print("Full traceback:")
+            traceback.print_exc()
+            raise
 except Exception as e:
     print(f"ERROR: Failed to initialize GameStorage: {str(e)}")
     print("Full traceback:")
@@ -771,6 +783,44 @@ def search_api():
     users = storage.search_users_by_name(query)
 
     return jsonify({'games': games, 'users': users})
+
+@app.route('/api/all-games')
+def get_all_games():
+    try:
+        print("DEBUG: /api/all-games endpoint hit")
+        print(f"DEBUG: Database URL: {os.getenv('DATABASE_URL')}")
+        
+        # Test database connection
+        with storage.Session() as session:
+            try:
+                result = session.execute(text("SELECT 1")).scalar()
+                print(f"DEBUG: Database connection test result: {result}")
+                
+                # Check if tables exist
+                tables = session.execute(text("""
+                    SELECT table_name 
+                    FROM information_schema.tables 
+                    WHERE table_schema = 'public'
+                """)).fetchall()
+                print(f"DEBUG: Available tables: {[table[0] for table in tables]}")
+                
+                # Check games table specifically
+                games_count = session.execute(text("SELECT COUNT(*) FROM games")).scalar()
+                print(f"DEBUG: Number of games in database: {games_count}")
+            except Exception as e:
+                print(f"ERROR: Database query failed: {str(e)}")
+                print("Full traceback:")
+                traceback.print_exc()
+                raise
+        
+        games_data = storage.get_all_games_with_stats()
+        print(f"DEBUG: All games data: {games_data}")
+        return jsonify(games_data)
+    except Exception as e:
+        print(f"ERROR: Failed to get all games: {str(e)}")
+        print("Full traceback:")
+        traceback.print_exc()
+        return jsonify({'error': 'Failed to get all games'}), 500
 
 if __name__ == '__main__':
     # In production, this won't be used as gunicorn will run the app
