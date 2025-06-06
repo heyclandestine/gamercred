@@ -66,7 +66,11 @@
         async function fetchGames() {
             try {
                 const response = await fetch('/api/all-games');
-                games = await response.json();
+                const data = await response.json();
+                if (data.error) {
+                    throw new Error(data.error);
+                }
+                games = Array.isArray(data) ? data : [];
                 renderGames();
                 // Set initial sort direction icon
                 const icon = document.querySelector('#sortDirection i');
