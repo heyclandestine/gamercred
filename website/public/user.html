@@ -476,8 +476,12 @@
                   return;
               }
 
-              // Create list items for each activity (already limited to 5 by backend)
-              activityData.forEach(activity => {
+              // Show first 5 items
+              const initialItems = activityData.slice(0, 5);
+              const remainingItems = activityData.slice(5);
+
+              // Create list items for initial activities
+              initialItems.forEach(activity => {
                   const hours = activity.hours;
                   const timeDisplay = hours >= 1 ? `${hours.toFixed(1)}h` : `${(hours * 60).toFixed(0)}m`;
                   const date = new Date(activity.timestamp).toLocaleDateString();
@@ -499,6 +503,103 @@
                   
                   activityList.appendChild(listItem);
               });
+
+              // If there are remaining items, create a hidden container and buttons
+              if (remainingItems.length > 0) {
+                  const hiddenContainer = document.createElement('div');
+                  hiddenContainer.className = 'hidden-content';
+                  
+                  // Store remaining items in a data attribute
+                  hiddenContainer.dataset.remainingItems = JSON.stringify(remainingItems);
+                  hiddenContainer.dataset.currentIndex = 0;
+
+                  // Create button container
+                  const buttonContainer = document.createElement('div');
+                  buttonContainer.className = 'button-container';
+                  buttonContainer.style.display = 'flex';
+                  buttonContainer.style.gap = '1rem';
+                  buttonContainer.style.justifyContent = 'center';
+                  buttonContainer.style.marginTop = '1rem';
+
+                  const moreButton = document.createElement('button');
+                  moreButton.className = 'more-button';
+                  moreButton.textContent = 'Show More';
+                  moreButton.onclick = () => {
+                      const items = JSON.parse(hiddenContainer.dataset.remainingItems);
+                      const currentIndex = parseInt(hiddenContainer.dataset.currentIndex);
+                      const nextItems = items.slice(currentIndex, currentIndex + 5);
+                      
+                      nextItems.forEach(activity => {
+                          const hours = activity.hours;
+                          const timeDisplay = hours >= 1 ? `${hours.toFixed(1)}h` : `${(hours * 60).toFixed(0)}m`;
+                          const date = new Date(activity.timestamp).toLocaleDateString();
+                          
+                          const listItem = document.createElement('li');
+                          listItem.innerHTML = `
+                            <img class="game-cover-activity" src="${activity.box_art_url || 'https://static-cdn.jtvnw.net/ttv-boxart/loading_boxart.png'}" alt="${activity.game_name}" onerror="this.src='https://static-cdn.jtvnw.net/ttv-boxart/loading_boxart.png'">
+                            <div class="activity-details">
+                              <div class="game-name">
+                                <a href="game.html?game=${encodeURIComponent(activity.game_name)}" style="color: #fff; text-decoration: none;">${activity.game_name}</a>
+                              </div>
+                              <div class="activity-stats-group">
+                                <div class="activity-time">${timeDisplay}</div>
+                                <div class="activity-credits">${formatNumberWithCommas(activity.credits_earned)} credits earned</div>
+                                <div class="activity-date">${date}</div>
+                              </div>
+                            </div>
+                          `;
+                          
+                          activityList.insertBefore(listItem, buttonContainer);
+                      });
+
+                      // Update the current index
+                      hiddenContainer.dataset.currentIndex = currentIndex + 5;
+
+                      // Hide the buttons if we've shown all items
+                      if (currentIndex + 5 >= items.length) {
+                          buttonContainer.style.display = 'none';
+                      }
+                  };
+
+                  const showAllButton = document.createElement('button');
+                  showAllButton.className = 'more-button';
+                  showAllButton.textContent = 'Show All';
+                  showAllButton.onclick = () => {
+                      const items = JSON.parse(hiddenContainer.dataset.remainingItems);
+                      const currentIndex = parseInt(hiddenContainer.dataset.currentIndex);
+                      const remainingItems = items.slice(currentIndex);
+                      
+                      remainingItems.forEach(activity => {
+                          const hours = activity.hours;
+                          const timeDisplay = hours >= 1 ? `${hours.toFixed(1)}h` : `${(hours * 60).toFixed(0)}m`;
+                          const date = new Date(activity.timestamp).toLocaleDateString();
+                          
+                          const listItem = document.createElement('li');
+                          listItem.innerHTML = `
+                            <img class="game-cover-activity" src="${activity.box_art_url || 'https://static-cdn.jtvnw.net/ttv-boxart/loading_boxart.png'}" alt="${activity.game_name}" onerror="this.src='https://static-cdn.jtvnw.net/ttv-boxart/loading_boxart.png'">
+                            <div class="activity-details">
+                              <div class="game-name">
+                                <a href="game.html?game=${encodeURIComponent(activity.game_name)}" style="color: #fff; text-decoration: none;">${activity.game_name}</a>
+                              </div>
+                              <div class="activity-stats-group">
+                                <div class="activity-time">${timeDisplay}</div>
+                                <div class="activity-credits">${formatNumberWithCommas(activity.credits_earned)} credits earned</div>
+                                <div class="activity-date">${date}</div>
+                              </div>
+                            </div>
+                          `;
+                          
+                          activityList.insertBefore(listItem, buttonContainer);
+                      });
+
+                      // Hide the buttons after showing all items
+                      buttonContainer.style.display = 'none';
+                  };
+
+                  buttonContainer.appendChild(moreButton);
+                  buttonContainer.appendChild(showAllButton);
+                  activityList.appendChild(buttonContainer);
+              }
           } catch (error) {
               console.error('Error fetching recent activity:', error);
               activityList.innerHTML = '<li>Error loading recent activity.</li>';
@@ -528,7 +629,12 @@
             return;
           }
 
-          history.forEach(entry => {
+          // Show first 5 items
+          const initialItems = history.slice(0, 5);
+          const remainingItems = history.slice(5);
+
+          // Create list items for initial history entries
+          initialItems.forEach(entry => {
             console.log('Processing entry:', entry); // Debug log
             const startDate = entry.start_date ? new Date(entry.start_date) : null;
             const endDate = entry.end_date ? new Date(entry.end_date) : null;
@@ -560,6 +666,117 @@
             `;
             historyList.appendChild(li);
           });
+
+          // If there are remaining items, create a hidden container and buttons
+          if (remainingItems.length > 0) {
+              const hiddenContainer = document.createElement('div');
+              hiddenContainer.className = 'hidden-content';
+              
+              // Store remaining items in a data attribute
+              hiddenContainer.dataset.remainingItems = JSON.stringify(remainingItems);
+              hiddenContainer.dataset.currentIndex = 0;
+
+              // Create button container
+              const buttonContainer = document.createElement('div');
+              buttonContainer.className = 'button-container';
+
+              const moreButton = document.createElement('button');
+              moreButton.className = 'more-button';
+              moreButton.textContent = 'Show More';
+              moreButton.onclick = () => {
+                  const items = JSON.parse(hiddenContainer.dataset.remainingItems);
+                  const currentIndex = parseInt(hiddenContainer.dataset.currentIndex);
+                  const nextItems = items.slice(currentIndex, currentIndex + 5);
+                  
+                  nextItems.forEach(entry => {
+                      const startDate = entry.start_date ? new Date(entry.start_date) : null;
+                      const endDate = entry.end_date ? new Date(entry.end_date) : null;
+                      
+                      const periodDisplay = startDate && endDate 
+                        ? `${startDate.toLocaleDateString()} - ${endDate.toLocaleDateString()}`
+                        : 'Period not available';
+
+                      const placement = entry.placement;
+                      let placementDisplay = `${placement}${getOrdinalSuffix(placement)}`;
+                      
+                      if (placement === 1) {
+                        placementDisplay = `🥇 ${placementDisplay}`;
+                      } else if (placement === 2) {
+                        placementDisplay = `🥈 ${placementDisplay}`;
+                      } else if (placement === 3) {
+                        placementDisplay = `🥉 ${placementDisplay}`;
+                      }
+
+                      const li = document.createElement('li');
+                      li.innerHTML = `
+                        <div class="period">${periodDisplay}</div>
+                        <div>
+                          <span class="placement">${placementDisplay}</span>
+                        </div>
+                        <div class="credits">${formatNumberWithCommas(entry.credits)} credits earned</div>
+                        <div class="most-played">Most played: ${entry.most_played_game} (${entry.most_played_hours.toFixed(1)}h)</div>
+                      `;
+                      
+                      historyList.insertBefore(li, buttonContainer);
+                  });
+
+                  // Update the current index
+                  hiddenContainer.dataset.currentIndex = currentIndex + 5;
+
+                  // Hide the buttons if we've shown all items
+                  if (currentIndex + 5 >= items.length) {
+                      buttonContainer.style.display = 'none';
+                  }
+              };
+
+              const showAllButton = document.createElement('button');
+              showAllButton.className = 'more-button';
+              showAllButton.textContent = 'Show All';
+              showAllButton.onclick = () => {
+                  const items = JSON.parse(hiddenContainer.dataset.remainingItems);
+                  const currentIndex = parseInt(hiddenContainer.dataset.currentIndex);
+                  const remainingItems = items.slice(currentIndex);
+                  
+                  remainingItems.forEach(entry => {
+                      const startDate = entry.start_date ? new Date(entry.start_date) : null;
+                      const endDate = entry.end_date ? new Date(entry.end_date) : null;
+                      
+                      const periodDisplay = startDate && endDate 
+                        ? `${startDate.toLocaleDateString()} - ${endDate.toLocaleDateString()}`
+                        : 'Period not available';
+
+                      const placement = entry.placement;
+                      let placementDisplay = `${placement}${getOrdinalSuffix(placement)}`;
+                      
+                      if (placement === 1) {
+                        placementDisplay = `🥇 ${placementDisplay}`;
+                      } else if (placement === 2) {
+                        placementDisplay = `🥈 ${placementDisplay}`;
+                      } else if (placement === 3) {
+                        placementDisplay = `🥉 ${placementDisplay}`;
+                      }
+
+                      const li = document.createElement('li');
+                      li.innerHTML = `
+                        <div class="period">${periodDisplay}</div>
+                        <div>
+                          <span class="placement">${placementDisplay}</span>
+                        </div>
+                        <div class="credits">${formatNumberWithCommas(entry.credits)} credits earned</div>
+                        <div class="most-played">Most played: ${entry.most_played_game} (${entry.most_played_hours.toFixed(1)}h)</div>
+                      `;
+                      
+                      historyList.insertBefore(li, buttonContainer);
+                  });
+
+                  // Hide the buttons after showing all items
+                  buttonContainer.style.display = 'none';
+              };
+
+              buttonContainer.appendChild(moreButton);
+              buttonContainer.appendChild(showAllButton);
+              historyList.appendChild(buttonContainer);
+          }
         } catch (error) {
           console.error('Error fetching leaderboard history:', error);
           const historyList = document.querySelector(`.leaderboard-history-list.${type}`);
