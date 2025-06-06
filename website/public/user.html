@@ -512,44 +512,76 @@
                   buttonContainer.style.justifyContent = 'center';
                   buttonContainer.style.marginTop = '1rem';
 
-                  // Store the current index in a data attribute
+                  // Store both the current index and total items in data attributes
                   buttonContainer.dataset.currentIndex = '5';
+                  buttonContainer.dataset.totalItems = activityData.length.toString();
+                  console.log('Initial setup - Index:', buttonContainer.dataset.currentIndex, 'Total:', buttonContainer.dataset.totalItems);
 
                   const moreButton = document.createElement('button');
                   moreButton.className = 'more-button';
                   moreButton.textContent = 'Show More';
                   moreButton.onclick = () => {
-                      const currentIndex = parseInt(buttonContainer.dataset.currentIndex);
-                      const nextItems = activityData.slice(currentIndex, currentIndex + 5);
-                      
-                      nextItems.forEach(activity => {
-                          const hours = activity.hours;
-                          const timeDisplay = hours >= 1 ? `${hours.toFixed(1)}h` : `${(hours * 60).toFixed(0)}m`;
-                          const date = new Date(activity.timestamp).toLocaleDateString();
+                      try {
+                          const currentIndex = parseInt(buttonContainer.dataset.currentIndex);
+                          const totalItems = parseInt(buttonContainer.dataset.totalItems);
                           
-                          const listItem = document.createElement('li');
-                          listItem.innerHTML = `
-                            <img class="game-cover-activity" src="${activity.box_art_url || 'https://static-cdn.jtvnw.net/ttv-boxart/loading_boxart.png'}" alt="${activity.game_name}" onerror="this.src='https://static-cdn.jtvnw.net/ttv-boxart/loading_boxart.png'">
-                            <div class="activity-details">
-                              <div class="game-name">
-                                <a href="game.html?game=${encodeURIComponent(activity.game_name)}" style="color: #fff; text-decoration: none;">${activity.game_name}</a>
-                              </div>
-                              <div class="activity-stats-group">
-                                <div class="activity-time">${timeDisplay}</div>
-                                <div class="activity-credits">${formatNumberWithCommas(activity.credits_earned)} credits earned</div>
-                                <div class="activity-date">${date}</div>
-                              </div>
-                            </div>
-                          `;
-                          activityList.insertBefore(listItem, buttonContainer);
-                      });
+                          console.log('Show More clicked - Current:', currentIndex, 'Total:', totalItems);
+                          
+                          if (isNaN(currentIndex) || isNaN(totalItems)) {
+                              console.error('Invalid index or total items');
+                              return;
+                          }
 
-                      // Update the current index
-                      buttonContainer.dataset.currentIndex = currentIndex + 5;
+                          const nextItems = activityData.slice(currentIndex, currentIndex + 5);
+                          console.log('Next items to show:', nextItems.length);
+                          
+                          if (nextItems.length === 0) {
+                              console.log('No more items to show');
+                              buttonContainer.style.display = 'none';
+                              return;
+                          }
 
-                      // Hide the buttons if we've shown all items
-                      if (currentIndex + 5 >= activityData.length) {
-                          buttonContainer.style.display = 'none';
+                          nextItems.forEach(activity => {
+                              if (!activity) {
+                                  console.error('Invalid activity item');
+                                  return;
+                              }
+
+                              const hours = activity.hours;
+                              const timeDisplay = hours >= 1 ? `${hours.toFixed(1)}h` : `${(hours * 60).toFixed(0)}m`;
+                              const date = new Date(activity.timestamp).toLocaleDateString();
+                              
+                              const listItem = document.createElement('li');
+                              listItem.innerHTML = `
+                                <img class="game-cover-activity" src="${activity.box_art_url || 'https://static-cdn.jtvnw.net/ttv-boxart/loading_boxart.png'}" alt="${activity.game_name}" onerror="this.src='https://static-cdn.jtvnw.net/ttv-boxart/loading_boxart.png'">
+                                <div class="activity-details">
+                                  <div class="game-name">
+                                    <a href="game.html?game=${encodeURIComponent(activity.game_name)}" style="color: #fff; text-decoration: none;">${activity.game_name}</a>
+                                  </div>
+                                  <div class="activity-stats-group">
+                                    <div class="activity-time">${timeDisplay}</div>
+                                    <div class="activity-credits">${formatNumberWithCommas(activity.credits_earned)} credits earned</div>
+                                    <div class="activity-date">${date}</div>
+                                  </div>
+                                </div>
+                              `;
+                              activityList.insertBefore(listItem, buttonContainer);
+                          });
+
+                          // Update the current index
+                          const newIndex = currentIndex + nextItems.length;
+                          buttonContainer.dataset.currentIndex = newIndex.toString();
+                          console.log('New index set to:', newIndex);
+
+                          // Only hide if we've shown all items
+                          if (newIndex >= totalItems) {
+                              console.log('All items shown, hiding buttons');
+                              buttonContainer.style.display = 'none';
+                          } else {
+                              console.log('More items available, keeping buttons visible');
+                          }
+                      } catch (error) {
+                          console.error('Error in Show More:', error);
                       }
                   };
 
@@ -557,33 +589,60 @@
                   showAllButton.className = 'more-button';
                   showAllButton.textContent = 'Show All';
                   showAllButton.onclick = () => {
-                      const currentIndex = parseInt(buttonContainer.dataset.currentIndex);
-                      const remainingItems = activityData.slice(currentIndex);
-                      
-                      remainingItems.forEach(activity => {
-                          const hours = activity.hours;
-                          const timeDisplay = hours >= 1 ? `${hours.toFixed(1)}h` : `${(hours * 60).toFixed(0)}m`;
-                          const date = new Date(activity.timestamp).toLocaleDateString();
+                      try {
+                          const currentIndex = parseInt(buttonContainer.dataset.currentIndex);
+                          const totalItems = parseInt(buttonContainer.dataset.totalItems);
                           
-                          const listItem = document.createElement('li');
-                          listItem.innerHTML = `
-                            <img class="game-cover-activity" src="${activity.box_art_url || 'https://static-cdn.jtvnw.net/ttv-boxart/loading_boxart.png'}" alt="${activity.game_name}" onerror="this.src='https://static-cdn.jtvnw.net/ttv-boxart/loading_boxart.png'">
-                            <div class="activity-details">
-                              <div class="game-name">
-                                <a href="game.html?game=${encodeURIComponent(activity.game_name)}" style="color: #fff; text-decoration: none;">${activity.game_name}</a>
-                              </div>
-                              <div class="activity-stats-group">
-                                <div class="activity-time">${timeDisplay}</div>
-                                <div class="activity-credits">${formatNumberWithCommas(activity.credits_earned)} credits earned</div>
-                                <div class="activity-date">${date}</div>
-                              </div>
-                            </div>
-                          `;
-                          activityList.insertBefore(listItem, buttonContainer);
-                      });
+                          console.log('Show All clicked - Current:', currentIndex, 'Total:', totalItems);
+                          
+                          if (isNaN(currentIndex) || isNaN(totalItems)) {
+                              console.error('Invalid index or total items');
+                              return;
+                          }
 
-                      // Hide the buttons after showing all items
-                      buttonContainer.style.display = 'none';
+                          const remainingItems = activityData.slice(currentIndex);
+                          console.log('Remaining items to show:', remainingItems.length);
+                          
+                          if (remainingItems.length === 0) {
+                              console.log('No more items to show');
+                              buttonContainer.style.display = 'none';
+                              return;
+                          }
+
+                          remainingItems.forEach(activity => {
+                              if (!activity) {
+                                  console.error('Invalid activity item');
+                                  return;
+                              }
+
+                              const hours = activity.hours;
+                              const timeDisplay = hours >= 1 ? `${hours.toFixed(1)}h` : `${(hours * 60).toFixed(0)}m`;
+                              const date = new Date(activity.timestamp).toLocaleDateString();
+                              
+                              const listItem = document.createElement('li');
+                              listItem.innerHTML = `
+                                <img class="game-cover-activity" src="${activity.box_art_url || 'https://static-cdn.jtvnw.net/ttv-boxart/loading_boxart.png'}" alt="${activity.game_name}" onerror="this.src='https://static-cdn.jtvnw.net/ttv-boxart/loading_boxart.png'">
+                                <div class="activity-details">
+                                  <div class="game-name">
+                                    <a href="game.html?game=${encodeURIComponent(activity.game_name)}" style="color: #fff; text-decoration: none;">${activity.game_name}</a>
+                                  </div>
+                                  <div class="activity-stats-group">
+                                    <div class="activity-time">${timeDisplay}</div>
+                                    <div class="activity-credits">${formatNumberWithCommas(activity.credits_earned)} credits earned</div>
+                                    <div class="activity-date">${date}</div>
+                                  </div>
+                                </div>
+                              `;
+                              activityList.insertBefore(listItem, buttonContainer);
+                          });
+
+                          // Update the index to the total length
+                          buttonContainer.dataset.currentIndex = totalItems.toString();
+                          console.log('All items shown, hiding buttons');
+                          buttonContainer.style.display = 'none';
+                      } catch (error) {
+                          console.error('Error in Show All:', error);
+                      }
                   };
 
                   buttonContainer.appendChild(moreButton);
