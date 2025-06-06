@@ -4,7 +4,6 @@ import sys # Import the sys module
 import re # Import re for HTML cleaning
 from dotenv import load_dotenv
 from flask_cors import CORS
-from flask_talisman import Talisman
 print("sys.path before storage import:", sys.path) # Print sys.path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))) # Add parent directory to path
 from storage import GameStorage # Import GameStorage
@@ -29,27 +28,19 @@ app = Flask(__name__,
 # Enable CORS for all routes
 CORS(app, resources={r"/*": {"origins": "*"}})
 
-# Enable HTTPS/SSL
-Talisman(app, 
-    force_https=True,
-    strict_transport_security=True,
-    session_cookie_secure=True,
-    content_security_policy={
-        'default-src': "'self'",
-        'img-src': "'self' data: https:",
-        'script-src': "'self' 'unsafe-inline' 'unsafe-eval' https:",
-        'style-src': "'self' 'unsafe-inline' https:",
-        'font-src': "'self' https:",
-        'connect-src': "'self' https:"
-    }
-)
-
 # Add debug logging for database URL
 database_url = os.getenv('DATABASE_URL')
 print(f"DEBUG: Database URL: {database_url}")
 
-storage = GameStorage() # Instantiate GameStorage
-print("DEBUG: GameStorage initialized")
+# Initialize storage with debug logging
+try:
+    storage = GameStorage()
+    print("DEBUG: GameStorage initialized successfully")
+except Exception as e:
+    print(f"ERROR: Failed to initialize GameStorage: {str(e)}")
+    print("Full traceback:")
+    traceback.print_exc()
+    raise
 
 # Get RAWG API key from environment variable
 RAWG_API_KEY = os.getenv('RAWG_API_KEY')
@@ -332,16 +323,19 @@ def handle_error(error):
 # Add endpoint to fetch leaderboard data
 @app.route('/api/leaderboard')
 def get_leaderboard():
+    print("DEBUG: /api/leaderboard endpoint hit")
     timeframe = request.args.get('timeframe', 'weekly')
-    print(f"Fetching leaderboard for timeframe: {timeframe}")
+    print(f"DEBUG: Fetching leaderboard for timeframe: {timeframe}")
     try:
         if timeframe == 'weekly' or timeframe == 'monthly':
             leaderboard_type = LeaderboardType.WEEKLY if timeframe == 'weekly' else LeaderboardType.MONTHLY
-            # Get or create the current period for the requested timeframe
+            print(f"DEBUG: Using leaderboard type: {leaderboard_type}")
+            # Get the current active period for the requested timeframe
             current_period = run_async(storage.get_or_create_current_period(leaderboard_type))
+            print(f"DEBUG: Current period: {current_period}")
             # Get the leaderboard data for the current period
-            leaderboard_data = run_async(storage.get_leaderboard_by_timeframe(leaderboard_type, period=current_period))
-            print(f"DEBUG: Raw data from storage.get_leaderboard_by_timeframe: {leaderboard_data}") # Debug print
+            leaderboard_data = run_async(storage.get_leaderboard_by_timeframe(leaderboard_type))
+            print(f"DEBUG: Leaderboard data: {leaderboard_data}")
 
             # Format the data for the frontend
             formatted_data = []
@@ -366,41 +360,12 @@ def get_leaderboard():
                     'most_played_game': most_played_game,
                     'most_played_hours': most_played_hours
                 })
-        elif timeframe == 'alltime':
-            # Get all-time leaderboard data
-            alltime_leaderboard_data = storage.get_leaderboard()
-            print(f"DEBUG: Raw data from storage.get_leaderboard: {alltime_leaderboard_data}") # Debug print
-
-            # Format the data for the frontend
-            formatted_data = []
-            for index, (user_id, total_credits) in enumerate(alltime_leaderboard_data):
-                # Convert user_id to string immediately
-                user_id_str = str(user_id)
-                # Use cached Discord user info
-                discord_info = get_cached_discord_user_info(user_id_str)
-                if discord_info:
-                    avatar_url = discord_info['avatar_url']
-                    username = discord_info['username']
-                else:
-                    avatar_url = "https://www.gravatar.com/avatar/?d=mp&s=50"
-                    username = f"User{user_id_str}"
-
-                formatted_data.append({
-                    'user_id': user_id_str,
-                    'username': username,
-                    'avatar_url': avatar_url,
-                    'points': total_credits,
-                    'games_played': 0,
-                    'most_played_game': 'N/A',
-                    'most_played_hours': 0
-                })
-
+            print(f"DEBUG: Formatted data: {formatted_data}")
+            return jsonify(formatted_data)
         else:
             return jsonify({'error': 'Invalid timeframe specified'}), 400
-
-        return jsonify(formatted_data)
     except Exception as e:
-        print(f"Error getting leaderboard data: {str(e)}")
+        print(f"ERROR: Failed to get leaderboard data: {str(e)}")
         print("Full traceback:")
         traceback.print_exc()
         return jsonify({'error': 'Failed to get leaderboard data'}), 500
