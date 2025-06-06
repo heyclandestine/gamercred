@@ -362,29 +362,35 @@
 
           // Update Most Played section
           const mostPlayedCarousel = document.querySelector('#played-' + timeframe + ' .activity-carousel');
-           if (!mostPlayedCarousel) {
+          if (!mostPlayedCarousel) {
               console.error(`Most played carousel element not found for timeframe: ${timeframe}`);
-                  return;
-              }
+              return;
+          }
           mostPlayedCarousel.innerHTML = ''; // Clear previous content
 
           const mostPlayedData = userData.most_played; // This is now a list of games
           console.log('Most played data:', mostPlayedData); // Debug log
-          if (mostPlayedData && mostPlayedData.length > 0) {
-               mostPlayedData.forEach(game => {
-                   console.log('Processing game:', game); // Debug log
-                   const hoursPlayed = game.total_hours;
-                   const timePlayedDisplay = hoursPlayed >= 1 ? `${hoursPlayed.toFixed(1)} hrs` : `${(hoursPlayed * 60).toFixed(0)} mins`;
+          
+          if (mostPlayedData && Array.isArray(mostPlayedData) && mostPlayedData.length > 0) {
+              mostPlayedData.forEach(game => {
+                  if (!game || typeof game !== 'object') {
+                      console.error('Invalid game data:', game);
+                      return;
+                  }
+                  
+                  console.log('Processing game:', game); // Debug log
+                  const hoursPlayed = game.total_hours || 0;
+                  const timePlayedDisplay = hoursPlayed >= 1 ? `${hoursPlayed.toFixed(1)} hrs` : `${(hoursPlayed * 60).toFixed(0)} mins`;
 
                   const cardHtml = `
                       <div class="activity-card-wrap">
                           <div class="activity-card">
-                               <a href="game.html?game=${encodeURIComponent(game.game_name)}">
+                              <a href="game.html?game=${encodeURIComponent(game.game_name)}">
                                   <img class="game-cover-carousel" src="${game.box_art_url || 'https://static-cdn.jtvnw.net/ttv-boxart/loading_boxart.png'}" alt="${game.game_name}">
                               </a>
                               <div class="activity-overlay">
                                   <div class="activity-userblock">
-                                       <span class="activity-sessions">${game.game_name}</span>
+                                      <span class="activity-sessions">${game.game_name}</span>
                                       <span class="activity-time">${timePlayedDisplay}</span>
                                   </div>
                               </div>
@@ -392,9 +398,10 @@
                       </div>
                   `;
                   mostPlayedCarousel.innerHTML += cardHtml; // Append each card
-               });
+              });
           } else {
-               mostPlayedCarousel.innerHTML = '<p>No gaming activity recorded for this timeframe.</p>';
+              console.log('No most played games data or invalid format:', mostPlayedData);
+              mostPlayedCarousel.innerHTML = '<p>No gaming activity recorded for this timeframe.</p>';
           }
 
           } catch (error) {
