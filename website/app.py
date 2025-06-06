@@ -431,7 +431,7 @@ def get_leaderboard():
                 else:
                     avatar_url = "https://www.gravatar.com/avatar/?d=mp&s=50"
                     username = f"User{user_id_str}"
-                
+
                 user_data = {
                     'user_id': user_id_str,
                     'username': username,
@@ -588,7 +588,7 @@ def get_user_history_endpoint(user_identifier):
         
         # Profile DB query
         start_db = time.time()
-        user_history = storage.get_user_gaming_history(user_id_str, limit=5) # Limit to 5 for recent activity
+        user_history = storage.get_user_gaming_history(user_id_str) # Removed limit
         end_db = time.time()
         print(f"DEBUG: DB query took {end_db - start_db:.3f} seconds")
         print(f"DEBUG: Retrieved {len(user_history)} history entries")
