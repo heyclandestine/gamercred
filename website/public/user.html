@@ -486,15 +486,15 @@
                       const date = new Date(activity.timestamp).toLocaleDateString();
                       const listItem = document.createElement('li');
                       listItem.innerHTML = `
-                        <img class=\"game-cover-activity\" src=\"${activity.box_art_url || 'https://static-cdn.jtvnw.net/ttv-boxart/loading_boxart.png'}\" alt=\"${activity.game_name}\" onerror=\"this.src='https://static-cdn.jtvnw.net/ttv-boxart/loading_boxart.png'\">
-                        <div class=\"activity-details\">
-                          <div class=\"game-name\">
-                            <a href=\"game.html?game=${encodeURIComponent(activity.game_name)}\" style=\"color: #fff; text-decoration: none;\">${activity.game_name}</a>
+                        <img class="game-cover-activity" src="${activity.box_art_url || 'https://static-cdn.jtvnw.net/ttv-boxart/loading_boxart.png'}" alt="${activity.game_name}" onerror="this.src='https://static-cdn.jtvnw.net/ttv-boxart/loading_boxart.png'">
+                        <div class="activity-details">
+                          <div class="game-name">
+                            <a href="game.html?game=${encodeURIComponent(activity.game_name)}" style="color: #fff; text-decoration: none;">${activity.game_name}</a>
                           </div>
-                          <div class=\"activity-stats-group\">
-                            <div class=\"activity-time\">${timeDisplay}</div>
-                            <div class=\"activity-credits\">${formatNumberWithCommas(activity.credits_earned)} credits earned</div>
-                            <div class=\"activity-date\">${date}</div>
+                          <div class="activity-stats-group">
+                            <div class="activity-time">${timeDisplay}</div>
+                            <div class="activity-credits">${formatNumberWithCommas(activity.credits_earned)} credits earned</div>
+                            <div class="activity-date">${date}</div>
                           </div>
                         </div>
                       `;
@@ -505,6 +505,7 @@
                       }
                   });
                   shownCount += toShow.length;
+                  return shownCount >= activityData.length;
               };
 
               // Show first 5 items
@@ -523,8 +524,8 @@
                   moreButton.className = 'more-button';
                   moreButton.textContent = 'Show More';
                   moreButton.onclick = () => {
-                      showItems(5);
-                      if (shownCount >= activityData.length) {
+                      const allShown = showItems(5);
+                      if (allShown) {
                           buttonContainer.style.display = 'none';
                       }
                   };
@@ -533,8 +534,11 @@
                   showAllButton.className = 'more-button';
                   showAllButton.textContent = 'Show All';
                   showAllButton.onclick = () => {
-                      showItems(activityData.length - shownCount);
-                      buttonContainer.style.display = 'none';
+                      const remainingCount = activityData.length - shownCount;
+                      if (remainingCount > 0) {
+                          showItems(remainingCount);
+                          buttonContainer.style.display = 'none';
+                      }
                   };
 
                   buttonContainer.appendChild(moreButton);
