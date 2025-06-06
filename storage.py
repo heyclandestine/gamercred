@@ -9,6 +9,9 @@ import discord
 from dotenv import load_dotenv
 import aiohttp
 import asyncio
+from collections import defaultdict
+from sqlalchemy.sql import select
+import traceback
 
 # Load environment variables
 load_dotenv()
@@ -16,17 +19,33 @@ load_dotenv()
 class GameStorage:
     def __init__(self):
         print("DEBUG: Initializing GameStorage")
+        # Get database URL from environment variables
         database_url = os.getenv('DATABASE_URL')
         print(f"DEBUG: Using database URL: {database_url}")
         
+        # Initialize timezone
+        self.cst = pytz.timezone('America/Chicago')
+        print("DEBUG: Initialized CST timezone")
+        
+        if not database_url:
+            raise ValueError("No database URL found. Set DATABASE_URL to your PostgreSQL connection string")
+        
         try:
+            print("DEBUG: Using PostgreSQL database")
             self.engine = create_engine(database_url)
             print("DEBUG: Database engine created successfully")
             
             # Test the connection
             with self.engine.connect() as connection:
-                connection.execute(text("SELECT 1"))
+                result = connection.execute(text("SELECT 1")).scalar()
+                print(f"DEBUG: Database connection test result: {result}")
+                if result != 1:
+                    raise Exception("Database connection test failed")
                 print("DEBUG: Database connection test successful")
+                
+                # Print database version
+                version = connection.execute(text("SELECT version()")).scalar()
+                print(f"DEBUG: Database version: {version}")
         except Exception as e:
             print(f"ERROR: Failed to initialize database connection: {str(e)}")
             print("Full traceback:")
@@ -157,120 +176,126 @@ class GameStorage:
         finally:
             session.close()
 
-    async def get_or_create_current_period(self, leaderboard_type: LeaderboardType, bot=None) -> LeaderboardPeriod:
-        """Get or create the current leaderboard period"""
+    def get_or_create_current_period(self, leaderboard_type: LeaderboardType, bot=None) -> LeaderboardPeriod:
+        """Get or create the current leaderboard period."""
+        print(f"\n=== DEBUG: Getting/creating current period for {leaderboard_type} ===")
         session = self.Session()
         try:
-            # Get the current time in CST
-            current_time = datetime.now(self.cst)
-            
-            # For weekly leaderboards, periods start on Monday at 00:00 CST
+            # Use naive current time and localize to CST
+            naive_now = datetime.now()
+            current_time = self.cst.localize(naive_now)
+            print(f"DEBUG: Current time in CST: {current_time}")
+
+            # Calculate period start time based on leaderboard type
             if leaderboard_type == LeaderboardType.WEEKLY:
-                # Get the most recent Monday
-                days_since_monday = current_time.weekday()
-                period_start = current_time - timedelta(days=days_since_monday)
+                # Start of current week (Monday)
+                period_start = current_time - timedelta(days=current_time.weekday())
                 period_start = period_start.replace(hour=0, minute=0, second=0, microsecond=0)
                 period_end = period_start + timedelta(days=7)
-            # For monthly leaderboards, periods start on the 1st of each month at 00:00 CST
-            else:
+            else:  # MONTHLY
+                # Start of current month
                 period_start = current_time.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-                # Get the first day of next month
+                # Start of next month
                 if current_time.month == 12:
                     period_end = current_time.replace(year=current_time.year + 1, month=1, day=1)
                 else:
                     period_end = current_time.replace(month=current_time.month + 1, day=1)
                 period_end = period_end.replace(hour=0, minute=0, second=0, microsecond=0)
 
+            print(f"DEBUG: Period start: {period_start}")
+            print(f"DEBUG: Period end: {period_end}")
+
             # Check if we already have a period for this timeframe
-            period = session.query(LeaderboardPeriod)\
-                .filter(LeaderboardPeriod.leaderboard_type == leaderboard_type)\
-                .filter(LeaderboardPeriod.start_time == period_start)\
-                .filter(LeaderboardPeriod.end_time == period_end)\
-                .first()
-
-            if not period:
-                # Get the next available ID
-                next_id = session.query(func.max(LeaderboardPeriod.id)).scalar()
-                next_id = (next_id or 0) + 1
-
-                # Create a new period with explicit ID
-                period = LeaderboardPeriod(
-                    id=next_id,
-                    leaderboard_type=leaderboard_type,
-                    start_time=period_start,
-                    end_time=period_end,
-                    is_active=True
+            existing_period = session.query(LeaderboardPeriod).filter(
+                and_(
+                    LeaderboardPeriod.leaderboard_type == leaderboard_type,
+                    LeaderboardPeriod.start_time == period_start,
+                    LeaderboardPeriod.end_time == period_end
                 )
-                session.add(period)
-                session.commit()
-                session.refresh(period)
+            ).first()
 
-                # If we have a bot instance, announce the new period
-                if bot:
-                    await self.announce_leaderboard_period(period, bot)
+            if existing_period:
+                print(f"DEBUG: Found existing period: {existing_period}")
+                return existing_period
 
-            return period
+            # Create new period
+            print("DEBUG: Creating new period")
+            new_period = LeaderboardPeriod(
+                leaderboard_type=leaderboard_type,
+                start_time=period_start,
+                end_time=period_end,
+                is_active=True
+            )
+            session.add(new_period)
+            session.commit()
+            print(f"DEBUG: Created new period: {new_period}")
+
+            # If we have a bot and this is a new period, announce it
+            if bot:
+                asyncio.create_task(self.announce_period_end(bot, leaderboard_type, new_period))
+
+            return new_period
+
+        except Exception as e:
+            print(f"ERROR: Failed to get/create period: {str(e)}")
+            print("Full traceback:")
+            traceback.print_exc()
+            session.rollback()
+            raise
         finally:
             session.close()
 
-    async def get_leaderboard_by_timeframe(self, leaderboard_type: LeaderboardType, bot: Optional[discord.Client] = None, period: Optional[LeaderboardPeriod] = None) -> List[Tuple[int, float, int, str, float]]:
-        """Get sorted list of (user_id, credits, games_played, most_played_game, most_played_hours) tuples for a given period"""
-        session = self.Session()
+    def get_leaderboard_by_timeframe(self, timeframe: LeaderboardType) -> List[Tuple[int, int, int, str, int]]:
+        """Get leaderboard data for a specific timeframe."""
+        print(f"\n=== DEBUG: Getting leaderboard for timeframe {timeframe} ===")
+        db_session = self.Session()
         try:
-            # Get current period if not provided
-            if period is None:
-                period = await self.get_or_create_current_period(leaderboard_type, bot)
+            # Get the current period
+            print("DEBUG: Getting current period...")
+            current_period = self.get_or_create_current_period(timeframe)
+            print(f"DEBUG: Current period: {current_period}")
+            print(f"DEBUG: Period start: {current_period.start_time}")
+            print(f"DEBUG: Period end: {current_period.end_time}")
 
-            # Debug logging
-            print(f"\nGetting leaderboard for period:")
-            print(f"Start: {period.start_time} CST")
-            print(f"End: {period.end_time} CST")
-
-            # Get basic stats for the current period
-            query = session.query(
+            # Use a single query to get all the data we need
+            print("DEBUG: Executing optimized leaderboard query...")
+            results = db_session.query(
                 GamingSession.user_id,
                 func.sum(GamingSession.credits_earned).label('total_credits'),
-                func.count(GamingSession.game_id.distinct()).label('games_played')
+                func.count(GamingSession.game_id.distinct()).label('games_played'),
+                func.max(Game.name).label('most_played_game'),
+                func.sum(GamingSession.hours).label('most_played_hours')
+            ).join(
+                Game, GamingSession.game_id == Game.id
             ).filter(
-                GamingSession.timestamp >= period.start_time,
-                GamingSession.timestamp < period.end_time
-            )
+                and_(
+                    GamingSession.timestamp >= current_period.start_time,
+                    GamingSession.timestamp < current_period.end_time
+                )
+            ).group_by(
+                GamingSession.user_id
+            ).order_by(
+                func.sum(GamingSession.credits_earned).desc()
+            ).all()
 
-            results = query.group_by(GamingSession.user_id)\
-                         .order_by(func.sum(GamingSession.credits_earned).desc())\
-                         .all()
+            print(f"DEBUG: Found {len(results)} users in leaderboard")
+            
+            # Format the results
+            leaderboard = []
+            for user_id, credits, games_played, most_played_game, most_played_hours in results:
+                leaderboard.append((user_id, credits, games_played, most_played_game, most_played_hours))
+                print(f"DEBUG: Added user {user_id} to leaderboard with {credits} credits")
 
-            # Debug logging
-            print(f"Found {len(results)} users with activity in this period")
+            print(f"DEBUG: Final leaderboard: {leaderboard}")
+            return leaderboard
 
-            # For each user, get their most played game in the period
-            final_results = []
-            for user_id, credits, games in results:
-                # Query to get the most played game for this user
-                most_played_query = session.query(
-                    Game.name,
-                    func.sum(GamingSession.hours).label('total_hours')
-                ).join(GamingSession)\
-                 .filter(
-                    GamingSession.user_id == user_id,
-                    GamingSession.timestamp >= period.start_time,
-                    GamingSession.timestamp < period.end_time
-                 )
-
-                most_played_game = most_played_query.group_by(Game.name)\
-                    .order_by(func.sum(GamingSession.hours).desc())\
-                    .first()
-
-                game_name = most_played_game.name if most_played_game else "No games"
-                game_hours = float(most_played_game.total_hours) if most_played_game else 0.0
-                
-                # Add the total credits without bonus credits
-                total_credits = float(credits or 0)
-                final_results.append((user_id, total_credits, games, game_name, game_hours))
-            print(f"DEBUG: Raw leaderboard data for timeframe {leaderboard_type.value}: {final_results}")
-            return final_results
+        except Exception as e:
+            print(f"ERROR: Failed to get leaderboard: {str(e)}")
+            print("Full traceback:")
+            traceback.print_exc()
+            raise
         finally:
-            session.close()
+            db_session.close()
 
     async def record_leaderboard_placements(self, leaderboard_type: LeaderboardType, placements: List[Tuple[int, float, int, str, float]], period: LeaderboardPeriod) -> None:
         """Record placements for the given leaderboard period"""
@@ -829,7 +854,7 @@ class GameStorage:
 
             for period in active_periods:
                 # Get current leaderboard data for this period
-                leaderboard_data = await self.get_leaderboard_by_timeframe(period.leaderboard_type, period=period)
+                leaderboard_data = await self.get_leaderboard_by_timeframe(period.leaderboard_type)
                 if leaderboard_data:
                     # Record the updated placements
                     await self.record_leaderboard_placements(period.leaderboard_type, leaderboard_data, period)
@@ -1197,54 +1222,71 @@ class GameStorage:
         finally:
             session.close()
 
-    async def get_total_game_hours_by_timeframe(self, timeframe: str) -> List[Tuple[str, float]]:
+    async def get_total_game_hours_by_timeframe(self, timeframe: str) -> List[Tuple[str, float, str]]:
         """Get the total hours played for each game within a given timeframe."""
+        print(f"DEBUG: Starting get_total_game_hours_by_timeframe for timeframe: {timeframe}")
         session = self.Session()
         try:
-            print(f"DEBUG: Getting total game hours for timeframe: {timeframe}")
+            print(f"DEBUG: Created database session")
             query = session.query(
-                Game.name,  # Select the game name from the Game table
-                func.sum(GamingSession.hours),
-                Game.box_art_url # Select the box art URL
-            ).join(Game) # Join with the Game table
+                Game.name,
+                func.sum(GamingSession.hours).label('total_hours'),
+                Game.box_art_url
+            ).join(Game, GamingSession.game_id == Game.id)
 
-            # Use naive datetime for calculations, localize only the final start_time
-            naive_now = datetime.now()
+            print(f"DEBUG: Created base query")
+
+            # Get current time in CST
+            current_time = datetime.now(self.cst)
+            print(f"DEBUG: Current time in CST: {current_time}")
             start_time = None
 
             if timeframe == 'weekly':
                 # Start from last Monday 00:00 CST
-                days_since_monday = naive_now.weekday()
-                naive_start = (naive_now - timedelta(days=days_since_monday)).replace(
+                days_since_monday = current_time.weekday()
+                start_time = (current_time - timedelta(days=days_since_monday)).replace(
                     hour=0, minute=0, second=0, microsecond=0
                 )
-                start_time = self.cst.localize(naive_start)
                 print(f"DEBUG: Weekly start time: {start_time}")
             elif timeframe == 'monthly':
                 # Start from 1st of current month CST
-                naive_start = naive_now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-                start_time = self.cst.localize(naive_start)
+                start_time = current_time.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
                 print(f"DEBUG: Monthly start time: {start_time}")
-            # For 'alltime', no time filter is needed, start_time remains None
+            elif timeframe == 'alltime':
+                print("DEBUG: No time filter for alltime timeframe")
+            else:
+                print(f"DEBUG: Invalid timeframe specified: {timeframe}")
+                return []
 
             if start_time:
-                # Ensure comparison is between timezone-aware datetimes
-                query = query.filter(GamingSession.timestamp >= start_time) # Filter by timestamp in GamingSession
+                query = query.filter(GamingSession.timestamp >= start_time)
                 print(f"DEBUG: Added time filter: {start_time}")
 
             # Group by both game name and box_art_url
             query = query.group_by(Game.name, Game.box_art_url)
+            query = query.order_by(text('total_hours DESC'))
 
+            print("DEBUG: About to execute query...")
+            print(f"DEBUG: Query SQL: {query.statement.compile(compile_kwargs={'literal_binds': True})}")
+            
             results = query.all()
-            print(f"DEBUG: Query results: {results}")
-            return results
+            print(f"DEBUG: Query executed successfully. Number of results: {len(results)}")
+            print(f"DEBUG: Raw query results: {results}")
+            
+            # Format results as list of tuples (game_name, total_hours, box_art_url)
+            formatted_results = [(r.name, float(r.total_hours), r.box_art_url) for r in results]
+            print(f"DEBUG: Formatted results: {formatted_results}")
+            
+            return formatted_results
 
         except Exception as e:
-            print(f"Error getting total game hours for timeframe {timeframe}: {str(e)}")
+            print(f"ERROR: Error getting total game hours for timeframe {timeframe}: {str(e)}")
+            print("Full traceback:")
             import traceback
             traceback.print_exc()
             return []
         finally:
+            print("DEBUG: Closing database session")
             session.close()
 
     async def fetch_game_details_from_rawg(self, game_name: str) -> Optional[Dict]:
@@ -1318,11 +1360,11 @@ class GameStorage:
             return None
 
     async def get_recent_gaming_sessions(self, limit: int = 20) -> List[Dict[str, Any]]:
-        """Get the most recent gaming sessions with game details and user_id."""
+        """Get the most recent gaming sessions with game details."""
         session = self.Session()
         try:
             print(f"DEBUG: Getting recent gaming sessions, limit: {limit}")
-            # Fetch recent gaming sessions and join with Game to get game details
+            # Fetch recent gaming sessions with game details
             sessions_query = session.query(
                 GamingSession.id,
                 GamingSession.user_id,
@@ -1349,7 +1391,7 @@ class GameStorage:
             for row in rows:
                 sessions_data.append({
                     'id': row.id,
-                    'user_id': row.user_id,
+                    'user_id': str(row.user_id),  # Convert user_id to string to preserve precision
                     'game_id': row.game_id,
                     'hours': row.hours,
                     'timestamp': row.timestamp,
@@ -1636,3 +1678,50 @@ class GameStorage:
                     session.commit()
         finally:
             session.close()
+
+    def calculate_credits(self, duration_minutes: int) -> float:
+        """Calculate credits earned for a given duration in minutes."""
+        # Base rate is 1 credit per hour
+        base_rate = 1.0
+        hours = duration_minutes / 60.0
+        return base_rate * hours
+
+    def get_alltime_leaderboard(self) -> List[Tuple[int, int, int, str, int]]:
+        """Get all-time leaderboard data."""
+        print("\n=== DEBUG: Getting all-time leaderboard ===")
+        db_session = self.Session()
+        try:
+            # Use a single query to get all the data we need
+            print("DEBUG: Executing optimized all-time leaderboard query...")
+            results = db_session.query(
+                GamingSession.user_id,
+                func.sum(GamingSession.credits_earned).label('total_credits'),
+                func.count(GamingSession.game_id.distinct()).label('games_played'),
+                func.max(Game.name).label('most_played_game'),
+                func.sum(GamingSession.hours).label('most_played_hours')
+            ).join(
+                Game, GamingSession.game_id == Game.id
+            ).group_by(
+                GamingSession.user_id
+            ).order_by(
+                func.sum(GamingSession.credits_earned).desc()
+            ).all()
+
+            print(f"DEBUG: Found {len(results)} users in all-time leaderboard")
+            
+            # Format the results
+            leaderboard = []
+            for user_id, credits, games_played, most_played_game, most_played_hours in results:
+                leaderboard.append((user_id, credits, games_played, most_played_game, most_played_hours))
+                print(f"DEBUG: Added user {user_id} to leaderboard with {credits} credits")
+
+            print(f"DEBUG: Final leaderboard: {leaderboard}")
+            return leaderboard
+
+        except Exception as e:
+            print(f"ERROR: Failed to get all-time leaderboard: {str(e)}")
+            print("Full traceback:")
+            traceback.print_exc()
+            raise
+        finally:
+            db_session.close()
