@@ -213,8 +213,19 @@ def user():
 
 @app.route('/<path:path>')
 def serve_static(path):
+    # Skip API routes
     if path.startswith('api/'):
         return jsonify({'error': 'API endpoint not found'}), 404
+    
+    # Skip root path
+    if path == '':
+        return send_from_directory(app.static_folder, 'index.html')
+    
+    # Handle HTML files
+    if path.endswith('.html'):
+        return send_from_directory(app.static_folder, path)
+    
+    # Handle static assets
     return send_from_directory(app.static_folder, path)
 
 # API routes
@@ -760,6 +771,36 @@ def search_api():
     users = storage.search_users_by_name(query)
 
     return jsonify({'games': games, 'users': users})
+
+@app.route('/api/all-games')
+def get_all_games():
+    print("\n=== DEBUG: /api/all-games endpoint hit ===")
+    try:
+        # Get all games with their stats
+        games = storage.get_all_games_with_stats()
+        print(f"DEBUG: Retrieved {len(games)} games from storage")
+        
+        # Format the response
+        formatted_games = []
+        for game in games:
+            formatted_games.append({
+                'name': game['name'],
+                'box_art_url': game['box_art_url'],
+                'total_hours': game['total_hours'],
+                'unique_players': game['unique_players'],
+                'credits_per_hour': game['credits_per_hour'],
+                'release_date': game.get('release_date'),  # Optional field
+                'backloggd_url': game['backloggd_url']
+            })
+        
+        print(f"DEBUG: Returning {len(formatted_games)} formatted games")
+        return jsonify(formatted_games)
+    except Exception as e:
+        print(f"Error processing /api/all-games: {e}")
+        print("Full traceback:")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': 'Internal server error'}), 500
 
 if __name__ == '__main__':
     # In production, this won't be used as gunicorn will run the app
