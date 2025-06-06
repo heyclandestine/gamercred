@@ -4,6 +4,7 @@ import sys # Import the sys module
 import re # Import re for HTML cleaning
 from dotenv import load_dotenv
 from flask_cors import CORS
+from flask_talisman import Talisman
 print("sys.path before storage import:", sys.path) # Print sys.path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))) # Add parent directory to path
 from storage import GameStorage # Import GameStorage
@@ -27,6 +28,21 @@ app = Flask(__name__,
 
 # Enable CORS for all routes
 CORS(app, resources={r"/*": {"origins": "*"}})
+
+# Enable HTTPS/SSL
+Talisman(app, 
+    force_https=True,
+    strict_transport_security=True,
+    session_cookie_secure=True,
+    content_security_policy={
+        'default-src': "'self'",
+        'img-src': "'self' data: https:",
+        'script-src': "'self' 'unsafe-inline' 'unsafe-eval' https:",
+        'style-src': "'self' 'unsafe-inline' https:",
+        'font-src': "'self' https:",
+        'connect-src': "'self' https:"
+    }
+)
 
 # Add debug logging for database URL
 database_url = os.getenv('DATABASE_URL')
