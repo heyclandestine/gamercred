@@ -568,6 +568,15 @@ class GameStorage:
                     # Update existing game
                     game.credits_per_hour = credits
                     game.added_by = user_id
+                    
+                    # Fetch RAWG data if missing
+                    if game.rawg_id is None or game.box_art_url is None:
+                        print(f"Fetching RAWG data for existing game: {game.name}")
+                        rawg_data = await self.fetch_game_details_from_rawg(game.name)
+                        if rawg_data:
+                            game.rawg_id = rawg_data.get('id')
+                            game.box_art_url = rawg_data.get('box_art_url')
+                    
                     print("Committing update...")
                     session.commit()
                     print("Update committed successfully")
@@ -1338,9 +1347,9 @@ class GameStorage:
             print(f"DEBUG: Description length: {len(description)}")
 
             return {
-                'id': game_id,  # Changed from 'rawg_id' to 'id' to match the database column
+                'rawg_id': game_id,  # Changed from 'id' to 'rawg_id' to match database column
                 'display_name': rawg_display_name,
-                'box_art_url': box_art_url,  # Changed from 'background_image' to 'box_art_url'
+                'box_art_url': box_art_url,
                 'description': description
             }
 

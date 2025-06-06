@@ -24,7 +24,10 @@
   <main class="game-main">
     <section class="game-header-section card">
       <div class="game-header">
-        <img class="game-cover" src="" alt="Game Cover">
+        <div class="game-cover-container">
+          <img class="game-cover" src="" alt="Game Cover">
+          <a href="#" class="game-link backloggd-link-below-cover" style="display: none;">Check it out on Backloggd</a>
+        </div>
         <div class="game-info-and-description-container">
           <h1>Loading...</h1>
           <div class="stats-and-description-container">
@@ -55,7 +58,6 @@
           </div>
         </div>
       </div>
-      <a href="#" class="game-link backloggd-link-below-cover" style="display: none;">Check it out on Backloggd</a>
     </section>
 
     <section class="game-playing card">
@@ -176,8 +178,19 @@
       
       // Set basic game info
       document.title = `${data.name} - Gamer Cred`;
-      document.querySelector('.game-cover').src = data.box_art_url || 'https://via.placeholder.com/300x400?text=No+Cover';
-      document.querySelector('.game-cover').alt = data.name;
+      
+      // Handle cover image with fallback
+      const coverImg = document.querySelector('.game-cover');
+      if (data.box_art_url) {
+        coverImg.src = data.box_art_url;
+        coverImg.onerror = function() {
+          this.src = 'https://static-cdn.jtvnw.net/ttv-boxart/loading_boxart.png';
+        };
+      } else {
+        coverImg.src = 'https://static-cdn.jtvnw.net/ttv-boxart/loading_boxart.png';
+      }
+      coverImg.alt = data.name;
+      
       document.querySelector('.game-info-and-description-container h1').textContent = capitalizeWords(data.name);
 
       // Update stats

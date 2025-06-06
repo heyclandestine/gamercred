@@ -34,15 +34,15 @@ print(f"Debug: Database URL being used: {DATABASE_URL}")
 storage = GameStorage()
 
 async def populate_rawg_data_for_existing_games():
-    """Fetches and populates RAWG data for games missing it in the database."""
+    """Fetches and populates RAWG data for all games in the database."""
     # Use the session maker from GameStorage
     Session = storage.Session
     session = Session()
 
     try:
-        print("Starting RAWG data population for existing games...")
+        print("Starting RAWG data population for all games...")
 
-        # Get all games first to inspect
+        # Get all games
         all_games = session.query(Game).all()
         print(f"Debug: Total games found in database: {len(all_games)}")
 
@@ -50,24 +50,11 @@ async def populate_rawg_data_for_existing_games():
         for i, game in enumerate(all_games[:5]):
             print(f"Debug: Game {i+1}: {game.name}, rawg_id: {game.rawg_id}, box_art_url: {game.box_art_url}")
 
-        # Query games that are missing RAWG ID or box art URL
-        games_to_update = session.query(Game).filter(
-            (Game.rawg_id == None) | (Game.box_art_url == None)
-        ).all()
+        print(f"Found {len(all_games)} games to update.")
 
-        if not games_to_update:
-            print("No games found needing RAWG data update.")
-            return
-
-        print(f"Found {len(games_to_update)} games needing RAWG data update.")
-
-        for game in games_to_update:
+        for game in all_games:
             print(f"Processing game: {game.name}")
-            # Check if RAWG data is already there (might have been added by add_gaming_hours)
-            if game.rawg_id is not None and game.box_art_url is not None:
-                 print(f"  RAWG data already exists for {game.name}. Skipping fetch.")
-                 continue
-
+            
             # Fetch details from RAWG
             rawg_details = await storage.fetch_game_details_from_rawg(game.name)
 
