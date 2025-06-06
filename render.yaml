@@ -3,7 +3,7 @@ services:
     name: gamercred
     env: python
     buildCommand: pip install -r requirements.txt
-    startCommand: gunicorn website.app:app
+    startCommand: gunicorn website.app:app --config gunicorn_config.py
     envVars:
       - key: PYTHON_VERSION
         value: 3.11.0
@@ -11,6 +11,8 @@ services:
         fromDatabase:
           name: gamercred-db
           property: connectionString
+      - key: CORS_ORIGINS
+        value: "*"
 
 databases:
   - name: gamercred-db
