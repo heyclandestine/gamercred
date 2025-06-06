@@ -236,11 +236,11 @@ class GameStorage:
                     is_active=True
                 )
             session.add(new_period)
-                session.commit()
+            session.commit()
             print(f"DEBUG: Created new period: {new_period}")
 
-            # If we have a bot and this is a new period, announce it
-                if bot:
+            # If we have a bot and this is a new period, announce it (only for weekly leaderboards)
+            if bot and leaderboard_type == LeaderboardType.WEEKLY:
                 asyncio.create_task(self.announce_period_end(bot, leaderboard_type, new_period))
 
             return new_period
