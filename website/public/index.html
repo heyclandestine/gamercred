@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=0.4, maximum-scale=1.0, user-scalable=yes">
   <title>Gamer Cred Companion</title>
+  <link rel="icon" type="image/png" href="/favicon.png">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap">
   <link rel="stylesheet" href="style.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
@@ -246,16 +247,13 @@
         const popularList = document.querySelector(`#popular-${timeframe} ol`);
         if (!popularList) return;
 
-        // Show loading state
-        popularList.innerHTML = '';
-        const loadingPlaceholders = createLoadingPlaceholders(5);
-        loadingPlaceholders.forEach(placeholder => popularList.appendChild(placeholder));
-
-        fetch(`/api/popular-games?timeframe=${timeframe}`)
-          .then(response => response.json())
-          .then(data => {
-            popularList.innerHTML = ''; // Clear loading state
-
+        // Try to show cached data instantly
+        const cacheKey = `popular_${timeframe}`;
+        const cached = localStorage.getItem(cacheKey);
+        if (cached) {
+          try {
+            const data = JSON.parse(cached);
+            popularList.innerHTML = '';
             if (data && data.length > 0) {
               data.forEach((game, index) => {
                 const listItem = document.createElement('li');
@@ -263,12 +261,41 @@
                   <span class="rank">${index + 1}</span>
                   <img class="game-cover-sm" src="${game.box_art_url || 'https://static-cdn.jtvnw.net/ttv-boxart/loading_boxart.png'}" alt="${game.name}">
                   <a class="game-link" href="game.html?game=${encodeURIComponent(game.name)}">${game.name}</a>
-                  <span class="hours">${formatNumberWithCommas(game.hours)} hrs</span>
+                  <span class="hours">${formatNumberWithCommas(game.total_hours || 0)} hrs</span>
                 `;
                 popularList.appendChild(listItem);
               });
             } else {
               popularList.innerHTML = '<li>No game data available.</li>';
+            }
+          } catch (e) {}
+        } else {
+          // Show loading state if no cache
+          popularList.innerHTML = '';
+          const loadingPlaceholders = createLoadingPlaceholders(5);
+          loadingPlaceholders.forEach(placeholder => popularList.appendChild(placeholder));
+        }
+
+        // Always fetch fresh data in the background
+        fetch(`/api/popular-games?timeframe=${timeframe}`)
+          .then(response => response.json())
+          .then(data => {
+            popularList.innerHTML = '';
+            if (data && data.length > 0) {
+              data.forEach((game, index) => {
+                const listItem = document.createElement('li');
+                listItem.innerHTML = `
+                  <span class="rank">${index + 1}</span>
+                  <img class="game-cover-sm" src="${game.box_art_url || 'https://static-cdn.jtvnw.net/ttv-boxart/loading_boxart.png'}" alt="${game.name}">
+                  <a class="game-link" href="game.html?game=${encodeURIComponent(game.name)}">${game.name}</a>
+                  <span class="hours">${formatNumberWithCommas(game.total_hours || 0)} hrs</span>
+                `;
+                popularList.appendChild(listItem);
+              });
+              localStorage.setItem(cacheKey, JSON.stringify(data));
+            } else {
+              popularList.innerHTML = '<li>No game data available.</li>';
+              localStorage.removeItem(cacheKey);
             }
           })
           .catch(error => {
@@ -278,35 +305,58 @@
       }
 
       function fetchLeaderboardData(timeframe) {
-        console.log(`DEBUG: fetchLeaderboardData called for timeframe: ${timeframe}`); // Debug print
         const leaderboardList = document.querySelector(`#${timeframe} ol`);
         if (!leaderboardList) return;
 
-        // Show loading state
-        leaderboardList.innerHTML = '';
-        const loadingPlaceholders = createLoadingPlaceholders(5);
-        loadingPlaceholders.forEach(placeholder => leaderboardList.appendChild(placeholder));
-
-        fetch(`/api/leaderboard?timeframe=${timeframe}`)
-          .then(response => response.json())
-          .then(data => {
-            console.log(`DEBUG: Data received for ${timeframe} leaderboard:`, data); // Debug print
-            leaderboardList.innerHTML = ''; // Clear loading state
-
-            if (data.length > 0) {
-              console.log(`DEBUG: Populating ${timeframe} leaderboard list with ${data.length} items.`); // Debug print
+        // Try to show cached data instantly
+        const cacheKey = `leaderboard_${timeframe}`;
+        const cached = localStorage.getItem(cacheKey);
+        if (cached) {
+          try {
+            const data = JSON.parse(cached);
+            leaderboardList.innerHTML = '';
+            if (data && data.length > 0) {
               data.slice(0, 5).forEach((player, index) => {
                 const listItem = document.createElement('li');
                 listItem.innerHTML = `
                   <span class="rank">${index + 1}</span>
-                  <img class="avatar" src="${player.avatar_url}" alt="${player.username}">
+                  <img class="avatar" src="${player.avatar_url || 'https://www.gravatar.com/avatar/?d=mp&s=50'}" alt="${player.username}">
                   <a class="user-link" href="user.html?user=${player.user_id}">${player.username}</a>
-                  <span class="score">${formatNumberWithCommas(player.points)} pts</span>
+                  <span class="score">${formatNumberWithCommas(player.total_credits || 0)} pts</span>
                 `;
                 leaderboardList.appendChild(listItem);
               });
             } else {
               leaderboardList.innerHTML = '<li>No leaderboard data available.</li>';
+            }
+          } catch (e) {}
+        } else {
+          // Show loading state if no cache
+          leaderboardList.innerHTML = '';
+          const loadingPlaceholders = createLoadingPlaceholders(5);
+          loadingPlaceholders.forEach(placeholder => leaderboardList.appendChild(placeholder));
+        }
+
+        // Always fetch fresh data in the background
+        fetch(`/api/leaderboard?timeframe=${timeframe}`)
+          .then(response => response.json())
+          .then(data => {
+            leaderboardList.innerHTML = '';
+            if (data && data.length > 0) {
+              data.slice(0, 5).forEach((player, index) => {
+                const listItem = document.createElement('li');
+                listItem.innerHTML = `
+                  <span class="rank">${index + 1}</span>
+                  <img class="avatar" src="${player.avatar_url || 'https://www.gravatar.com/avatar/?d=mp&s=50'}" alt="${player.username}">
+                  <a class="user-link" href="user.html?user=${player.user_id}">${player.username}</a>
+                  <span class="score">${formatNumberWithCommas(player.total_credits || 0)} pts</span>
+                `;
+                leaderboardList.appendChild(listItem);
+              });
+              localStorage.setItem(cacheKey, JSON.stringify(data));
+            } else {
+              leaderboardList.innerHTML = '<li>No leaderboard data available.</li>';
+              localStorage.removeItem(cacheKey);
             }
           })
           .catch(error => {
@@ -327,182 +377,147 @@
 
     });
 
-    // Function to fetch recent activity data and populate the carousel
+    // --- Recent Activity with localStorage cache ---
     async function fetchRecentActivity() {
+      const activityCarousel = document.querySelector('.activity-carousel');
+      if (!activityCarousel) return;
+
+      // Try to show cached data instantly
+      const cacheKey = 'recent_activity';
+      const cached = localStorage.getItem(cacheKey);
+      if (cached) {
         try {
-            const response = await fetch('/api/recent-activity');
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-            const recentActivity = await response.json();
-            console.log('Recent Activity:', recentActivity); // Debugging
-
-            const activityCarousel = document.querySelector('.activity-carousel');
-            if (!activityCarousel) {
-                console.error('Activity carousel element not found.');
-                return;
-            }
-
-            // Show loading state
-            activityCarousel.innerHTML = '';
-            for (let i = 0; i < 5; i++) {
-                const loadingCard = document.createElement('div');
-                loadingCard.className = 'activity-card-wrap';
-                loadingCard.innerHTML = `
-                    <div class="activity-card loading">
-                        <div class="activity-overlay loading">
-                            <div class="activity-userblock">
-                                <span class="activity-sessions">Loading...</span>
-                                <span class="activity-time">Loading...</span>
-                            </div>
-                        </div>
-                    </div>
-                `;
-                activityCarousel.appendChild(loadingCard);
-            }
-
-            // If there are no sessions fetched from the DB, show message
-            if (!recentActivity || recentActivity.length === 0) {
-                activityCarousel.innerHTML = '<div class="loading-spinner"><i class="fas fa-spinner fa-spin"></i> No recent activity found</div>';
-                return;
-            }
-
-            // Clear loading state and add actual content
-            activityCarousel.innerHTML = '';
-            recentActivity.forEach(session => {
-                const cardWrap = document.createElement('div');
-                cardWrap.className = 'activity-card-wrap';
-                
-                // Format timestamp for better display
-                const timestamp = new Date(session.timestamp);
-                const timeDisplay = timestamp.toLocaleDateString() + ' ' + timestamp.toLocaleTimeString();
-                
-                cardWrap.innerHTML = `
-                    <div class="activity-card">
-                        <a href="game.html?game=${encodeURIComponent(session.game_name)}">
-                            <img class="game-cover-carousel" src="${session.box_art_url || 'https://static-cdn.jtvnw.net/ttv-boxart/loading_boxart.png'}" alt="${session.game_name}">
-                        </a>
-                        <div class="activity-date">${new Date(session.timestamp).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</div>
-                        <div class="activity-overlay">
-                            <img class="activity-avatar" src="${session.avatar_url}" alt="${session.username}">
-                            <div class="activity-userblock">
-                                <span class="activity-player"><a class="user-link" href="user.html?user=${session.user_id}">${session.username}</a></span>
-                                <span class="activity-hours">${formatHours(session.hours)}</span>
-                            </div>
-                        </div>
-                    </div>
-                `;
-                activityCarousel.appendChild(cardWrap);
-            });
-
-        } catch (error) {
-            console.error('Error fetching recent activity:', error);
-            const activityCarousel = document.querySelector('.activity-carousel');
-            if (activityCarousel) {
-                activityCarousel.innerHTML = '<div class="loading-spinner"><i class="fas fa-exclamation-circle"></i> Error loading recent activity</div>';
-            }
+          const recentActivity = JSON.parse(cached);
+          renderRecentActivity(recentActivity);
+        } catch (e) {}
+      } else {
+        // Show loading state if no cache
+        activityCarousel.innerHTML = '';
+        for (let i = 0; i < 5; i++) {
+          const loadingCard = document.createElement('div');
+          loadingCard.className = 'activity-card-wrap';
+          loadingCard.innerHTML = `
+            <div class="activity-card loading">
+              <div class="activity-overlay loading">
+                <div class="activity-userblock">
+                  <span class="activity-sessions">Loading...</span>
+                  <span class="activity-time">Loading...</span>
+                </div>
+              </div>
+            </div>
+          `;
+          activityCarousel.appendChild(loadingCard);
         }
+      }
+
+      // Always fetch fresh data in the background
+      try {
+        const response = await fetch('/api/recent-activity');
+        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+        const recentActivity = await response.json();
+        renderRecentActivity(recentActivity);
+        localStorage.setItem(cacheKey, JSON.stringify(recentActivity));
+      } catch (error) {
+        console.error('Error fetching recent activity:', error);
+        activityCarousel.innerHTML = '<div class="loading-spinner"><i class="fas fa-spinner fa-spin"></i> Error loading activity</div>';
+      }
     }
 
-    // Function to fetch recent bonus data and populate the list
-    async function fetchRecentBonuses() {
+    function renderRecentActivity(recentActivity) {
+      const activityCarousel = document.querySelector('.activity-carousel');
+      if (!activityCarousel) return;
+      activityCarousel.innerHTML = '';
+      if (!recentActivity || recentActivity.length === 0) {
+        activityCarousel.innerHTML = '<div class="loading-spinner"><i class="fas fa-spinner fa-spin"></i> No recent activity found</div>';
+        return;
+      }
+      recentActivity.forEach(session => {
+        const cardWrap = document.createElement('div');
+        cardWrap.className = 'activity-card-wrap';
+        const timestamp = new Date(session.timestamp);
+        cardWrap.innerHTML = `
+          <div class="activity-card">
+            <a href="game.html?game=${encodeURIComponent(session.game_name)}">
+              <img class="game-cover-carousel" src="${session.box_art_url || 'https://static-cdn.jtvnw.net/ttv-boxart/loading_boxart.png'}" alt="${session.game_name}">
+            </a>
+            <div class="activity-date">${timestamp.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</div>
+            <div class="activity-overlay">
+              <img class="activity-avatar" src="${session.avatar_url}" alt="${session.username}">
+              <div class="activity-userblock">
+                <span class="activity-player"><a class="user-link" href="user.html?user=${session.user_id}">${session.username}</a></span>
+                <span class="activity-hours">${formatHours(session.hours)}</span>
+              </div>
+            </div>
+          </div>
+        `;
+        activityCarousel.appendChild(cardWrap);
+      });
+    }
+
+    // --- Most Popular Games with localStorage cache ---
+    function fetchPopularGames(timeframe) {
+      const popularList = document.querySelector(`#popular-${timeframe} ol`);
+      if (!popularList) return;
+
+      // Try to show cached data instantly
+      const cacheKey = `popular_${timeframe}`;
+      const cached = localStorage.getItem(cacheKey);
+      if (cached) {
         try {
-            const response = await fetch('/api/recent-bonuses');
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-            const recentBonuses = await response.json();
-            console.log('Recent Bonuses:', recentBonuses); // Debugging
-
-            const bonusesList = document.querySelector('.bonuses ul');
-            if (!bonusesList) {
-                console.error('Recent bonuses list element not found.');
-                return;
-            }
-
-            bonusesList.innerHTML = ''; // Clear existing content
-
-            if (recentBonuses.length === 0) {
-                bonusesList.innerHTML = '<li>No recent bonuses found.</li>';
-                return;
-            }
-
-            // Create list items for each bonus
-            recentBonuses.forEach(bonus => {
-                const listItem = document.createElement('li');
-                
-                // Format the credits amount
-                const formattedCredits = formatNumberWithCommas(bonus.credits);
-
-                listItem.innerHTML = `
-                    <img class="avatar-sm" src="${bonus.avatar_url}" alt="${bonus.username}">
-                    <a class="user-link" href="user.html?user=${bonus.user_id}">${bonus.username}</a>
-                    earned <span class="bonus-amount">${formattedCredits} cred</span> for "${bonus.reason}"
-                `;
-
-                bonusesList.appendChild(listItem);
+          const data = JSON.parse(cached);
+          popularList.innerHTML = '';
+          if (data && data.length > 0) {
+            data.forEach((game, index) => {
+              const listItem = document.createElement('li');
+              listItem.innerHTML = `
+                <span class="rank">${index + 1}</span>
+                <img class="game-cover-sm" src="${game.box_art_url || 'https://static-cdn.jtvnw.net/ttv-boxart/loading_boxart.png'}" alt="${game.name}">
+                <a class="game-link" href="game.html?game=${encodeURIComponent(game.name)}">${game.name}</a>
+                <span class="hours">${formatNumberWithCommas(game.total_hours || 0)} hrs</span>
+              `;
+              popularList.appendChild(listItem);
             });
+          } else {
+            popularList.innerHTML = '<li>No game data available.</li>';
+          }
+        } catch (e) {}
+      } else {
+        // Show loading state if no cache
+        popularList.innerHTML = '';
+        const loadingPlaceholders = createLoadingPlaceholders(5);
+        loadingPlaceholders.forEach(placeholder => popularList.appendChild(placeholder));
+      }
 
-        } catch (error) {
-            console.error('Error fetching recent bonuses:', error);
-            const bonusesList = document.querySelector('.bonuses ul');
-            if (bonusesList) {
-                bonusesList.innerHTML = '<li>Error loading recent bonuses.</li>';
-            }
-        }
-    }
-
-    // Call fetchRecentActivity and fetchRecentBonuses when the page loads
-    document.addEventListener('DOMContentLoaded', () => {
-        fetchRecentActivity();
-        fetchRecentBonuses(); // Call the new function
-        // Initialize carousel functionality after fetching data
-        setupActivityCarousel();
-    });
-
-    // Helper function to format numbers with commas (if needed elsewhere)
-    function formatNumberWithCommas(number) {
-        return number.toLocaleString();
-    }
-
-    // Function to set up the activity carousel scrolling
-    function setupActivityCarousel() {
-        const activityCarousel = document.querySelector('.activity-carousel');
-        const leftArrow = document.querySelector('.activity-wide .carousel-arrow.left');
-        const rightArrow = document.querySelector('.activity-wide .carousel-arrow.right');
-
-        if (!activityCarousel || !leftArrow || !rightArrow) {
-            console.error('Activity carousel elements not found for scrolling setup.');
-            return;
-        }
-
-        const scrollAmount = 300; // Adjust scroll amount as needed
-
-        leftArrow.addEventListener('click', () => {
-            activityCarousel.scrollBy({ left: -scrollAmount, behavior: 'smooth' });
+      // Always fetch fresh data in the background
+      fetch(`/api/popular-games?timeframe=${timeframe}`)
+        .then(response => response.json())
+        .then(data => {
+          popularList.innerHTML = '';
+          if (data && data.length > 0) {
+            data.forEach((game, index) => {
+              const listItem = document.createElement('li');
+              listItem.innerHTML = `
+                <span class="rank">${index + 1}</span>
+                <img class="game-cover-sm" src="${game.box_art_url || 'https://static-cdn.jtvnw.net/ttv-boxart/loading_boxart.png'}" alt="${game.name}">
+                <a class="game-link" href="game.html?game=${encodeURIComponent(game.name)}">${game.name}</a>
+                <span class="hours">${formatNumberWithCommas(game.total_hours || 0)} hrs</span>
+              `;
+              popularList.appendChild(listItem);
+            });
+            localStorage.setItem(cacheKey, JSON.stringify(data));
+          } else {
+            popularList.innerHTML = '<li>No game data available.</li>';
+            localStorage.removeItem(cacheKey);
+          }
+        })
+        .catch(error => {
+          console.error(`Error fetching ${timeframe} popular games data:`, error);
+          popularList.innerHTML = '<li>Error loading game data.</li>';
         });
-
-        rightArrow.addEventListener('click', () => {
-            activityCarousel.scrollBy({ left: scrollAmount, behavior: 'smooth' });
-        });
-
-        // Optional: Add logic to hide/show arrows based on scroll position
-        // This is more complex and might be added later if needed.
     }
 
-    // Add this helper function near the other formatting functions
-    function formatHours(hours) {
-        const wholeHours = Math.floor(hours);
-        const minutes = Math.round((hours - wholeHours) * 60);
-        let timeDisplay = '';
-        if (wholeHours > 0) {
-            timeDisplay += `${wholeHours}h `;
-        }
-        if (minutes > 0 || wholeHours === 0) {
-            timeDisplay += `${minutes}m`;
-        }
-        return timeDisplay;
-    }
+    // Replace the original fetchRecentActivity with the new one
+    fetchRecentActivity();
 
     // Function to detect if user is on mobile
     function isMobileDevice() {
@@ -568,6 +583,45 @@
     navCenter.addEventListener('click', function(event) {
       event.stopPropagation();
     });
+
+    // Add this helper function near the other formatting functions
+    function formatHours(hours) {
+      const wholeHours = Math.floor(hours);
+      const minutes = Math.round((hours - wholeHours) * 60);
+      let timeDisplay = '';
+      if (wholeHours > 0) {
+        timeDisplay += `${wholeHours}h `;
+      }
+      if (minutes > 0 || wholeHours === 0) {
+        timeDisplay += `${minutes}m`;
+      }
+      return timeDisplay;
+    }
+
+    // Function to set up the activity carousel scrolling
+    function setupActivityCarousel() {
+      const activityCarousel = document.querySelector('.activity-carousel');
+      const leftArrow = document.querySelector('.activity-wide .carousel-arrow.left');
+      const rightArrow = document.querySelector('.activity-wide .carousel-arrow.right');
+
+      if (!activityCarousel || !leftArrow || !rightArrow) {
+        console.error('Activity carousel elements not found for scrolling setup.');
+        return;
+      }
+
+      const scrollAmount = 300; // Adjust scroll amount as needed
+
+      leftArrow.addEventListener('click', () => {
+        activityCarousel.scrollBy({ left: -scrollAmount, behavior: 'smooth' });
+      });
+
+      rightArrow.addEventListener('click', () => {
+        activityCarousel.scrollBy({ left: scrollAmount, behavior: 'smooth' });
+      });
+    }
+
+    // Call setupActivityCarousel after fetching recent activity
+    fetchRecentActivity().then(() => setupActivityCarousel());
   </script>
 </body>
 <script src="script.js"></script>

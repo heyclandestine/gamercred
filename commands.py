@@ -10,6 +10,7 @@ import asyncio
 import pytz
 from discord.ext import tasks
 from datetime import datetime, timedelta
+import urllib.parse
 
 class GamingCommands(commands.Cog):
     def __init__(self, bot):
@@ -51,7 +52,7 @@ class GamingCommands(commands.Cog):
         try:
             # Validate hours
             if hours <= 0:
-                await ctx.send("Hours must be greater than 0!")
+                await ctx.send("Hours must be greater than 0!\n🌐 View on [Gamer Cred](https://gamercred.onrender.com)")
                 return
 
             # Add gaming hours
@@ -60,19 +61,23 @@ class GamingCommands(commands.Cog):
             # Get game info for the response
             game_info = self.storage.get_game_info(game)
             if not game_info:
-                await ctx.send(f"Error: Could not find game '{game}'")
+                await ctx.send(f"Error: Could not find game '{game}'\n🌐 View on [Gamer Cred](https://gamercred.onrender.com)")
                 return
+
+            # URL encode the game name
+            encoded_game = urllib.parse.quote(game_info['name'])
 
             # Send success message with original format
             await ctx.send(
                 f"✅ Successfully logged {hours:,.1f} hours for {game_info['name']}!\n"
                 f"📊 Rate: {game_info['credits_per_hour']:,.1f} cred/hour\n"
                 f"💎 Earned {credits_earned:,.1f} cred!\n"
-                f"🎮 View on Backloggd: {game_info['backloggd_url']}"
+                f"🎮 View on Backloggd: {game_info['backloggd_url']}\n"
+                f"🌐 View on [Gamer Cred](https://gamercred.onrender.com/game.html?game={encoded_game})"
             )
 
         except Exception as e:
-            await ctx.send(MESSAGES['error'].format(error=str(e)))
+            await ctx.send(MESSAGES['error'].format(error=str(e)) + "\n🌐 View on [Gamer Cred](https://gamercred.onrender.com)")
 
     @commands.command(name='setrate')
     async def set_game_credits_per_hour(self, ctx, credits: float, *, game: str):
@@ -80,17 +85,20 @@ class GamingCommands(commands.Cog):
         try:
             # Validate credits
             if credits < 0.1:
-                await ctx.send("Credits per hour must be at least 0.1!")
+                await ctx.send("Credits per hour must be at least 0.1!\n🌐 View on [Gamer Cred](https://gamercred.onrender.com)")
                 return
 
             # Set credits per hour
             success = await self.storage.set_game_credits_per_hour(game, credits, ctx.author.id)
             if success:
-                await ctx.send(f"✅ Successfully set rate for {game} to {credits:,.1f} credits per hour!")
+                # URL encode the game name
+                encoded_game = urllib.parse.quote(game)
+                
+                await ctx.send(f"✅ Successfully set rate for {game} to {credits:,.1f} credits per hour!\n🌐 View on [Gamer Cred](https://gamercred.onrender.com/game.html?game={encoded_game})")
             else:
                 await ctx.send(f"❌ Failed to set rate for {game}. Please try again.")
         except Exception as e:
-            await ctx.send(MESSAGES['error'].format(error=str(e)))
+            await ctx.send(MESSAGES['error'].format(error=str(e)) + "\n🌐 View on [Gamer Cred](https://gamercred.onrender.com)")
 
     @commands.command(name='rate')
     async def get_game_rate(self, ctx, *, game: Optional[str] = None):
@@ -108,10 +116,14 @@ class GamingCommands(commands.Cog):
                     setter = ctx.guild.get_member(int(game_info['added_by']))
                 setter_name = setter.display_name if setter else f"Unknown User"
 
+                # URL encode the game name
+                encoded_game = urllib.parse.quote(game_info['name'])
+
                 await ctx.send(
                     f"📊 Rate for {game}: {game_info['credits_per_hour']:,.1f} cred/hour\n"
                     f"👤 Set by: {setter_name}\n"
-                    f"🎮 View the game on [Backloggd]({game_info['backloggd_url']})"
+                    f"🎮 View the game on [Backloggd]({game_info['backloggd_url']})\n"
+                    f"🌐 View on [Gamer Cred](https://gamercred.onrender.com/game.html?game={encoded_game})"
                 )
             else:
                 await ctx.send(f"❓ Game '{game}' not found in database")
@@ -127,7 +139,7 @@ class GamingCommands(commands.Cog):
             if credits == 0:
                 await ctx.send(MESSAGES['no_balance'])
             else:
-                await ctx.send(MESSAGES['balance'].format(credits=f"{credits:,.1f}"))
+                await ctx.send(MESSAGES['balance'].format(credits=f"{credits:,.1f}") + "\n🌐 View on [Gamer Cred](https://gamercred.onrender.com)")
         except Exception as e:
             await ctx.send(MESSAGES['error'].format(error=str(e)))
 
@@ -142,6 +154,7 @@ class GamingCommands(commands.Cog):
                 return
 
             embed = Embed(title="🏆 Gamer Cred Leaderboard", color=0x00ff00)
+            embed.set_footer(text="🌐 View on [Gamer Cred](https://gamercred.onrender.com)")
 
             for position, (user_id, credits) in enumerate(leaderboard[:10], 1):
                 member = ctx.guild.get_member(user_id)
@@ -177,6 +190,7 @@ class GamingCommands(commands.Cog):
                 description=f"Period: {self.format_cst_time(period.start_time)} to {self.format_cst_time(period.end_time)}\nResets every Monday at 00:00 CST",
                 color=0x00ff00
             )
+            embed.set_footer(text="🌐 View on [Gamer Cred](https://gamercred.onrender.com)")
 
             for position, (user_id, credits, games, most_played, most_played_hours) in enumerate(leaderboard[:10], 1):
                 member = ctx.guild.get_member(user_id)
@@ -212,6 +226,7 @@ class GamingCommands(commands.Cog):
                 description=f"Period: {self.format_cst_time(period.start_time)} to {self.format_cst_time(period.end_time)}\nResets on the 1st of each month at 00:00 CST",
                 color=0x00ff00
             )
+            embed.set_footer(text="🌐 View on [Gamer Cred](https://gamercred.onrender.com)")
 
             for position, (user_id, credits, games, most_played, most_played_hours) in enumerate(leaderboard[:10], 1):
                 member = ctx.guild.get_member(user_id)
@@ -242,6 +257,7 @@ class GamingCommands(commands.Cog):
                 title=f"🏆 Leaderboard History for {target_user.display_name}",
                 color=0x00ff00
             )
+            embed.set_footer(text="🌐 View on [Gamer Cred](https://gamercred.onrender.com)")
 
             # Group history by type
             weekly_history = [h for h in history if h['type'] == 'weekly'][:5]  # Last 5 weekly placements
@@ -298,6 +314,7 @@ class GamingCommands(commands.Cog):
                 title=f"🎮 Recent Gaming Sessions for {ctx.author.display_name}",
                 color=0x0088ff
             )
+            sessions_embed.set_footer(text="🌐 View on [Gamer Cred](https://gamercred.onrender.com)")
 
             for session in history[:10]:  # Limit to 10 sessions
                 sessions_embed.add_field(
@@ -314,6 +331,7 @@ class GamingCommands(commands.Cog):
                     title=f"📊 Game Totals for {ctx.author.display_name}",
                     color=0x00ff00
                 )
+                summary_embed.set_footer(text="🌐 View on [Gamer Cred](https://gamercred.onrender.com)")
 
                 for summary in summaries[:20]:  # Limit to 20 games
                     summary_embed.add_field(
@@ -375,38 +393,24 @@ class GamingCommands(commands.Cog):
                 }
             }
 
-            # Calculate total progress
-            total_achieved = sum(1 for v in achievements.values() if v)
-            total_achievements = len(achievements)
-            progress_percent = (total_achieved / total_achievements) * 100
-
-            # Create single embed
+            # Create embed
             embed = Embed(
-                title=f"🏆 Achievements for {ctx.author.display_name}",
-                description=f"Progress: {total_achieved}/{total_achievements} ({progress_percent:.1f}%)",
-                color=0xffd700
+                title=f"🌟 Achievements for {ctx.author.display_name}",
+                color=0x00ff00
             )
+            embed.set_footer(text="🌐 View on [Gamer Cred](https://gamercred.onrender.com)")
 
-            # Add categories
-            for category_name, category_achievements in achievement_categories.items():
-                achieved = sum(1 for k in category_achievements.keys() if achievements[k])
-                total = len(category_achievements)
-
-                # Create category value with achievements
-                value = []
-                for achievement, (title, req) in category_achievements.items():
-                    status = "✅" if achievements[achievement] else "❌"
-                    value.append(f"{status} {title} `{req}`")
-
+            # Add each category
+            for category, achievements_dict in achievement_categories.items():
+                category_value = ""
+                for achievement_id, (name, requirement) in achievements_dict.items():
+                    status = "✅" if achievements.get(achievement_id, False) else "❌"
+                    category_value += f"{status} **{name}** ({requirement})\n"
                 embed.add_field(
-                    name=f"{category_name} ({achieved}/{total})",
-                    value="\n".join(value),
-                    inline=True
+                    name=category,
+                    value=category_value.strip(),
+                    inline=False
                 )
-
-                # Add empty field after every 2 categories for alignment
-                if len(embed.fields) % 3 == 2:
-                    embed.add_field(name="\u200b", value="\u200b", inline=True)
 
             await ctx.send(embed=embed)
 
@@ -423,10 +427,11 @@ class GamingCommands(commands.Cog):
 
             stats = self.storage.get_game_stats(game)
             if not stats:
-                await ctx.send(f"❓ Game '{game}' not found in database")
+                await ctx.send(f"❓ Game '{game}' not found in database\n🌐 View on [Gamer Cred](https://gamercred.onrender.com)")
                 return
 
             embed = Embed(title=f"📊 Stats for {stats['name']}", color=0x00ff00)
+            embed.set_footer(text="🌐 View on [Gamer Cred](https://gamercred.onrender.com)")
             embed.add_field(
                 name="Total Hours Played",
                 value=f"⏱️ {stats['total_hours']:,.1f} hours",
@@ -480,6 +485,7 @@ class GamingCommands(commands.Cog):
                 return
 
             embed = Embed(title=f"📊 Your Stats for {stats['name']}", color=0x00ff00)
+            embed.set_footer(text="🌐 View on [Gamer Cred](https://gamercred.onrender.com)")
             embed.add_field(
                 name="Your Total Hours",
                 value=f"⏱️ {stats['total_hours']:,.1f} hours",
@@ -544,6 +550,7 @@ class GamingCommands(commands.Cog):
                 title=f"📊 Gaming Stats for {ctx.author.display_name}",
                 color=0x00ff00
             )
+            embed.set_footer(text="🌐 View on [Gamer Cred](https://gamercred.onrender.com)")
 
             # Add overall stats
             embed.add_field(
@@ -589,6 +596,7 @@ class GamingCommands(commands.Cog):
             description="Track your gaming progress and earn achievements!",
             color=0x0088ff
         )
+        embed.set_footer(text="🌐 View on [Gamer Cred](https://gamercred.onrender.com)")
 
         # Core Commands
         embed.add_field(

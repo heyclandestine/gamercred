@@ -41,26 +41,26 @@ async def on_ready():
     print(f'Connected to {len(bot.guilds)} servers')
     
     # Always reinitialize commands on ready
-        print('Initializing commands...')
-        try:
+    print('Initializing commands...')
+    try:
         # Remove existing commands if any
         for cog in bot.cogs:
             await bot.remove_cog(cog)
         
         # Add commands
-            gaming_commands = GamingCommands(bot)
-            await bot.add_cog(gaming_commands)
-            print('Commands initialized successfully!')
-            print(f'Command prefix is: {bot.command_prefix}')
-            print('Available commands:')
-            for command in bot.commands:
-                print(f'  {command.name}: {command.help}')
-        except Exception as e:
-            print(f'Error initializing commands: {str(e)}')
-            print('Full error details:', file=sys.stderr)
-            import traceback
-            traceback.print_exc()
-            raise  # Re-raise the exception to see the full error
+        gaming_commands = GamingCommands(bot)
+        await bot.add_cog(gaming_commands)
+        print('Commands initialized successfully!')
+        print(f'Command prefix is: {bot.command_prefix}')
+        print('Available commands:')
+        for command in bot.commands:
+            print(f'  {command.name}: {command.help}')
+    except Exception as e:
+        print(f'Error initializing commands: {str(e)}')
+        print('Full error details:', file=sys.stderr)
+        import traceback
+        traceback.print_exc()
+        raise  # Re-raise the exception to see the full error
 
 @bot.event
 async def on_command_error(ctx, error):

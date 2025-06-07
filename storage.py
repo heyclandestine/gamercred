@@ -27,34 +27,16 @@ def run_async(coro):
 
 class GameStorage:
     def __init__(self):
-        print("DEBUG: Initializing GameStorage")
         # Get database URL from environment variables
         database_url = os.getenv('DATABASE_URL')
-        print(f"DEBUG: Using database URL: {database_url}")
-        
-        # Initialize timezone
-        self.cst = pytz.timezone('America/Chicago')
-        print("DEBUG: Initialized CST timezone")
-        
         if not database_url:
             raise ValueError("No database URL found. Set DATABASE_URL to your PostgreSQL connection string")
         
+        # Initialize timezone
+        self.cst = pytz.timezone('America/Chicago')
+        
         try:
-            print("DEBUG: Using PostgreSQL database")
             self.engine = create_engine(database_url)
-            print("DEBUG: Database engine created successfully")
-            
-            # Test the connection
-            with self.engine.connect() as connection:
-                result = connection.execute(text("SELECT 1")).scalar()
-                print(f"DEBUG: Database connection test result: {result}")
-                if result != 1:
-                    raise Exception("Database connection test failed")
-                print("DEBUG: Database connection test successful")
-                
-                # Print database version
-                version = connection.execute(text("SELECT version()")).scalar()
-                print(f"DEBUG: Database version: {version}")
         except Exception as e:
             print(f"ERROR: Failed to initialize database connection: {str(e)}")
             print("Full traceback:")
@@ -174,7 +156,6 @@ class GameStorage:
                 if announcement_channel:
                     try:
                         await announcement_channel.send(embed=embed)
-                        print(f"Sent period end announcement to {announcement_channel.name} in {guild.name}")
                     except discord.errors.Forbidden:
                         print(f"Cannot send messages in {announcement_channel.name} ({guild.name})")
                     except Exception as e:
@@ -187,13 +168,11 @@ class GameStorage:
 
     def get_or_create_current_period(self, leaderboard_type: LeaderboardType, bot=None) -> LeaderboardPeriod:
         """Get or create the current leaderboard period."""
-        print(f"\n=== DEBUG: Getting/creating current period for {leaderboard_type} ===")
         session = self.Session()
         try:
             # Use naive current time and localize to CST
             naive_now = datetime.now()
             current_time = self.cst.localize(naive_now)
-            print(f"DEBUG: Current time in CST: {current_time}")
             
             # Calculate period start time based on leaderboard type
             if leaderboard_type == LeaderboardType.WEEKLY:
@@ -211,9 +190,6 @@ class GameStorage:
                     period_end = current_time.replace(month=current_time.month + 1, day=1)
                 period_end = period_end.replace(hour=0, minute=0, second=0, microsecond=0)
 
-            print(f"DEBUG: Period start: {period_start}")
-            print(f"DEBUG: Period end: {period_end}")
-
             # Check if we already have a period for this timeframe
             existing_period = session.query(LeaderboardPeriod).filter(
                 and_(
@@ -224,11 +200,9 @@ class GameStorage:
             ).first()
 
             if existing_period:
-                print(f"DEBUG: Found existing period: {existing_period}")
                 return existing_period
 
             # Create new period
-            print("DEBUG: Creating new period")
             new_period = LeaderboardPeriod(
                     leaderboard_type=leaderboard_type,
                     start_time=period_start,
@@ -237,7 +211,6 @@ class GameStorage:
                 )
             session.add(new_period)
             session.commit()
-            print(f"DEBUG: Created new period: {new_period}")
 
             # If we have a bot and this is a new period, announce it (only for weekly leaderboards)
             if bot and leaderboard_type == LeaderboardType.WEEKLY:
@@ -256,18 +229,12 @@ class GameStorage:
 
     def get_leaderboard_by_timeframe(self, timeframe: LeaderboardType) -> List[Tuple[int, int, int, str, int]]:
         """Get leaderboard data for a specific timeframe."""
-        print(f"\n=== DEBUG: Getting leaderboard for timeframe {timeframe} ===")
         db_session = self.Session()
         try:
             # Get the current period
-            print("DEBUG: Getting current period...")
             current_period = self.get_or_create_current_period(timeframe)
-            print(f"DEBUG: Current period: {current_period}")
-            print(f"DEBUG: Period start: {current_period.start_time}")
-            print(f"DEBUG: Period end: {current_period.end_time}")
 
             # Use a single query to get all the data we need
-            print("DEBUG: Executing optimized leaderboard query...")
             results = db_session.query(
                 GamingSession.user_id,
                 func.sum(GamingSession.credits_earned).label('total_credits'),
@@ -287,15 +254,12 @@ class GameStorage:
                 func.sum(GamingSession.credits_earned).desc()
             ).all()
 
-            print(f"DEBUG: Found {len(results)} users in leaderboard")
-
             # Format the results
             leaderboard = []
             for user_id, credits, games_played, most_played_game, most_played_hours in results:
                 leaderboard.append((user_id, credits, games_played, most_played_game, most_played_hours))
                 print(f"DEBUG: Added user {user_id} to leaderboard with {credits} credits")
 
-            print(f"DEBUG: Final leaderboard: {leaderboard}")
             return leaderboard
 
         except Exception as e:
@@ -531,11 +495,9 @@ class GameStorage:
                 session.add(game)
                 session.commit() # Commit to get the game ID for relationships
                 created = True
-                print(f"Created new game: {game.name}")
 
             # Fetch and update RAWG data if missing
             if game and (game.rawg_id is None or game.box_art_url is None):
-                print(f"Fetching RAWG data for {game.name}...")
                 rawg_details = await self.fetch_game_details_from_rawg(game.name)
                 if rawg_details:
                     game.rawg_id = rawg_details['rawg_id']
@@ -544,15 +506,11 @@ class GameStorage:
                     # game.name = rawg_details['display_name']
                 session.add(game)
                 session.commit()
-                print(f"Updated RAWG data for {game.name}")
-            else:
-                print(f"Failed to fetch RAWG data for {game.name}. Using defaults/placeholders.")
 
             return game, created
         except Exception as e:
             session.rollback()
-            print(f"Error in get_or_create_game for {game_name}: {e}")
-            raise e # Re-raise the exception
+            return None
         finally:
             session.close()
 
@@ -561,105 +519,60 @@ class GameStorage:
         if credits < 0.1:  # Only keep minimum limit
             return False
 
-        print(f"Starting set_game_credits_per_hour for {game_name}")
-        
-        # Try up to 3 times with a new session each time
-        for attempt in range(3):
-            print(f"Attempt {attempt + 1} of 3")
-            session = self.Session()
-            try:
-                # Case-insensitive search for existing game
-                print(f"Searching for existing game: {game_name}")
-                game = session.query(Game).filter(func.lower(Game.name) == func.lower(game_name)).first()
+        session = self.Session()
+        try:
+            # Case-insensitive search for existing game
+            game = session.query(Game).filter(func.lower(Game.name) == func.lower(game_name)).first()
 
-                if game:
-                    print(f"Found existing game: {game.name}")
-                    # Update existing game
-                    game.credits_per_hour = credits
-                    game.added_by = user_id
-                    
-                    # Fetch RAWG data if missing
-                    if game.rawg_id is None or game.box_art_url is None:
-                        print(f"Fetching RAWG data for existing game: {game.name}")
-                        rawg_data = await self.fetch_game_details_from_rawg(game.name)
-                        if rawg_data:
-                            game.rawg_id = rawg_data.get('id')
-                            game.box_art_url = rawg_data.get('box_art_url')
-                    
-                    print("Committing update...")
-                    session.commit()
-                    print("Update committed successfully")
-                    return True
-                else:
-                    print(f"Game not found, creating new game: {game_name}")
-                    # Create new game
-                    formatted_name = game_name.strip()
-                    
-                    # Create the Backloggd URL
-                    url_name = formatted_name.lower()
-                    url_name = url_name.replace("'", "").replace('"', "")
-                    url_name = ''.join(c if c.isalnum() else '-' for c in url_name)
-                    url_name = '-'.join(filter(None, url_name.split('-')))
-                    
-                    backloggd_url = f"https://www.backloggd.com/games/{url_name}/"
-                    
-                    # Fetch RAWG data
-                    print("Fetching RAWG data...")
-                    rawg_data = await self.fetch_game_details_from_rawg(formatted_name)
-                    print(f"DEBUG: RAWG data received: {rawg_data}")
-                    
-                    rawg_id = rawg_data.get('id') if rawg_data else None
-                    box_art_url = rawg_data.get('box_art_url') if rawg_data else None
-                    print(f"DEBUG: Extracted rawg_id: {rawg_id}")
-                    print(f"DEBUG: Extracted box_art_url: {box_art_url}")
-                    
-                    print("Creating new game object...")
-                    game = Game(
-                        name=formatted_name, 
-                        credits_per_hour=credits, 
-                        added_by=user_id,
-                        backloggd_url=backloggd_url,
-                        rawg_id=rawg_id,
-                        box_art_url=box_art_url
-                    )
-                    print(f"DEBUG: Created game object with box_art_url: {game.box_art_url}")
-                    print("Adding game to session...")
-                    session.add(game)
-                    print("Committing new game...")
-                    
-                    # Set a timeout for the commit
-                    from sqlalchemy.exc import SQLAlchemyError
-                    try:
-                        session.commit()
-                        print("New game committed successfully")
-                        # Verify the data was saved
-                        saved_game = session.query(Game).filter(Game.name == formatted_name).first()
-                        print(f"DEBUG: Saved game box_art_url: {saved_game.box_art_url}")
-                        return True
-                    except SQLAlchemyError as e:
-                        print(f"Database error during commit: {str(e)}")
-                        session.rollback()
-                        if attempt < 2:  # If not the last attempt
-                            print("Retrying with new session...")
-                            continue
-                        raise  # Re-raise on last attempt
+            if game:
+                # Update existing game
+                game.credits_per_hour = credits
+                game.added_by = user_id
+                
+                # Always fetch and update RAWG data for existing games
+                rawg_data = await self.fetch_game_details_from_rawg(game.name)
+                if rawg_data:
+                    game.rawg_id = rawg_data.get('rawg_id')
+                    game.box_art_url = rawg_data.get('box_art_url')
+                    game.release_date = rawg_data.get('release_date')
+                
+                session.commit()
+                return True
+            else:
+                # Create new game
+                formatted_name = game_name.strip()
+                
+                # Create the Backloggd URL
+                url_name = formatted_name.lower()
+                url_name = url_name.replace("'", "").replace('"', "")
+                url_name = ''.join(c if c.isalnum() else '-' for c in url_name)
+                url_name = '-'.join(filter(None, url_name.split('-')))
+                
+                backloggd_url = f"https://www.backloggd.com/games/{url_name}/"
+                
+                # Fetch RAWG data
+                rawg_data = await self.fetch_game_details_from_rawg(formatted_name)
+                
+                # Create new game with all data
+                game = Game(
+                    name=formatted_name, 
+                    credits_per_hour=credits, 
+                    added_by=user_id,
+                    backloggd_url=backloggd_url,
+                    rawg_id=rawg_data.get('rawg_id') if rawg_data else None,
+                    box_art_url=rawg_data.get('box_art_url') if rawg_data else None,
+                    release_date=rawg_data.get('release_date') if rawg_data else None
+                )
+                
+                session.add(game)
+                session.commit()
+                return True
 
-            except Exception as e:
-                print(f"Error in set_game_credits_per_hour: {str(e)}")
-                print(f"Error type: {type(e)}")
-                import traceback
-                print(f"Traceback: {traceback.format_exc()}")
-                session.rollback()
-                if attempt < 2:  # If not the last attempt
-                    print("Retrying with new session...")
-                    continue
-                return False
-            finally:
-                print("Closing session...")
-                session.close()
-                print("Session closed")
-        
-        return False  # If we get here, all attempts failed
+        except Exception as e:
+            session.rollback()
+            return False
+        finally:
+            session.close()
 
     def _check_and_update_credits(self, session) -> bool:
         """Check if any game rates have changed in the database and update credits if needed"""
@@ -689,7 +602,6 @@ class GameStorage:
 
             # If we found any discrepancies, recalculate everything using a new session
             if needs_update:
-                print("Detected direct changes to game rates, recalculating credits...")
                 self.recalculate_all_credits()
                 # Refresh the provided session to see the updates
                 session.expire_all()
@@ -698,15 +610,12 @@ class GameStorage:
 
             return False
         except Exception as e:
-            print(f"Error checking credit updates: {str(e)}")
             return False
 
     def recalculate_all_credits(self) -> None:
         """Recalculate all credits based on current game rates"""
         session = self.Session()
         try:
-            print("Starting credit recalculation...")
-
             # Force refresh of all data
             session.expire_all()
 
@@ -732,14 +641,12 @@ class GameStorage:
                     gaming_session.credits_earned = new_credits
                     updated_sessions += 1
 
-            print(f"Recalculation complete: Updated {updated_sessions} of {total_sessions} sessions")
             session.commit()
 
             # Now recalculate all user totals based on their sessions
             self.recalculate_all_user_credits()
 
         except Exception as e:
-            print(f"Error recalculating credits: {str(e)}")
             session.rollback()
         finally:
             session.close()
@@ -778,8 +685,6 @@ class GameStorage:
         """Recalculate all users' total credits from their gaming sessions"""
         session = self.Session()
         try:
-            print("Recalculating all user credits from gaming sessions...")
-
             # Get all unique user IDs from gaming sessions
             user_ids = session.query(GamingSession.user_id.distinct()).all()
 
@@ -802,17 +707,10 @@ class GameStorage:
                 if not user_stats:
                     user_stats = UserStats(user_id=user_id, total_credits=total_credits)
                     session.add(user_stats)
-                else:
-                    user_stats.total_credits = total_credits
 
-                print(f"Updated User {user_id}: {total_credits:,.1f} credits")
-
-            # Commit all changes at once
             session.commit()
-            print("Credit recalculation complete!")
 
         except Exception as e:
-            print(f"Error recalculating credits: {str(e)}")
             session.rollback()
             raise
         finally:
@@ -871,7 +769,6 @@ class GameStorage:
             return credits_earned
 
         except Exception as e:
-            print(f"Error adding gaming hours: {str(e)}")
             session.rollback()
             raise
         finally:
@@ -1233,21 +1130,16 @@ class GameStorage:
 
     async def get_total_game_hours_by_timeframe(self, timeframe: str) -> List[Tuple[str, float, str]]:
         """Get the total hours played for each game within a given timeframe."""
-        print(f"DEBUG: Starting get_total_game_hours_by_timeframe for timeframe: {timeframe}")
         session = self.Session()
         try:
-            print(f"DEBUG: Created database session")
             query = session.query(
                 Game.name,
                 func.sum(GamingSession.hours).label('total_hours'),
                 Game.box_art_url
             ).join(Game, GamingSession.game_id == Game.id)
 
-            print(f"DEBUG: Created base query")
-
             # Get current time in CST
             current_time = datetime.now(self.cst)
-            print(f"DEBUG: Current time in CST: {current_time}")
             start_time = None
 
             if timeframe == 'weekly':
@@ -1256,11 +1148,9 @@ class GameStorage:
                 start_time = (current_time - timedelta(days=days_since_monday)).replace(
                     hour=0, minute=0, second=0, microsecond=0
                 )
-                print(f"DEBUG: Weekly start time: {start_time}")
             elif timeframe == 'monthly':
                 # Start from 1st of current month CST
                 start_time = current_time.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-                print(f"DEBUG: Monthly start time: {start_time}")
             elif timeframe == 'alltime':
                 print("DEBUG: No time filter for alltime timeframe")
             else:
@@ -1269,23 +1159,15 @@ class GameStorage:
 
             if start_time:
                 query = query.filter(GamingSession.timestamp >= start_time)
-                print(f"DEBUG: Added time filter: {start_time}")
 
             # Group by both game name and box_art_url
             query = query.group_by(Game.name, Game.box_art_url)
             query = query.order_by(text('total_hours DESC'))
 
-            print("DEBUG: About to execute query...")
-            print(f"DEBUG: Query SQL: {query.statement.compile(compile_kwargs={'literal_binds': True})}")
-
             results = query.all()
-            print(f"DEBUG: Query executed successfully. Number of results: {len(results)}")
-            print(f"DEBUG: Raw query results: {results}")
             
             # Format results as list of tuples (game_name, total_hours, box_art_url)
             formatted_results = [(r.name, float(r.total_hours), r.box_art_url) for r in results]
-            print(f"DEBUG: Formatted results: {formatted_results}")
-            
             return formatted_results
 
         except Exception as e:
@@ -1295,17 +1177,12 @@ class GameStorage:
             traceback.print_exc()
             return []
         finally:
-            print("DEBUG: Closing database session")
             session.close()
 
     async def fetch_game_details_from_rawg(self, game_name: str) -> Optional[Dict]:
         """Fetch game details from RAWG API, including box art, description, and release date."""
         rawg_api_key = os.getenv('RAWG_API_KEY') # Get RAWG API key
         rawg_api_url = os.getenv('RAWG_API_URL', 'https://api.rawg.io/api') # Get RAWG API URL
-
-        print(f"DEBUG: Fetching RAWG data for game: {game_name}")
-        print(f"DEBUG: RAWG API Key present: {bool(rawg_api_key)}")
-        print(f"DEBUG: RAWG API URL: {rawg_api_url}")
 
         if not rawg_api_key:
             print("RAWG_API_KEY not set. Cannot fetch game details from RAWG.")
@@ -1315,8 +1192,6 @@ class GameStorage:
             # Step 1: Search for the game by name
             search_url = f'{rawg_api_url}/games'
             search_params = {'key': rawg_api_key, 'search': game_name, 'page_size': 1}
-            print(f"DEBUG: Searching RAWG with URL: {search_url}")
-            print(f"DEBUG: Search params: {search_params}")
             
             async with aiohttp.ClientSession() as session:
                 async with session.get(search_url, params=search_params) as response:
@@ -1324,7 +1199,6 @@ class GameStorage:
                         print(f"RAWG search API error for '{game_name}': {response.status}")
                         return None
                     search_data = await response.json()
-                    print(f"DEBUG: RAWG search response: {search_data}")
 
             if not search_data or not search_data['results']:
                 print(f"No RAWG search results found for '{game_name}'.")
@@ -1333,13 +1207,10 @@ class GameStorage:
             # Get the ID of the first result
             game_id = search_data['results'][0]['id']
             rawg_display_name = search_data['results'][0].get('name', game_name)
-            print(f"DEBUG: Found game ID: {game_id}")
-            print(f"DEBUG: RAWG display name: {rawg_display_name}")
 
             # Step 2: Get full game details by ID
             details_url = f'{rawg_api_url}/games/{game_id}'
             details_params = {'key': rawg_api_key}
-            print(f"DEBUG: Fetching game details from: {details_url}")
             
             async with aiohttp.ClientSession() as session:
                 async with session.get(details_url, params=details_params) as response:
@@ -1347,15 +1218,11 @@ class GameStorage:
                         print(f"RAWG details API error for ID {game_id}: {response.status}")
                         return None
                     details_data = await response.json()
-                    print(f"DEBUG: RAWG details response: {details_data}")
 
             # Get box art URL, description, and release date
             box_art_url = details_data.get('background_image')
             description = details_data.get('description_raw', 'No description available.')
             release_date = details_data.get('released')  # Get the release date
-            print(f"DEBUG: Box art URL: {box_art_url}")
-            print(f"DEBUG: Description length: {len(description)}")
-            print(f"DEBUG: Release date: {release_date}")
 
             return {
                 'rawg_id': game_id,  # Changed from 'id' to 'rawg_id' to match database column
@@ -1375,7 +1242,6 @@ class GameStorage:
         """Get the most recent gaming sessions with game details."""
         session = self.Session()
         try:
-            print(f"DEBUG: Getting recent gaming sessions, limit: {limit}")
             # Fetch recent gaming sessions with game details
             sessions_query = session.query(
                 GamingSession.id,
@@ -1389,13 +1255,10 @@ class GameStorage:
              .order_by(GamingSession.timestamp.desc())\
              .limit(limit)
 
-            print("DEBUG: Executing query...")
             rows = sessions_query.all()
-            print(f"DEBUG: get_recent_gaming_sessions - Fetched rows: {rows}") # Debug print
 
             # If no real sessions, return empty list (Discord info will be fetched in app.py)
             if not rows:
-                 print("DEBUG: get_recent_gaming_sessions - No rows found.") # Debug print
                  return []
 
             # Format the results (only include data directly from DB for now)
@@ -1411,7 +1274,6 @@ class GameStorage:
                     'box_art_url': row.box_art_url # Can be None
                 })
 
-            print(f"DEBUG: get_recent_gaming_sessions - Returning data: {sessions_data}") # Debug print
             return sessions_data
 
         except Exception as e:
@@ -1426,7 +1288,6 @@ class GameStorage:
         """Get the most recent bonus entries with user details."""
         session = self.Session()
         try:
-            print(f"DEBUG: Getting recent bonuses, limit: {limit}")
             # Fetch recent bonus entries
             bonuses_query = session.query(
                 Bonus.id,
@@ -1438,9 +1299,7 @@ class GameStorage:
             ).order_by(Bonus.timestamp.desc())\
              .limit(limit)
 
-            print("DEBUG: Executing query...")
             rows = bonuses_query.all()
-            print(f"DEBUG: get_recent_bonuses - Fetched rows: {rows}") # Debug print
 
             # Format the results as a list of dictionaries
             recent_bonuses = []
@@ -1458,10 +1317,8 @@ class GameStorage:
 
             # If no real bonuses, return empty list (frontend handles display)
             if not recent_bonuses:
-                print("DEBUG: get_recent_bonuses - No bonuses found.") # Debug print
                 return []
 
-            print(f"DEBUG: get_recent_bonuses - Returning {len(recent_bonuses)} bonuses") # Debug print
             return recent_bonuses
 
         except Exception as e:
@@ -1531,7 +1388,6 @@ class GameStorage:
                     'box_art_url': result.box_art_url
                 })
 
-            print(f"DEBUG: get_user_most_played_game_by_timeframe for user {user_id}, timeframe {timeframe}: {formatted_results}") # Debug print
             return formatted_results # Return a list of dictionaries
 
         except Exception as e:
@@ -1700,11 +1556,9 @@ class GameStorage:
 
     def get_alltime_leaderboard(self) -> List[Tuple[int, int, int, str, int]]:
         """Get all-time leaderboard data."""
-        print("\n=== DEBUG: Getting all-time leaderboard ===")
         db_session = self.Session()
         try:
             # Use a single query to get all the data we need
-            print("DEBUG: Executing optimized all-time leaderboard query...")
             results = db_session.query(
                 GamingSession.user_id,
                 func.sum(GamingSession.credits_earned).label('total_credits'),
@@ -1719,15 +1573,10 @@ class GameStorage:
                 func.sum(GamingSession.credits_earned).desc()
             ).all()
 
-            print(f"DEBUG: Found {len(results)} users in all-time leaderboard")
-            
-            # Format the results
             leaderboard = []
             for user_id, credits, games_played, most_played_game, most_played_hours in results:
                 leaderboard.append((user_id, credits, games_played, most_played_game, most_played_hours))
-                print(f"DEBUG: Added user {user_id} to leaderboard with {credits} credits")
 
-            print(f"DEBUG: Final leaderboard: {leaderboard}")
             return leaderboard
 
         except Exception as e:

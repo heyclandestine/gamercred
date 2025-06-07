@@ -389,4 +389,53 @@ document.addEventListener('DOMContentLoaded', function() {
       dropdown.classList.remove('active');
     }
   });
+
+  // Setup activity carousel
+  const leftArrow = document.querySelector('.activity-left-arrow');
+  const rightArrow = document.querySelector('.activity-right-arrow');
+  const activityCarousel = document.querySelector('.activity-carousel');
+
+  if (leftArrow && activityCarousel) {
+    leftArrow.addEventListener('click', () => {
+      activityCarousel.scrollBy({ left: -200, behavior: 'smooth' });
+    });
+  }
+
+  if (rightArrow && activityCarousel) {
+    rightArrow.addEventListener('click', () => {
+      activityCarousel.scrollBy({ left: 200, behavior: 'smooth' });
+    });
+  }
+
+  // Setup leaderboard tabs
+  const leaderboardTabs = document.querySelectorAll('.leaderboard-tab');
+  if (leaderboardTabs) {
+    leaderboardTabs.forEach(tab => {
+      tab.addEventListener('click', function() {
+        // Remove active class from all tabs
+        leaderboardTabs.forEach(t => t.classList.remove('active'));
+        // Add active class to clicked tab
+        this.classList.add('active');
+        // Fetch and display leaderboard data for selected timeframe
+        const timeframe = this.getAttribute('data-timeframe');
+        fetchLeaderboardData(timeframe);
+      });
+    });
+  }
+
+  // Setup popular games tabs
+  const popularGamesTabs = document.querySelectorAll('.popular-games-tab');
+  if (popularGamesTabs) {
+    popularGamesTabs.forEach(tab => {
+      tab.addEventListener('click', function() {
+        // Remove active class from all tabs
+        popularGamesTabs.forEach(t => t.classList.remove('active'));
+        // Add active class to clicked tab
+        this.classList.add('active');
+        // Fetch and display popular games data for selected timeframe
+        const timeframe = this.getAttribute('data-timeframe');
+        fetchPopularGamesData(timeframe);
+      });
+    });
+  }
 }); 
