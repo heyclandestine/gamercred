@@ -258,15 +258,17 @@ def get_game():
         backloggd_url = game_db_info.get('backloggd_url')
         description = 'No description available.'
 
-        # Fetch description and potentially updated cover art from RAWG if rawg_id exists
+        # Fetch description from RAWG if rawg_id exists
         rawg_id = game_db_info.get('rawg_id')
         if rawg_id:
             rawg_details = run_async(storage.fetch_game_details_from_rawg(correct_game_name))
             if rawg_details:
                 description = rawg_details.get('description', description)
-                # Optionally update box_art_url if RAWG returned a better one
-                if rawg_details.get('box_art_url'):
+                # Only use RAWG box art URL if we don't have one in the database
+                if not box_art_url and rawg_details.get('box_art_url'):
                     box_art_url = rawg_details.get('box_art_url')
+
+        print(f"DEBUG: Description after RAWG fetch: {description}") # Debug print
 
         # Combine database info with API info
         final_game_data = {
