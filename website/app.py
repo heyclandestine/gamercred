@@ -85,7 +85,9 @@ def refresh_cache():
     global cache
     current_time = time.time()
     if current_time - cache['leaderboard']['timestamp'] > 30:
-        cache['leaderboard']['data'] = storage.get_leaderboard_by_timeframe(LeaderboardType.WEEKLY)
+        # Get current period and leaderboard data for weekly
+        current_period = run_async(storage.get_or_create_current_period(LeaderboardType.WEEKLY))
+        cache['leaderboard']['data'] = run_async(storage.get_leaderboard_by_timeframe(LeaderboardType.WEEKLY, period=current_period))
         cache['leaderboard']['timestamp'] = current_time
     if current_time - cache['popular_games']['timestamp'] > 30:
         cache['popular_games']['data'] = run_async(storage.get_total_game_hours_by_timeframe('weekly'))
@@ -359,6 +361,7 @@ def get_leaderboard():
     timeframe = request.args.get('timeframe', 'weekly')
     try:
         if timeframe == 'weekly':
+            # For weekly, use the cache
             refresh_cache()
             leaderboard_data = cache['leaderboard']['data']
             if not leaderboard_data:
@@ -380,10 +383,10 @@ def get_leaderboard():
                     formatted_data.append(user_data)
             return jsonify(formatted_data)
         elif timeframe == 'monthly':
-            # For monthly, still query the database directly
+            # For monthly, query the database directly
             leaderboard_type = LeaderboardType.MONTHLY
-            current_period = storage.get_or_create_current_period(leaderboard_type)
-            leaderboard_data = storage.get_leaderboard_by_timeframe(leaderboard_type)
+            current_period = run_async(storage.get_or_create_current_period(leaderboard_type))
+            leaderboard_data = run_async(storage.get_leaderboard_by_timeframe(leaderboard_type, period=current_period))
             if not leaderboard_data:
                 return jsonify([])
             formatted_data = []
@@ -426,6 +429,7 @@ def get_leaderboard():
         else:
             return jsonify({'error': 'Invalid timeframe specified'}), 400
     except Exception as e:
+        print(f"Error getting leaderboard data: {str(e)}")
         return jsonify({'error': 'Failed to get leaderboard data'}), 500
 
 # Add endpoint to fetch recent bonuses

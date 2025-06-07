@@ -166,7 +166,7 @@ class GameStorage:
         finally:
             session.close()
 
-    def get_or_create_current_period(self, leaderboard_type: LeaderboardType, bot=None) -> LeaderboardPeriod:
+    async def get_or_create_current_period(self, leaderboard_type: LeaderboardType, bot=None) -> LeaderboardPeriod:
         """Get or create the current leaderboard period."""
         session = self.Session()
         try:
@@ -227,12 +227,13 @@ class GameStorage:
         finally:
             session.close()
 
-    def get_leaderboard_by_timeframe(self, timeframe: LeaderboardType) -> List[Tuple[int, int, int, str, int]]:
+    async def get_leaderboard_by_timeframe(self, timeframe: LeaderboardType, bot=None, period=None) -> List[Tuple[int, float, int, str, float]]:
         """Get leaderboard data for a specific timeframe."""
         db_session = self.Session()
         try:
-            # Get the current period
-            current_period = self.get_or_create_current_period(timeframe)
+            # Get the current period if not provided
+            if not period:
+                period = await self.get_or_create_current_period(timeframe, bot)
 
             # Use a single query to get all the data we need
             results = db_session.query(
@@ -245,8 +246,8 @@ class GameStorage:
                 Game, GamingSession.game_id == Game.id
             ).filter(
                 and_(
-                    GamingSession.timestamp >= current_period.start_time,
-                    GamingSession.timestamp < current_period.end_time
+                    GamingSession.timestamp >= period.start_time,
+                    GamingSession.timestamp < period.end_time
             )
             ).group_by(
                 GamingSession.user_id
