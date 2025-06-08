@@ -11,14 +11,25 @@
 <body>
     <nav class="navbar">
         <div class="nav-left">
-            <a href="/" class="site-title nav-home-btn">Gamer Cred</a>
+            <button class="mobile-menu-toggle mobile-only" aria-label="Toggle menu">
+                <i class="fas fa-bars"></i>
+            </button>
+            <a href="/" class="site-title nav-home-btn">
+                <img src="/favicon.png" alt="Gamer Cred" class="nav-favicon">
+                Gamer Cred
+            </a>
         </div>
         <div class="nav-center">
-            <input type="text" class="search-bar" placeholder="Search games...">
-            <a href="/games.html" class="nav-link active">All Games</a>
+            <input type="text" class="search-bar" placeholder="Search players, games...">
+            <a href="/all_games.html" class="nav-link desktop-only">All Games</a>
         </div>
         <div class="nav-right">
-            <button class="discord-login"><i class="fab fa-discord"></i> Login with Discord</button>
+            <div id="auth-container">
+                <a href="/login" class="auth-button login-button">
+                    <i class="fab fa-discord"></i>
+                    Login with Discord
+                </a>
+            </div>
         </div>
     </nav>
 
@@ -67,7 +78,13 @@
         async function fetchGames() {
             try {
                 console.log('Fetching games from /api/all-games...');
-                const response = await fetch('/api/all-games');
+                // Clear any cached games data
+                localStorage.removeItem('popular_weekly');
+                localStorage.removeItem('popular_monthly');
+                localStorage.removeItem('popular_alltime');
+                
+                // Force a fresh fetch by adding a timestamp
+                const response = await fetch(`/api/all-games?t=${Date.now()}`);
                 console.log('Response status:', response.status);
                 const data = await response.json();
                 console.log('Response data:', data);
@@ -215,8 +232,44 @@
             renderGames();
         });
 
-        // Initial load
+        document.addEventListener('DOMContentLoaded', function() {
+            // Check authentication status
+            fetch('/api/user')
+                .then(response => {
+                    if (response.ok) {
+                        return response.json();
+                    }
+                    throw new Error('Not authenticated');
+                })
+                .then(user => {
+                    const authContainer = document.getElementById('auth-container');
+                    authContainer.innerHTML = `
+                        <a href="/user.html?user=${user.id}" class="user-profile">
+                            <img src="${user.avatar ? `https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png` : 'https://cdn.discordapp.com/embed/avatars/0.png'}" 
+                                 alt="${user.username}" 
+                                 class="user-avatar">
+                            <span class="user-name">${user.username}</span>
+                        </a>
+                        <a href="/logout" class="logout-button" title="Logout">
+                            <i class="fas fa-sign-out-alt"></i>
+                        </a>
+                    `;
+                })
+                .catch(() => {
+                    // User is not authenticated, keep the login button
+                    const authContainer = document.getElementById('auth-container');
+                    authContainer.innerHTML = `
+                        <a href="/login" class="auth-button login-button">
+                            <i class="fab fa-discord"></i>
+                            Login with Discord
+                        </a>
+                    `;
+                });
+
+            // Existing all games page logic
         fetchGames();
+        });
     </script>
+    <script src="script.js"></script>
 </body>
 </html> 

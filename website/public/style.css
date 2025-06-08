@@ -86,6 +86,77 @@ body {
   gap: 1rem;
 }
 
+#auth-container {
+  display: flex;
+  gap: inherit;
+  align-items: center;
+}
+
+.user-profile {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  background: linear-gradient(225deg, #5966f2 0%, #5865f24d 100%);
+  padding: 0.5rem 1rem;
+  border-radius: 50px;
+  text-decoration: none;
+  color: inherit;
+}
+
+.user-profile:hover {
+  background: linear-gradient(225deg, #5966f2 0%, #5865f24d 100%);
+  cursor: pointer;
+  transform: scale(1.05);
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 12px rgba(88, 101, 242, 0.2);
+  text-decoration: none;
+  color: inherit;
+}
+
+.user-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid #5865F2;
+}
+
+.user-name {
+  display: block;
+  color: white;
+  font-size: 0.9rem;
+  font-weight: 600;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  letter-spacing: 0.5px;
+  background:  #ffffff 80%;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.logout-button {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  background-color: #ED4245;
+  color: white;
+  text-decoration: none;
+  transition: all 0.2s ease;
+}
+
+.logout-button:hover {
+  background-color: #c03537;
+  transform: scale(1.05);
+}
+
+.logout-button i {
+  font-size: 1.1rem;
+}
+
 .discord-login {
   background: linear-gradient(90deg, #5865f2 60%, #ff6fae 100%);
   color: #fff;
@@ -802,25 +873,35 @@ footer {
 }
 
 .nav-home-btn {
-  background: linear-gradient(90deg, #5865f2 60%, #ff6fae 100%);
+  display: flex;
   color: #fff;
-  border: none;
-  border-radius: 20px;
-  padding: 0.6rem 1.5rem;
-  font-size: 1.1rem;
+  font-size: 1.3rem;
   font-weight: 700;
-  cursor: pointer;
+  align-items: center;
+  background: linear-gradient(225deg, #ff6fae 0%, #5966f2 100%);
+  padding: 0.5rem 1rem;
+  border-radius: 50px;
   transition: background 0.2s, transform 0.1s;
   text-decoration: none;
-  margin-right: 1rem;
-  box-shadow: 0 2px 8px rgba(88,101,242,0.12);
-  display: inline-block;
 }
 
 .nav-home-btn:hover {
-  background: linear-gradient(90deg, #ff6fae 60%, #5865f2 100%);
+  background: linear-gradient(225deg, #ff6fae 0%, #5966f2 100%);
   transform: scale(1.05);
   color: #fff;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 12px rgba(88, 101, 242, 0.2);
+}
+
+.nav-home-btn:hover .nav-favicon {
+  transform: scale(1.05);
+  transition: transform 0.2s ease;
+}
+
+.nav-favicon {
+  width: 32px;
+  height: 32px;
+  margin-right: 8px;
 }
 
 .most-popular {
@@ -952,6 +1033,7 @@ footer {
   grid-template-columns: 1fr 1fr;
   grid-template-areas:
     "leaderboard most-popular"
+    "log-game log-game"
     "activity-wide activity-wide"
     "bonuses-bottom bonuses-bottom";
   gap: 2.5rem;
@@ -967,6 +1049,13 @@ footer {
   grid-area: most-popular;
 }
 
+.log-game {
+  grid-area: log-game;
+  max-width: 800px;
+  margin: 0 auto;
+  width: 100%;
+}
+
 .activity-wide {
   grid-area: activity-wide;
   min-width: 0;
@@ -976,10 +1065,6 @@ footer {
   overflow: visible;
   padding-left: 2em;
   padding-right: 2em;
-}
-
-.activity-wide:has(.activity-card:hover) {
-  /* Removed z-index: 10; */
 }
 
 .bonuses-bottom {
@@ -993,9 +1078,14 @@ footer {
     grid-template-areas:
       "leaderboard"
       "most-popular"
+      "log-game"
       "activity-wide"
       "bonuses-bottom";
     gap: 1.5rem;
+  }
+  
+  .log-game {
+    max-width: 100%;
   }
 }
 
@@ -1616,24 +1706,32 @@ a:hover .game-cover-carousel, .activity-card:hover .game-cover-carousel {
 }
 
 /* Autocomplete dropdown for navbar search */
-.autocomplete-dropdown {
+.search-container {
+  position: relative;
+  width: 100%;
+}
+
+.search-container .autocomplete-dropdown {
   position: absolute;
-  top: 100%;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 350px;
+  left: 0;
+  right: 0;
+  top: calc(100% + 2px);
+  width: 100%;
+  margin: 0;
   background: #29293a;
-  border-radius: 12px;
+  border-radius: 8px;
   box-shadow: 0 4px 24px rgba(88,101,242,0.18);
-  z-index: 1000;
-  margin-top: 1rem;
-  max-height: 350px;
+  z-index: 2147483647;
+  max-height: 240px;
   overflow-y: auto;
   display: none;
+  padding: 0;
 }
-.autocomplete-dropdown.active {
+
+.search-container .autocomplete-dropdown.active {
   display: block;
 }
+
 .autocomplete-section {
   padding: 0.2em 1em 0.2em 1em;
 }
@@ -1752,12 +1850,6 @@ a:hover .game-cover-carousel, .activity-card:hover .game-cover-carousel {
     width: 100%;
     max-width: 500px;
     margin: 0 auto;
-    box-sizing: border-box;
-}
-
-.search-container {
-    position: relative;
-    width: 100%;
     box-sizing: border-box;
 }
 
@@ -2363,4 +2455,310 @@ a:hover .game-cover-carousel, .activity-card:hover .game-cover-carousel {
     font-size: 1rem;
     padding: 0.5rem 1rem;
   }
+}
+
+.auth-button {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    border-radius: 50px;
+    font-weight: 600;
+    text-decoration: none;
+    transition: all 0.2s ease;
+}
+
+.login-button {
+    background:  #5865F2 100%;
+    color: white;
+    border: none;
+}
+
+.login-button:hover {
+    background:  #606cf0 100%;
+    transform: scale(1.05);
+    transition: all 0.2s ease;
+    box-shadow: 0 4px 12px rgba(88, 101, 242, 0.2);
+    color: white;
+    text-decoration: none;
+}
+
+.login-button i {
+    font-size: 1.2rem;
+}
+
+.log-game {
+  background: #2a2a3a;
+  border-radius: 15px;
+  padding: 1.5rem;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.log-game h2 {
+  color: #ff6fae;
+  margin-bottom: 1.5rem;
+  font-size: 1.4rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.log-game h2 i {
+  font-size: 1.2rem;
+}
+
+#log-game-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.2rem;
+}
+
+.form-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 4rem;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  flex: 1;
+}
+
+.game-name-group {
+  position: relative;
+}
+
+.game-name-group .search-container {
+  position: relative;
+  width: 100%;
+}
+
+.game-name-group .autocomplete-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  width: 100%;
+  background: #29293a;
+  border-radius: 8px;
+  box-shadow: 0 4px 24px rgba(88,101,242,0.18);
+  z-index: 9999;
+  margin-top: 0px;
+  max-height: 240px;
+  overflow-y: auto;
+  display: none;
+  padding: 0;
+}
+
+.game-name-group .autocomplete-dropdown.active {
+  display: block;
+}
+
+.game-name-group .autocomplete-list {
+  list-style: none;
+  margin: 0;
+  padding: 0.5rem;
+}
+
+.game-name-group .autocomplete-item {
+  display: flex;
+  align-items: center;
+  gap: 0.7em;
+  padding: 0.5em 0.7em;
+  border-radius: 6px;
+  cursor: pointer;
+  color: #fff;
+  font-size: 0.95em;
+  transition: background 0.13s;
+}
+
+.game-name-group .autocomplete-item:hover,
+.game-name-group .autocomplete-item.active {
+  background: #36393f;
+}
+
+.game-name-group .autocomplete-item .autocomplete-avatar {
+  width: 24px;
+  height: 24px;
+  border-radius: 4px;
+  object-fit: cover;
+  background: #23232b;
+  border: 1px solid #8be9fd;
+}
+
+.game-name-group .autocomplete-item .autocomplete-title {
+  font-weight: 500;
+  color: #fff;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.hours-group {
+  flex: 1;
+  max-width: 120px;
+}
+
+.form-group label {
+  color: #8be9fd;
+  font-size: 0.95rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.form-group label i {
+  color: #ff6fae;
+  font-size: 0.9rem;
+}
+
+.form-group input {
+  background: #23232b;
+  border: 2px solid #2d2d35;
+  border-radius: 8px;
+  padding: 0.8rem 1rem;
+  color: #f8f8f2;
+  font-size: 1rem;
+  transition: all 0.2s ease;
+  width: 100%;
+}
+
+.form-group input:focus {
+  outline: none;
+  border-color: #ff6fae;
+  box-shadow: 0 0 0 2px rgba(255, 111, 174, 0.2);
+}
+
+.form-group input::placeholder {
+  color: #6272a4;
+}
+
+.submit-button {
+  background: #ff6fae;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 0.8rem 1.2rem;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  transition: all 0.2s ease;
+  height: 42px;
+  white-space: nowrap;
+}
+
+.submit-button:hover {
+  background: #ff4f9e;
+  transform: translateY(-1px);
+}
+
+.submit-button:active {
+  transform: translateY(0);
+}
+
+.submit-button i {
+  font-size: 0.9rem;
+}
+
+/* Add responsive styles */
+@media (max-width: 768px) {
+  .form-row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 1rem;
+  }
+  
+  .hours-group {
+    max-width: none;
+  }
+  
+  .form-group input {
+    padding: 0.7rem 0.9rem;
+  }
+  
+  .submit-button {
+    padding: 0.7rem 1.2rem;
+    height: auto;
+  }
+}
+
+.recent-activity,
+.activity-section,
+.activity-card-wrap,
+.card-section {
+  overflow: visible !important;
+}
+
+#global-autocomplete-dropdown {
+  background: #29293a;
+  border-radius: 8px;
+  box-shadow: 0 4px 24px rgba(88,101,242,0.18);
+  z-index: 2147483647;
+  max-height: 240px;
+  overflow-y: auto;
+  display: none;
+  padding: 0;
+}
+
+#global-autocomplete-dropdown.active {
+  display: block;
+}
+
+#navbar-autocomplete-dropdown {
+  background: #29293a;
+  border-radius: 8px;
+  box-shadow: 0 4px 24px rgba(88,101,242,0.18);
+  z-index: 2147483647;
+  max-height: 240px;
+  overflow-y: auto;
+  display: none;
+  padding: 0;
+}
+
+#navbar-autocomplete-dropdown.active {
+  display: block;
+}
+
+.autocomplete-games-header {
+  color: #ffb86c;
+  font-weight: bold;
+  font-size: 1.05em;
+  margin: 0.2em 0 0.1em 0.5em;
+}
+.autocomplete-users-header {
+  color: #8be9fd;
+  font-weight: bold;
+  font-size: 1.05em;
+  margin: 0.2em 0 0.1em 0.5em;
+}
+.autocomplete-game-title {
+  color: #ffb86c;
+}
+.autocomplete-user-title {
+  color: #8be9fd;
+}
+
+.autocomplete-item.autocomplete-game-item .autocomplete-title {
+  color: #ffb86c;
+}
+.autocomplete-item.autocomplete-user-item .autocomplete-title {
+  color: #8be9fd;
+}
+
+#navbar-autocomplete-dropdown .autocomplete-title {
+  max-width: 320px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: inline-block;
+}
+#navbar-autocomplete-dropdown {
+  min-width: 340px;
+  max-width: 480px;
 }

@@ -7,7 +7,6 @@
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap">
   <link rel="stylesheet" href="style.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
-  <script src="search.js"></script>
   <link rel="icon" type="image/png" href="/favicon.png">
   <style>
     .tab-content {
@@ -214,14 +213,25 @@
 <body>
   <nav class="navbar">
     <div class="nav-left">
-      <a href="/" class="site-title nav-home-btn">Gamer Cred</a>
+      <button class="mobile-menu-toggle mobile-only" aria-label="Toggle menu">
+        <i class="fas fa-bars"></i>
+      </button>
+      <a href="/" class="site-title nav-home-btn">
+        <img src="/favicon.png" alt="Gamer Cred" class="nav-favicon">
+        Gamer Cred
+      </a>
     </div>
     <div class="nav-center">
       <input type="text" class="search-bar" placeholder="Search players, games...">
-      <a href="/games.html" class="nav-link">All Games</a>
+      <a href="/all_games.html" class="nav-link desktop-only">All Games</a>
     </div>
     <div class="nav-right">
-      <button class="discord-login"><i class="fab fa-discord"></i> Login with Discord</button>
+      <div id="auth-container">
+        <a href="/login" class="auth-button login-button">
+          <i class="fab fa-discord"></i>
+          Login with Discord
+        </a>
+      </div>
     </div>
   </nav>
   <main class="profile-main">
@@ -1007,6 +1017,42 @@
         }
       });
     })();
+
+    document.addEventListener('DOMContentLoaded', function() {
+      // Check authentication status
+      fetch('/api/user')
+        .then(response => {
+          if (response.ok) {
+            return response.json();
+          }
+          throw new Error('Not authenticated');
+        })
+        .then(user => {
+          const authContainer = document.getElementById('auth-container');
+          authContainer.innerHTML = `
+            <a href="/user.html?user=${user.id}" class="user-profile">
+              <img src="${user.avatar ? `https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png` : 'https://cdn.discordapp.com/embed/avatars/0.png'}" 
+                   alt="${user.username}" 
+                   class="user-avatar">
+              <span class="user-name">${user.username}</span>
+            </a>
+            <a href="/logout" class="logout-button" title="Logout">
+              <i class="fas fa-sign-out-alt"></i>
+            </a>
+          `;
+        })
+        .catch(() => {
+          // User is not authenticated, keep the login button
+          const authContainer = document.getElementById('auth-container');
+          authContainer.innerHTML = `
+            <a href="/login" class="auth-button login-button">
+              <i class="fab fa-discord"></i>
+              Login with Discord
+            </a>
+          `;
+        });
+    });
   </script>
+  <script src="script.js"></script>
 </body>
 </html> 

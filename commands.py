@@ -52,7 +52,7 @@ class GamingCommands(commands.Cog):
         try:
             # Validate hours
             if hours <= 0:
-                await ctx.send("Hours must be greater than 0!\n🌐 View on [Gamer Cred](https://gamercred.onrender.com)")
+                await ctx.send("Hours must be greater than 0!")
                 return
 
             # Add gaming hours
@@ -61,7 +61,7 @@ class GamingCommands(commands.Cog):
             # Get game info for the response
             game_info = self.storage.get_game_info(game)
             if not game_info:
-                await ctx.send(f"Error: Could not find game '{game}'\n🌐 View on [Gamer Cred](https://gamercred.onrender.com)")
+                await ctx.send(f"Error: Could not find game '{game}'")
                 return
 
             # URL encode the game name
@@ -77,7 +77,7 @@ class GamingCommands(commands.Cog):
             )
 
         except Exception as e:
-            await ctx.send(MESSAGES['error'].format(error=str(e)) + "\n🌐 View on [Gamer Cred](https://gamercred.onrender.com)")
+            await ctx.send(MESSAGES['error'].format(error=str(e)))
 
     @commands.command(name='setrate')
     async def set_game_credits_per_hour(self, ctx, credits: float, *, game: str):
@@ -154,7 +154,7 @@ class GamingCommands(commands.Cog):
                 return
 
             embed = Embed(title="🏆 Gamer Cred Leaderboard", color=0x00ff00)
-            embed.set_footer(text="🌐 View on [Gamer Cred](https://gamercred.onrender.com)")
+            embed.set_footer(text="🌐 View on Gamer Cred", icon_url="https://gamercred.onrender.com/favicon.ico")
 
             for position, (user_id, credits) in enumerate(leaderboard[:10], 1):
                 member = ctx.guild.get_member(user_id)
@@ -188,10 +188,9 @@ class GamingCommands(commands.Cog):
             embed = Embed(
                 title="📅 Weekly Gamer Cred Leaderboard",
                 description=f"Period: {self.format_cst_time(period.start_time)} to {self.format_cst_time(period.end_time)}\nResets every Monday at 00:00 CST",
-                color=0x00ff00
+                color=0x00ff00,
+                url="https://gamercred.onrender.com"
             )
-            embed.set_footer(text="🌐 View on [Gamer Cred](https://gamercred.onrender.com)")
-
             for position, (user_id, credits, games, most_played, most_played_hours) in enumerate(leaderboard[:10], 1):
                 member = ctx.guild.get_member(user_id)
                 username = member.display_name if member else f"User{user_id}"
@@ -224,10 +223,9 @@ class GamingCommands(commands.Cog):
             embed = Embed(
                 title="📅 Monthly Gamer Cred Leaderboard",
                 description=f"Period: {self.format_cst_time(period.start_time)} to {self.format_cst_time(period.end_time)}\nResets on the 1st of each month at 00:00 CST",
-                color=0x00ff00
+                color=0x00ff00,
+                url="https://gamercred.onrender.com"
             )
-            embed.set_footer(text="🌐 View on [Gamer Cred](https://gamercred.onrender.com)")
-
             for position, (user_id, credits, games, most_played, most_played_hours) in enumerate(leaderboard[:10], 1):
                 member = ctx.guild.get_member(user_id)
                 username = member.display_name if member else f"User{user_id}"
@@ -257,7 +255,7 @@ class GamingCommands(commands.Cog):
                 title=f"🏆 Leaderboard History for {target_user.display_name}",
                 color=0x00ff00
             )
-            embed.set_footer(text="🌐 View on [Gamer Cred](https://gamercred.onrender.com)")
+            embed.set_footer(text="🌐 View on Gamer Cred", icon_url="https://gamercred.onrender.com/favicon.ico")
 
             # Group history by type
             weekly_history = [h for h in history if h['type'] == 'weekly'][:5]  # Last 5 weekly placements
@@ -314,7 +312,7 @@ class GamingCommands(commands.Cog):
                 title=f"🎮 Recent Gaming Sessions for {ctx.author.display_name}",
                 color=0x0088ff
             )
-            sessions_embed.set_footer(text="🌐 View on [Gamer Cred](https://gamercred.onrender.com)")
+            sessions_embed.set_footer(text="🌐 View on Gamer Cred", icon_url="https://gamercred.onrender.com/favicon.ico")
 
             for session in history[:10]:  # Limit to 10 sessions
                 sessions_embed.add_field(
@@ -331,7 +329,7 @@ class GamingCommands(commands.Cog):
                     title=f"📊 Game Totals for {ctx.author.display_name}",
                     color=0x00ff00
                 )
-                summary_embed.set_footer(text="🌐 View on [Gamer Cred](https://gamercred.onrender.com)")
+                summary_embed.set_footer(text="🌐 View on Gamer Cred", icon_url="https://gamercred.onrender.com/favicon.ico")
 
                 for summary in summaries[:20]:  # Limit to 20 games
                     summary_embed.add_field(
@@ -398,7 +396,7 @@ class GamingCommands(commands.Cog):
                 title=f"🌟 Achievements for {ctx.author.display_name}",
                 color=0x00ff00
             )
-            embed.set_footer(text="🌐 View on [Gamer Cred](https://gamercred.onrender.com)")
+            embed.set_footer(text="🌐 View on Gamer Cred", icon_url="https://gamercred.onrender.com/favicon.ico")
 
             # Add each category
             for category, achievements_dict in achievement_categories.items():
@@ -431,7 +429,7 @@ class GamingCommands(commands.Cog):
                 return
 
             embed = Embed(title=f"📊 Stats for {stats['name']}", color=0x00ff00)
-            embed.set_footer(text="🌐 View on [Gamer Cred](https://gamercred.onrender.com)")
+            embed.set_footer(text="🌐 View on Gamer Cred", icon_url="https://gamercred.onrender.com/favicon.ico")
             embed.add_field(
                 name="Total Hours Played",
                 value=f"⏱️ {stats['total_hours']:,.1f} hours",
@@ -485,7 +483,7 @@ class GamingCommands(commands.Cog):
                 return
 
             embed = Embed(title=f"📊 Your Stats for {stats['name']}", color=0x00ff00)
-            embed.set_footer(text="🌐 View on [Gamer Cred](https://gamercred.onrender.com)")
+            embed.set_footer(text="🌐 View on Gamer Cred", icon_url="https://gamercred.onrender.com/favicon.ico")
             embed.add_field(
                 name="Your Total Hours",
                 value=f"⏱️ {stats['total_hours']:,.1f} hours",
@@ -550,7 +548,7 @@ class GamingCommands(commands.Cog):
                 title=f"📊 Gaming Stats for {ctx.author.display_name}",
                 color=0x00ff00
             )
-            embed.set_footer(text="🌐 View on [Gamer Cred](https://gamercred.onrender.com)")
+            embed.set_footer(text="🌐 View on Gamer Cred", icon_url="https://gamercred.onrender.com/favicon.ico")
 
             # Add overall stats
             embed.add_field(
@@ -596,7 +594,7 @@ class GamingCommands(commands.Cog):
             description="Track your gaming progress and earn achievements!",
             color=0x0088ff
         )
-        embed.set_footer(text="🌐 View on [Gamer Cred](https://gamercred.onrender.com)")
+        embed.set_footer(text="🌐 View on Gamer Cred", icon_url="https://gamercred.onrender.com/favicon.ico")
 
         # Core Commands
         embed.add_field(

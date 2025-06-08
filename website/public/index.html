@@ -39,14 +39,22 @@
       <button class="mobile-menu-toggle mobile-only" aria-label="Toggle menu">
         <i class="fas fa-bars"></i>
       </button>
-      <a href="/" class="site-title nav-home-btn">Gamer Cred</a>
+      <a href="/" class="site-title nav-home-btn">
+        <img src="/favicon.png" alt="Gamer Cred" class="nav-favicon">
+        Gamer Cred
+      </a>
     </div>
     <div class="nav-center">
       <input type="text" class="search-bar" placeholder="Search players, games...">
-      <a href="/games.html" class="nav-link desktop-only">All Games</a>
+      <a href="/all_games.html" class="nav-link desktop-only">All Games</a>
     </div>
     <div class="nav-right">
-      <button class="discord-login"><i class="fab fa-discord"></i> Login with Discord</button>
+      <div id="auth-container">
+        <a href="/login" class="auth-button login-button">
+          <i class="fab fa-discord"></i>
+          Login with Discord
+        </a>
+      </div>
     </div>
   </nav>
   <main class="main-grid">
@@ -120,6 +128,34 @@
         </ol>
       </div>
     </section>
+    <section class="log-game card">
+      <h2><i class="fas fa-gamepad"></i> Log Game Session</h2>
+      <form id="log-game-form">
+        <div class="form-row">
+          <div class="form-group game-name-group">
+            <label for="game-name">
+              <i class="fas fa-gamepad"></i>
+              Game Name
+            </label>
+            <div class="search-container">
+              <input type="text" id="game-name" placeholder="Enter game name..." required>
+              <div class="autocomplete-dropdown"></div>
+            </div>
+          </div>
+          <div class="form-group hours-group">
+            <label for="hours">
+              <i class="fas fa-clock"></i>
+              Hours
+            </label>
+            <input type="number" id="hours" placeholder="Hours..." step="0.5" min="0.5" required>
+          </div>
+          <button type="submit" class="submit-button">
+            <i class="fas fa-plus"></i>
+            Log
+          </button>
+        </div>
+      </form>
+    </section>
     <section class="activity card activity-wide">
       <h2><i class="fas fa-gamepad"></i> Recent Activity</h2>
       <button class="carousel-arrow left" aria-label="Scroll left"><i class="fas fa-chevron-left"></i></button>
@@ -142,6 +178,39 @@
   </footer>
   <script>
     document.addEventListener('DOMContentLoaded', function() {
+      // Check authentication status
+      fetch('/api/user')
+        .then(response => {
+          if (response.ok) {
+            return response.json();
+          }
+          throw new Error('Not authenticated');
+        })
+        .then(user => {
+          const authContainer = document.getElementById('auth-container');
+          authContainer.innerHTML = `
+            <a href="/user.html?user=${user.id}" class="user-profile">
+              <img src="${user.avatar ? `https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png` : 'https://cdn.discordapp.com/embed/avatars/0.png'}" 
+                   alt="${user.username}" 
+                   class="user-avatar">
+              <span class="user-name">${user.username}</span>
+            </a>
+            <a href="/logout" class="logout-button" title="Logout">
+              <i class="fas fa-sign-out-alt"></i>
+            </a>
+          `;
+        })
+        .catch(() => {
+          // User is not authenticated, keep the login button
+          const authContainer = document.getElementById('auth-container');
+          authContainer.innerHTML = `
+            <a href="/login" class="auth-button login-button">
+              <i class="fab fa-discord"></i>
+              Login with Discord
+            </a>
+          `;
+        });
+
       // Existing tab switching logic
       const tabContainers = document.querySelectorAll('.leaderboard-tabs, .popular-tabs');
 
@@ -622,6 +691,47 @@
 
     // Call setupActivityCarousel after fetching recent activity
     fetchRecentActivity().then(() => setupActivityCarousel());
+
+    document.getElementById('log-game-form').addEventListener('submit', function(event) {
+      event.preventDefault();
+      const gameName = document.getElementById('game-name').value;
+      const hours = document.getElementById('hours').value;
+
+      fetch('/api/user')
+        .then(response => {
+          if (!response.ok) throw new Error('Not logged in');
+          return response.json();
+        })
+        .then(user => {
+          fetch('/api/log-game', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              user_id: user.id,
+              game_name: gameName,
+              hours: hours
+            })
+          })
+          .then(response => response.json())
+          .then(data => {
+            if (data.error) {
+              alert(data.error);
+            } else {
+              alert('Game session logged successfully!');
+              document.getElementById('log-game-form').reset();
+            }
+          })
+          .catch(error => {
+            console.error('Error:', error);
+            alert('An error occurred while logging the game session.');
+          });
+        })
+        .catch(() => {
+          alert('Please log in to log a game session.');
+        });
+    });
   </script>
 </body>
 <script src="script.js"></script>

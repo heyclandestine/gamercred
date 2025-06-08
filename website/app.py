@@ -1,9 +1,10 @@
-from flask import Flask, render_template, jsonify, request, send_from_directory
+from flask import Flask, render_template, jsonify, request, send_from_directory, redirect, url_for
 import os
 import sys # Import the sys module
 import re # Import re for HTML cleaning
 from dotenv import load_dotenv
 from flask_cors import CORS
+from requests_oauthlib import OAuth2Session
 print("sys.path before storage import:", sys.path) # Print sys.path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))) # Add parent directory to path
 from storage import GameStorage # Import GameStorage
@@ -18,9 +19,22 @@ import traceback
 from sqlalchemy import text
 from sqlalchemy.ext.declarative import declarative_base
 from models import Base # Import Base for table creation
+import logging
+
+# Set up basic logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 # Load environment variables
 load_dotenv()
+
+# Discord OAuth2 Configuration
+DISCORD_CLIENT_ID = os.getenv('DISCORD_CLIENT_ID')
+DISCORD_CLIENT_SECRET = os.getenv('DISCORD_CLIENT_SECRET')
+DISCORD_REDIRECT_URI = os.getenv('DISCORD_REDIRECT_URI', 'http://localhost:5000/callback')
+DISCORD_AUTH_URL = 'https://discord.com/api/oauth2/authorize'
+DISCORD_TOKEN_URL = 'https://discord.com/api/oauth2/token'
+DISCORD_API_URL = 'https://discord.com/api/v10'
 
 # Initialize Flask app with correct static folder path
 app = Flask(__name__, 
@@ -720,9 +734,148 @@ def get_all_games():
                 raise
         
         games_data = storage.get_all_games_with_stats()
-        return jsonify(games_data)
+        response = jsonify(games_data)
+        # Prevent caching
+        response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
+        response.headers['Pragma'] = 'no-cache'
+        response.headers['Expires'] = '0'
+        return response
     except Exception as e:
         return jsonify({'error': 'Failed to get all games'}), 500
+
+@app.route('/login')
+def login():
+    """Redirect to Discord OAuth2 login page"""
+    return redirect('https://discord.com/oauth2/authorize?client_id=1344451764530708571&response_type=code&redirect_uri=http%3A%2F%2Flocalhost%3A5000%2Fcallback&scope=identify+guilds+email+guilds.join+connections')
+
+@app.route('/callback')
+def callback():
+    """Handle the OAuth2 callback from Discord"""
+    if request.values.get('error'):
+        return f"Error: {request.values['error']}"
+    
+    code = request.values.get('code')
+    if not code:
+        return "No code provided", 400
+
+    # Exchange the code for an access token
+    data = {
+        'client_id': DISCORD_CLIENT_ID,
+        'client_secret': DISCORD_CLIENT_SECRET,
+        'grant_type': 'authorization_code',
+        'code': code,
+        'redirect_uri': DISCORD_REDIRECT_URI
+    }
+    
+    headers = {
+        'Content-Type': 'application/x-www-form-urlencoded'
+    }
+    
+    response = requests.post(DISCORD_TOKEN_URL, data=data, headers=headers)
+    if response.status_code != 200:
+        return f"Error getting token: {response.text}", 400
+    
+    token_data = response.json()
+    access_token = token_data['access_token']
+    
+    # Get user info
+    headers = {
+        'Authorization': f'Bearer {access_token}'
+    }
+    
+    user_response = requests.get(f'{DISCORD_API_URL}/users/@me', headers=headers)
+    if user_response.status_code != 200:
+        return f"Error getting user info: {user_response.text}", 400
+    
+    user = user_response.json()
+    
+    # Get user's guilds
+    guilds_response = requests.get(f'{DISCORD_API_URL}/users/@me/guilds', headers=headers)
+    guilds = guilds_response.json() if guilds_response.status_code == 200 else []
+    
+    # Get user's connections
+    connections_response = requests.get(f'{DISCORD_API_URL}/users/@me/connections', headers=headers)
+    connections = connections_response.json() if connections_response.status_code == 200 else []
+    
+    # Store the access token in a cookie
+    resp = redirect(url_for('index'))
+    # Set cookies to expire in 30 days
+    resp.set_cookie('discord_token', access_token, httponly=True, max_age=30*24*60*60)
+    resp.set_cookie('user_id', user['id'], httponly=True, max_age=30*24*60*60)
+    resp.set_cookie('username', user['username'], httponly=True, max_age=30*24*60*60)
+    resp.set_cookie('avatar', user.get('avatar', ''), httponly=True, max_age=30*24*60*60)
+    
+    return resp
+
+@app.route('/logout')
+def logout():
+    """Log out the user"""
+    resp = redirect(url_for('index'))
+    resp.delete_cookie('discord_token')
+    resp.delete_cookie('user_id')
+    resp.delete_cookie('username')
+    resp.delete_cookie('avatar')
+    return resp
+
+@app.route('/api/user')
+def get_user():
+    """Get the current user's information"""
+    access_token = request.cookies.get('discord_token')
+    if not access_token:
+        return jsonify({'error': 'Not logged in'}), 401
+    
+    headers = {
+        'Authorization': f'Bearer {access_token}'
+    }
+    
+    user_response = requests.get(f'{DISCORD_API_URL}/users/@me', headers=headers)
+    if user_response.status_code != 200:
+        return jsonify({'error': 'Invalid token'}), 401
+    
+    user = user_response.json()
+    return jsonify({
+        'id': user['id'],
+        'username': user['username'],
+        'avatar': user.get('avatar'),
+        'email': user.get('email')
+    })
+
+@app.route('/api/log-game', methods=['POST'])
+def log_game():
+    """Log a new game session"""
+    try:
+        data = request.json
+        if not data:
+            logger.warning("No data provided for game logging")
+            return jsonify({'error': 'No data provided'}), 400
+
+        user_id = data.get('user_id')
+        game_name = data.get('game_name')
+        hours = data.get('hours')
+
+        if not all([user_id, game_name, hours]):
+            logger.warning(f"Missing required fields for game logging. Received: {data}")
+            return jsonify({'error': 'Missing required fields'}), 400
+
+        try:
+            hours = float(hours)
+        except ValueError:
+            logger.warning(f"Invalid hours value: {hours}")
+            return jsonify({'error': 'Hours must be a number'}), 400
+
+        logger.info(f"Logging game session for user {user_id}: {game_name} - {hours} hours")
+        
+        try:
+            storage.log_game_session(user_id, game_name, hours)
+            return jsonify({'message': 'Game session logged successfully'}), 200
+        except Exception as e:
+            logger.error(f"Error in storage.log_game_session: {str(e)}", exc_info=True)
+            return jsonify({'error': f'Failed to log game session: {str(e)}'}), 500
+
+    except Exception as e:
+        error_msg = f"Error logging game session: {str(e)}"
+        logger.error(error_msg, exc_info=True)
+        return jsonify({'error': 'Internal server error', 'details': str(e)}), 500
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True) 

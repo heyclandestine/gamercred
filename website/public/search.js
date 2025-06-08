@@ -1,3 +1,6 @@
+/*
+// --- Autocomplete logic disabled: unified in script.js ---
+
 document.addEventListener('DOMContentLoaded', function() {
   // --- Navbar Search Autocomplete ---
   const searchBar = document.querySelector('.search-bar');
@@ -140,3 +143,4 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   });
 }); 
+*/ 

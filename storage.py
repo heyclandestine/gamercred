@@ -516,15 +516,18 @@ class GameStorage:
             session.close()
 
     async def set_game_credits_per_hour(self, game_name: str, credits: float, user_id: int) -> bool:
-        """Set credits per hour for a game and update all existing sessions"""
+        """Set the credits per hour for a game and update all existing sessions"""
         if credits < 0.1:  # Only keep minimum limit
             return False
 
         session = self.Session()
         try:
-            # Case-insensitive search for existing game
-            game = session.query(Game).filter(func.lower(Game.name) == func.lower(game_name)).first()
-
+            # Normalize the game name
+            normalized_name = ' '.join(game_name.lower().split())
+            
+            # Get the game
+            game = session.query(Game).filter(func.lower(Game.name) == normalized_name).first()
+            
             if game:
                 # Update existing game
                 game.credits_per_hour = credits
@@ -537,8 +540,11 @@ class GameStorage:
                     game.box_art_url = rawg_data.get('box_art_url')
                     game.release_date = rawg_data.get('release_date')
                 
-                session.commit()
-                return True
+                # Update all existing gaming sessions for this game
+                gaming_sessions = session.query(GamingSession).filter(GamingSession.game_id == game.id).all()
+                for gaming_session in gaming_sessions:
+                    # Recalculate credits based on hours and new CPH
+                    gaming_session.credits_earned = gaming_session.hours * credits
             else:
                 # Create new game
                 formatted_name = game_name.strip()
@@ -566,11 +572,13 @@ class GameStorage:
                 )
                 
                 session.add(game)
-                session.commit()
-                return True
+            
+            session.commit()
+            return True
 
         except Exception as e:
             session.rollback()
+            print(f"Error setting game credits per hour: {str(e)}")
             return False
         finally:
             session.close()
@@ -718,31 +726,22 @@ class GameStorage:
             session.close()
 
     async def add_gaming_hours(self, user_id: int, hours: float, game_name: str) -> float:
-        """Add gaming hours for a user and return credits earned"""
+        """Add gaming hours for a user"""
         session = self.Session()
         try:
-            # Get or create the game
-            game = session.query(Game).filter(func.lower(Game.name) == func.lower(game_name)).first()
+            # Normalize the game name (lowercase and strip extra spaces)
+            normalized_name = ' '.join(game_name.lower().split())
+            
+            # Get the game using case-insensitive comparison
+            game = session.query(Game).filter(func.lower(Game.name) == normalized_name).first()
             if not game:
-                # Create new game with default credits per hour
-                game = Game(
-                    name=game_name,
-                    credits_per_hour=1.0,
-                    added_by=user_id
-                )
-                session.add(game)
-                session.commit()
+                raise Exception("Game does not exist in the database, please set the rate using !setrate")
 
             # Calculate credits earned
             credits_earned = hours * game.credits_per_hour
 
-            # Get the next available ID for gaming_sessions
-            next_id = session.query(func.max(GamingSession.id)).scalar() or 0
-            next_id += 1
-
-            # Create gaming session
+            # Create the gaming session
             gaming_session = GamingSession(
-                id=next_id,
                 user_id=user_id,
                 game_id=game.id,
                 hours=hours,
@@ -752,26 +751,11 @@ class GameStorage:
             session.add(gaming_session)
             session.commit()
 
-            # Update user's total credits by recalculating from all sessions
-            self.update_user_total_credits(str(user_id))
-
-            # Update leaderboard history for active periods
-            active_periods = session.query(LeaderboardPeriod)\
-                .filter(LeaderboardPeriod.is_active == True)\
-                .all()
-
-            for period in active_periods:
-                # Get current leaderboard data for this period
-                leaderboard_data = await self.get_leaderboard_by_timeframe(period.leaderboard_type)
-                if leaderboard_data:
-                    # Record the updated placements
-                    await self.record_leaderboard_placements(period.leaderboard_type, leaderboard_data, period)
-
             return credits_earned
 
         except Exception as e:
             session.rollback()
-            raise
+            raise Exception(str(e))
         finally:
             session.close()
 
@@ -1627,5 +1611,37 @@ class GameStorage:
         except Exception as e:
             print(f"Error getting all games with stats: {e}")
             return []
+        finally:
+            session.close()
+
+    def log_game_session(self, user_id: int, game_name: str, hours: float) -> None:
+        """Log a new game session"""
+        session = self.Session()
+        try:
+            # Normalize the game name (lowercase and strip extra spaces)
+            normalized_name = ' '.join(game_name.lower().split())
+            
+            # Get the game using case-insensitive comparison
+            game = session.query(Game).filter(func.lower(Game.name) == normalized_name).first()
+            if not game:
+                raise Exception("Game does not exist in the database, please set the rate")
+
+            # Calculate credits earned
+            credits_earned = hours * game.credits_per_hour
+
+            # Create the gaming session
+            gaming_session = GamingSession(
+                user_id=user_id,
+                game_id=game.id,
+                hours=hours,
+                credits_earned=credits_earned,
+                timestamp=datetime.now(self.cst)
+            )
+            session.add(gaming_session)
+            session.commit()
+
+        except Exception as e:
+            session.rollback()
+            raise Exception(str(e))
         finally:
             session.close()
