@@ -14,4 +14,22 @@ video.game-cover {
   border-radius: 8px;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
   background: #000; /* Black background while video loads */
+}
+
+.autocomplete-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 4px;
+  object-fit: cover;
+  margin-right: 8px;
+}
+
+/* Add styles for video elements in autocomplete */
+video.autocomplete-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 4px;
+  object-fit: cover;
+  margin-right: 8px;
+  background: #000; /* Black background while video loads */
 } 

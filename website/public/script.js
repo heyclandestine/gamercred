@@ -337,7 +337,9 @@ document.addEventListener('DOMContentLoaded', function() {
         <ul class="autocomplete-list">
           ${results.map((result, index) => `
             <li class="autocomplete-item ${index === activeIndex ? 'active' : ''}" data-index="${index}">
-              <img src="${result.avatar}" alt="${result.name}" class="autocomplete-avatar">
+              ${result.type === 'game' && result.avatar && result.avatar.endsWith('.webm') 
+                ? `<video class="autocomplete-avatar" src="${result.avatar}" autoplay loop muted playsinline></video>`
+                : `<img src="${result.avatar}" alt="${result.name}" class="autocomplete-avatar">`}
               <span class="autocomplete-title">${result.name}</span>
               <span class="autocomplete-type">${result.type === 'game' ? 'Game' : 'User'}</span>
             </li>
@@ -529,18 +531,24 @@ document.addEventListener('DOMContentLoaded', function() {
       globalDropdown.style.width = rect.width + 'px';
     }
 
-    function renderDropdown(items) {
-      if (!items.length) {
+    function renderDropdown(results) {
+      if (results.length === 0) {
         globalDropdown.style.display = 'none';
         return;
       }
-      globalDropdown.innerHTML = `<ul class=\"autocomplete-list\">${items.map((item, i) => `
-        <li class=\"autocomplete-item${i === activeIndex ? ' active' : ''}\" data-index=\"${i}\">
-          <img class=\"autocomplete-avatar\" src=\"${item.avatar}\" alt=\"\" />
-          <span class=\"autocomplete-title\">${item.title}</span>
-        </li>`).join('')}</ul>`;
+      globalDropdown.innerHTML = `
+        <ul class="autocomplete-list">
+          ${results.map((result, index) => `
+            <li class="autocomplete-item ${index === activeIndex ? 'active' : ''}" data-index="${index}">
+              ${result.avatar && result.avatar.endsWith('.webm')
+                ? `<video class="autocomplete-avatar" src="${result.avatar}" autoplay loop muted playsinline></video>`
+                : `<img src="${result.avatar}" alt="${result.title}" class="autocomplete-avatar">`}
+              <span class="autocomplete-title">${result.title}</span>
+            </li>
+          `).join('')}
+        </ul>
+      `;
       globalDropdown.style.display = 'block';
-      positionDropdown();
     }
 
     function fetchResults(query) {
@@ -654,31 +662,32 @@ document.addEventListener('DOMContentLoaded', function() {
       navbarDropdown.style.border = '';
     }
 
-    function renderDropdown(items) {
-      if (!items.games.length && !items.users.length) {
+    function renderDropdown({games, users}) {
+      if (!games.length && !users.length) {
         navbarDropdown.style.display = 'none';
         return;
       }
-      let html = '';
-      if (items.games.length) {
-        html += '<div class="autocomplete-section autocomplete-games-header">Games</div>';
-        html += '<ul class="autocomplete-list">' + items.games.map((item, i) => `
-          <li class="autocomplete-item autocomplete-game-item${i === activeIndex ? ' active' : ''}" data-index="g${i}">
-            <img class="autocomplete-avatar" src="${item.avatar}" alt="" />
-            <span class="autocomplete-title">${item.title}</span>
-          </li>`).join('') + '</ul>';
-      }
-      if (items.users.length) {
-        html += '<div class="autocomplete-section autocomplete-users-header">Users</div>';
-        html += '<ul class="autocomplete-list">' + items.users.map((item, i) => `
-          <li class="autocomplete-item autocomplete-user-item${i + items.games.length === activeIndex ? ' active' : ''}" data-index="u${i}">
-            <img class="autocomplete-avatar" src="${item.avatar}" alt="" />
-            <span class="autocomplete-title">${item.title}</span>
-          </li>`).join('') + '</ul>';
-      }
-      navbarDropdown.innerHTML = html;
+      navbarDropdown.innerHTML = `
+        <ul class="autocomplete-list">
+          ${games.map((game, index) => `
+            <li class="autocomplete-item ${index === activeIndex ? 'active' : ''}" data-index="${index}">
+              ${game.avatar && game.avatar.endsWith('.webm')
+                ? `<video class="autocomplete-avatar" src="${game.avatar}" autoplay loop muted playsinline></video>`
+                : `<img src="${game.avatar}" alt="${game.title}" class="autocomplete-avatar">`}
+              <span class="autocomplete-title">${game.title}</span>
+              <span class="autocomplete-type">Game</span>
+            </li>
+          `).join('')}
+          ${users.map((user, index) => `
+            <li class="autocomplete-item ${index + games.length === activeIndex ? 'active' : ''}" data-index="${index + games.length}">
+              <img src="${user.avatar}" alt="${user.title}" class="autocomplete-avatar">
+              <span class="autocomplete-title">${user.title}</span>
+              <span class="autocomplete-type">User</span>
+            </li>
+          `).join('')}
+        </ul>
+      `;
       navbarDropdown.style.display = 'block';
-      positionDropdown();
     }
 
     function fetchResults(query) {
