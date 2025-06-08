@@ -621,22 +621,6 @@
     const navCenter = document.querySelector('.nav-center');
     let isMenuOpen = false;
 
-    mobileMenuToggle.addEventListener('click', function(e) {
-      e.stopPropagation();
-      isMenuOpen = !isMenuOpen;
-      navCenter.classList.toggle('active');
-      
-      // Update hamburger icon
-      const icon = this.querySelector('i');
-      if (isMenuOpen) {
-        icon.classList.remove('fa-bars');
-        icon.classList.add('fa-times');
-      } else {
-        icon.classList.remove('fa-times');
-        icon.classList.add('fa-bars');
-      }
-    });
-
     // Close mobile menu when clicking outside
     document.addEventListener('click', function(event) {
       if (isMenuOpen && !navCenter.contains(event.target) && !mobileMenuToggle.contains(event.target)) {
