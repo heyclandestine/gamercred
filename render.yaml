@@ -15,17 +15,45 @@ services:
         value: "*"
     headers:
       - path: /*
-        name: Strict-Transport-Security
-        value: max-age=31536000; includeSubDomains
+        name: X-Frame-Options
+        value: DENY
       - path: /*
         name: X-Content-Type-Options
         value: nosniff
       - path: /*
-        name: X-Frame-Options
-        value: DENY
+        name: Referrer-Policy
+        value: strict-origin-when-cross-origin
       - path: /*
-        name: X-XSS-Protection
-        value: 1; mode=block
+        name: Permissions-Policy
+        value: camera=(), microphone=(), geolocation=(), interest-cohort=()
+      - path: /*
+        name: Content-Security-Policy
+        value: default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; img-src 'self' data: https:; font-src 'self' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; connect-src 'self' https://discord.com https://cdn.discordapp.com; frame-ancestors 'none';
+      - path: /static/*
+        name: Cache-Control
+        value: public, max-age=31536000
+      - path: /*
+        name: Cache-Control
+        value: no-store, no-cache, must-revalidate, proxy-revalidate
+      - path: /*
+        name: Pragma
+        value: no-cache
+      - path: /*
+        name: Expires
+        value: "0"
+
+  - type: worker
+    name: discord-bot
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: python main.py
+    envVars:
+      - key: TOKEN
+        sync: false
+      - key: DATABASE_URL
+        fromDatabase:
+          name: gamercred-db
+          property: connectionString
 
 databases:
   - name: gamercred-db
