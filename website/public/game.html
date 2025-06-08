@@ -227,10 +227,24 @@
       // Handle cover image with fallback
       const coverImg = document.querySelector('.game-cover');
       if (data.box_art_url) {
-        coverImg.src = data.box_art_url;
-        coverImg.onerror = function() {
-          this.src = 'https://static-cdn.jtvnw.net/ttv-boxart/loading_boxart.png';
-        };
+        if (data.box_art_url.endsWith('.webm')) {
+          // Create video element for webm files
+          const video = document.createElement('video');
+          video.src = data.box_art_url;
+          video.autoplay = true;
+          video.loop = true;
+          video.muted = true;
+          video.playsInline = true;
+          video.className = 'game-cover';
+          video.alt = data.name;
+          coverImg.parentNode.replaceChild(video, coverImg);
+        } else {
+          // Use image for non-webm files
+          coverImg.src = data.box_art_url;
+          coverImg.onerror = function() {
+            this.src = 'https://static-cdn.jtvnw.net/ttv-boxart/loading_boxart.png';
+          };
+        }
       } else {
         coverImg.src = 'https://static-cdn.jtvnw.net/ttv-boxart/loading_boxart.png';
       }

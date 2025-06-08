@@ -145,36 +145,54 @@
             sortedGames.forEach(game => {
                 const gameCard = document.createElement('div');
                 gameCard.className = 'game-card';
+                
+                let mediaElement;
+                if (game.box_art_url && game.box_art_url.endsWith('.webm')) {
+                    mediaElement = document.createElement('video');
+                    mediaElement.src = game.box_art_url;
+                    mediaElement.autoplay = true;
+                    mediaElement.loop = true;
+                    mediaElement.muted = true;
+                    mediaElement.playsInline = true;
+                } else {
+                    mediaElement = document.createElement('img');
+                    mediaElement.src = game.box_art_url || 'https://static-cdn.jtvnw.net/ttv-boxart/loading_boxart.png';
+                    mediaElement.onerror = function() {
+                        this.src = 'https://static-cdn.jtvnw.net/ttv-boxart/loading_boxart.png';
+                    };
+                }
+                mediaElement.className = 'game-card-image';
+                mediaElement.alt = toTitleCase(game.name);
+
                 gameCard.innerHTML = `
                     <a href="game.html?game=${encodeURIComponent(game.name)}" class="game-card-link">
-                        <img src="${game.box_art_url || 'https://static-cdn.jtvnw.net/ttv-boxart/loading_boxart.png'}" 
-                             alt="${toTitleCase(game.name)}" 
-                             class="game-card-image"
-                             onerror="this.src='https://static-cdn.jtvnw.net/ttv-boxart/loading_boxart.png'">
-                        <div class="game-card-info">
-                            <h3 class="game-card-title">${toTitleCase(game.name)}</h3>
-                            <div class="game-card-stats">
-                                <div class="stat">
-                                    <span class="stat-label">CPH</span>
-                                    <span class="stat-value">${Math.round(game.credits_per_hour || 0)}</span>
-                                </div>
-                                <div class="stat">
-                                    <span class="stat-label">Hours</span>
-                                    <span class="stat-value">${formatNumber(game.total_hours || 0)}</span>
-                                </div>
-                                <div class="stat">
-                                    <span class="stat-label">Players</span>
-                                    <span class="stat-value">${formatNumber(game.unique_players || 0)}</span>
-                                </div>
-                                <div class="stat">
-                                    <span class="stat-label">Released</span>
-                                    <span class="stat-value">${game.release_date ? new Date(game.release_date).getFullYear() : 'N/A'}</span>
-                                </div>
+                    </a>
+                    <div class="game-card-info">
+                        <h3 class="game-card-title">${toTitleCase(game.name)}</h3>
+                        <div class="game-card-stats">
+                            <div class="stat">
+                                <span class="stat-label">CPH</span>
+                                <span class="stat-value">${Math.round(game.credits_per_hour || 0)}</span>
+                            </div>
+                            <div class="stat">
+                                <span class="stat-label">Hours</span>
+                                <span class="stat-value">${formatNumber(game.total_hours || 0)}</span>
+                            </div>
+                            <div class="stat">
+                                <span class="stat-label">Players</span>
+                                <span class="stat-value">${formatNumber(game.unique_players || 0)}</span>
+                            </div>
+                            <div class="stat">
+                                <span class="stat-label">Released</span>
+                                <span class="stat-value">${game.release_date ? new Date(game.release_date).getFullYear() : 'N/A'}</span>
                             </div>
                         </div>
-                    </a>
+                    </div>
                 `;
-                gamesGrid.appendChild(gameCard);
+                
+                const link = gameCard.querySelector('.game-card-link');
+                link.insertBefore(mediaElement, link.firstChild);
+                document.querySelector('.games-grid').appendChild(gameCard);
             });
             console.log('Finished rendering games');
         }

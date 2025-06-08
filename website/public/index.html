@@ -504,10 +504,28 @@
         const cardWrap = document.createElement('div');
         cardWrap.className = 'activity-card-wrap';
         const timestamp = new Date(session.timestamp);
+        
+        let mediaElement;
+        if (session.box_art_url && session.box_art_url.endsWith('.webm')) {
+            mediaElement = document.createElement('video');
+            mediaElement.src = session.box_art_url;
+            mediaElement.autoplay = true;
+            mediaElement.loop = true;
+            mediaElement.muted = true;
+            mediaElement.playsInline = true;
+        } else {
+            mediaElement = document.createElement('img');
+            mediaElement.src = session.box_art_url || 'https://static-cdn.jtvnw.net/ttv-boxart/loading_boxart.png';
+            mediaElement.onerror = function() {
+                this.src = 'https://static-cdn.jtvnw.net/ttv-boxart/loading_boxart.png';
+            };
+        }
+        mediaElement.className = 'game-cover-carousel';
+        mediaElement.alt = session.game_name;
+
         cardWrap.innerHTML = `
           <div class="activity-card">
             <a href="game.html?game=${encodeURIComponent(session.game_name)}">
-              <img class="game-cover-carousel" src="${session.box_art_url || 'https://static-cdn.jtvnw.net/ttv-boxart/loading_boxart.png'}" alt="${session.game_name}">
             </a>
             <div class="activity-date">${timestamp.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</div>
             <div class="activity-overlay">
@@ -519,6 +537,9 @@
             </div>
           </div>
         `;
+        
+        const link = cardWrap.querySelector('a');
+        link.insertBefore(mediaElement, link.firstChild);
         activityCarousel.appendChild(cardWrap);
       });
     }
