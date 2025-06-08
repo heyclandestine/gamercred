@@ -410,13 +410,13 @@
                   mediaElement.alt = game.game_name;
 
                   cardWrap.innerHTML = `
-                      <div class="activity-card">
-                          <a href="game.html?game=${encodeURIComponent(game.game_name)}">
-                          </a>
-                          <div class="activity-overlay">
-                              <div class="activity-userblock">
-                                  <span class="activity-sessions">${game.game_name}</span>
-                                  <span class="activity-time">${timePlayedDisplay}</span>
+                          <div class="activity-card">
+                               <a href="game.html?game=${encodeURIComponent(game.game_name)}">
+                              </a>
+                              <div class="activity-overlay">
+                                  <div class="activity-userblock">
+                                       <span class="activity-sessions">${game.game_name}</span>
+                                      <span class="activity-time">${timePlayedDisplay}</span>
                               </div>
                           </div>
                       </div>
@@ -518,8 +518,26 @@
                       const timeDisplay = hours >= 1 ? `${hours.toFixed(1)}h` : `${(hours * 60).toFixed(0)}m`;
                       const date = new Date(activity.timestamp).toLocaleDateString();
                       const listItem = document.createElement('li');
+                      
+                      let mediaElement;
+                      if (activity.box_art_url && activity.box_art_url.endsWith('.webm')) {
+                          mediaElement = document.createElement('video');
+                          mediaElement.src = activity.box_art_url;
+                          mediaElement.autoplay = true;
+                          mediaElement.loop = true;
+                          mediaElement.muted = true;
+                          mediaElement.playsInline = true;
+                      } else {
+                          mediaElement = document.createElement('img');
+                          mediaElement.src = activity.box_art_url || 'https://static-cdn.jtvnw.net/ttv-boxart/loading_boxart.png';
+                          mediaElement.onerror = function() {
+                              this.src = 'https://static-cdn.jtvnw.net/ttv-boxart/loading_boxart.png';
+                          };
+                      }
+                      mediaElement.className = 'game-cover-activity';
+                      mediaElement.alt = activity.game_name;
+
                       listItem.innerHTML = `
-                        <img class="game-cover-activity" src="${activity.box_art_url || 'https://static-cdn.jtvnw.net/ttv-boxart/loading_boxart.png'}" alt="${activity.game_name}" onerror="this.src='https://static-cdn.jtvnw.net/ttv-boxart/loading_boxart.png'">
                         <div class="activity-details">
                           <div class="game-name">
                             <a href="game.html?game=${encodeURIComponent(activity.game_name)}" style="color: #fff; text-decoration: none;">${activity.game_name}</a>
@@ -531,6 +549,8 @@
                           </div>
                         </div>
                       `;
+                      
+                      listItem.insertBefore(mediaElement, listItem.firstChild);
                       if (buttonContainer && buttonContainer.parentNode === activityList) {
                           activityList.insertBefore(listItem, buttonContainer);
                       } else {

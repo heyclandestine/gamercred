@@ -326,12 +326,32 @@
             if (data && data.length > 0) {
               data.forEach((game, index) => {
                 const listItem = document.createElement('li');
+                
+                let mediaElement;
+                if (game.box_art_url && game.box_art_url.endsWith('.webm')) {
+                    mediaElement = document.createElement('video');
+                    mediaElement.src = game.box_art_url;
+                    mediaElement.autoplay = true;
+                    mediaElement.loop = true;
+                    mediaElement.muted = true;
+                    mediaElement.playsInline = true;
+                } else {
+                    mediaElement = document.createElement('img');
+                    mediaElement.src = game.box_art_url || 'https://static-cdn.jtvnw.net/ttv-boxart/loading_boxart.png';
+                    mediaElement.onerror = function() {
+                        this.src = 'https://static-cdn.jtvnw.net/ttv-boxart/loading_boxart.png';
+                    };
+                }
+                mediaElement.className = 'game-cover-sm';
+                mediaElement.alt = game.name;
+
                 listItem.innerHTML = `
                   <span class="rank">${index + 1}</span>
-                  <img class="game-cover-sm" src="${game.box_art_url || 'https://static-cdn.jtvnw.net/ttv-boxart/loading_boxart.png'}" alt="${game.name}">
                   <a class="game-link" href="game.html?game=${encodeURIComponent(game.name)}">${game.name}</a>
                   <span class="hours">${formatNumberWithCommas(game.total_hours || 0)} hrs</span>
                 `;
+                
+                listItem.insertBefore(mediaElement, listItem.firstChild);
                 popularList.appendChild(listItem);
               });
             } else {
@@ -353,12 +373,32 @@
             if (data && data.length > 0) {
               data.forEach((game, index) => {
                 const listItem = document.createElement('li');
+                
+                let mediaElement;
+                if (game.box_art_url && game.box_art_url.endsWith('.webm')) {
+                    mediaElement = document.createElement('video');
+                    mediaElement.src = game.box_art_url;
+                    mediaElement.autoplay = true;
+                    mediaElement.loop = true;
+                    mediaElement.muted = true;
+                    mediaElement.playsInline = true;
+                } else {
+                    mediaElement = document.createElement('img');
+                    mediaElement.src = game.box_art_url || 'https://static-cdn.jtvnw.net/ttv-boxart/loading_boxart.png';
+                    mediaElement.onerror = function() {
+                        this.src = 'https://static-cdn.jtvnw.net/ttv-boxart/loading_boxart.png';
+                    };
+                }
+                mediaElement.className = 'game-cover-sm';
+                mediaElement.alt = game.name;
+
                 listItem.innerHTML = `
                   <span class="rank">${index + 1}</span>
-                  <img class="game-cover-sm" src="${game.box_art_url || 'https://static-cdn.jtvnw.net/ttv-boxart/loading_boxart.png'}" alt="${game.name}">
                   <a class="game-link" href="game.html?game=${encodeURIComponent(game.name)}">${game.name}</a>
                   <span class="hours">${formatNumberWithCommas(game.total_hours || 0)} hrs</span>
                 `;
+                
+                listItem.insertBefore(mediaElement, listItem.firstChild);
                 popularList.appendChild(listItem);
               });
               localStorage.setItem(cacheKey, JSON.stringify(data));
@@ -441,8 +481,6 @@
       fetchPopularGames('weekly');
       fetchPopularGames('monthly');
       fetchPopularGames('alltime');
-
-
 
     });
 
@@ -559,12 +597,32 @@
           if (data && data.length > 0) {
             data.forEach((game, index) => {
               const listItem = document.createElement('li');
+              
+              let mediaElement;
+              if (game.box_art_url && game.box_art_url.endsWith('.webm')) {
+                  mediaElement = document.createElement('video');
+                  mediaElement.src = game.box_art_url;
+                  mediaElement.autoplay = true;
+                  mediaElement.loop = true;
+                  mediaElement.muted = true;
+                  mediaElement.playsInline = true;
+              } else {
+                  mediaElement = document.createElement('img');
+                  mediaElement.src = game.box_art_url || 'https://static-cdn.jtvnw.net/ttv-boxart/loading_boxart.png';
+                  mediaElement.onerror = function() {
+                      this.src = 'https://static-cdn.jtvnw.net/ttv-boxart/loading_boxart.png';
+                  };
+              }
+              mediaElement.className = 'game-cover-sm';
+              mediaElement.alt = game.name;
+
               listItem.innerHTML = `
                 <span class="rank">${index + 1}</span>
-                <img class="game-cover-sm" src="${game.box_art_url || 'https://static-cdn.jtvnw.net/ttv-boxart/loading_boxart.png'}" alt="${game.name}">
                 <a class="game-link" href="game.html?game=${encodeURIComponent(game.name)}">${game.name}</a>
                 <span class="hours">${formatNumberWithCommas(game.total_hours || 0)} hrs</span>
               `;
+              
+              listItem.insertBefore(mediaElement, listItem.firstChild);
               popularList.appendChild(listItem);
             });
           } else {
@@ -586,12 +644,32 @@
           if (data && data.length > 0) {
             data.forEach((game, index) => {
               const listItem = document.createElement('li');
+              
+              let mediaElement;
+              if (game.box_art_url && game.box_art_url.endsWith('.webm')) {
+                  mediaElement = document.createElement('video');
+                  mediaElement.src = game.box_art_url;
+                  mediaElement.autoplay = true;
+                  mediaElement.loop = true;
+                  mediaElement.muted = true;
+                  mediaElement.playsInline = true;
+              } else {
+                  mediaElement = document.createElement('img');
+                  mediaElement.src = game.box_art_url || 'https://static-cdn.jtvnw.net/ttv-boxart/loading_boxart.png';
+                  mediaElement.onerror = function() {
+                      this.src = 'https://static-cdn.jtvnw.net/ttv-boxart/loading_boxart.png';
+                  };
+              }
+              mediaElement.className = 'game-cover-sm';
+              mediaElement.alt = game.name;
+
               listItem.innerHTML = `
                 <span class="rank">${index + 1}</span>
-                <img class="game-cover-sm" src="${game.box_art_url || 'https://static-cdn.jtvnw.net/ttv-boxart/loading_boxart.png'}" alt="${game.name}">
                 <a class="game-link" href="game.html?game=${encodeURIComponent(game.name)}">${game.name}</a>
                 <span class="hours">${formatNumberWithCommas(game.total_hours || 0)} hrs</span>
               `;
+              
+              listItem.insertBefore(mediaElement, listItem.firstChild);
               popularList.appendChild(listItem);
             });
             localStorage.setItem(cacheKey, JSON.stringify(data));

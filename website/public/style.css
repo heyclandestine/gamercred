@@ -1937,13 +1937,14 @@ a:hover .game-cover-carousel, .activity-card:hover .game-cover-carousel {
 }
 
 .game-card-image {
-    width: 180px;
-    height: 180px;
+    width: 170px;
+    height: 255px;
     object-fit: cover;
     border-radius: 30px;
     cursor: pointer;
     margin-left: 1rem;
     margin-top: 1rem;
+    margin-bottom: 1rem;
 }
 
 .game-card-info {
