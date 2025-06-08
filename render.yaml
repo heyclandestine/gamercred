@@ -58,4 +58,5 @@ services:
 databases:
   - name: gamercred-db
     databaseName: gamercred
-    user: gamercred_user 
+    user: gamercred_user
+    plan: free 
