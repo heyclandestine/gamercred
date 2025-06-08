@@ -562,7 +562,7 @@ footer {
 .game-cover {
   width: 285px;
   height: 380px;
-  object-fit: fill;
+  object-fit: cover;
   border-radius: 12px;
   box-shadow: 0 4px 24px rgba(0, 0, 0, 0.2);
   flex-shrink: 0;

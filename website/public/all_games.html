@@ -54,6 +54,14 @@
                     </button>
                 </div>
             </div>
+            <div class="view-toggle">
+                <button class="view-btn active" data-view="list">
+                    <i class="fas fa-list"></i>
+                </button>
+                <button class="view-btn" data-view="grid">
+                    <i class="fas fa-th"></i>
+                </button>
+            </div>
         </section>
 
         <section class="games-grid-section card">
@@ -66,6 +74,126 @@
             </div>
         </section>
     </main>
+
+    <style>
+        .games-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .view-toggle {
+            display: flex;
+            gap: 8px;
+            align-self: center;
+            padding-top: 1rem;
+        }
+
+        .view-btn {
+            background: none;
+            border: 1px solid #444;
+            color: #888;
+            padding: 8px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .view-btn:hover {
+            background: #333;
+            color: #fff;
+        }
+
+        .view-btn.active {
+            background: #444;
+            color: #fff;
+        }
+
+        .games-grid {
+            display: grid;
+            gap: 20px;
+        }
+
+        .games-grid.list-view {
+            grid-template-columns: 1fr;
+        }
+
+        .games-grid.grid-view {
+            grid-template-columns: repeat(5, 1fr);
+        }
+
+        .game-card {
+            border-radius: 8px;
+            overflow: hidden;
+            transition: transform 0.2s;
+        }
+
+        .game-card:hover {
+            transform: translateY(-4px);
+        }
+
+        .game-card.grid-view {
+            aspect-ratio: 2/3;
+            background: #19191f !important;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+
+        .game-card.grid-view .game-card-link {
+            height: 100%;
+            width: 100%;
+            display: block;
+        }
+
+        .game-card.grid-view .game-card-image {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            margin: 0;
+            display: block;
+        }
+
+        .game-card.grid-view .game-card-info {
+            display: none;
+        }
+
+        .game-card.grid-view .cph-indicator {
+            position: absolute;
+            bottom: 8px;
+            background: rgba(0, 0, 0, 0.75);
+            color: #fff;
+            padding: 4px 8px;
+            border-radius: 10px;
+            font-size: 1em;
+            font-weight: 500;
+            z-index: 1;
+            display: block;
+        }
+
+        .game-card.list-view .cph-indicator {
+            display: none;
+        }
+
+        /* Override any search-related styles for grid view */
+        .games-grid.grid-view .game-card {
+            background: #19191f !important;
+        }
+
+        .games-grid.grid-view .game-card:hover {
+            background: #19191f !important;
+        }
+
+        .games-grid.grid-view .game-card:focus {
+            background: #19191f !important;
+        }
+
+        .games-grid.grid-view .game-card:focus-within {
+            background: #19191f !important;
+        }
+    </style>
 
     <script>
         let games = [];
@@ -144,7 +272,7 @@
             console.log('Creating game cards...');
             sortedGames.forEach(game => {
                 const gameCard = document.createElement('div');
-                gameCard.className = 'game-card';
+                gameCard.className = 'game-card list-view';
                 
                 let mediaElement;
                 if (game.box_art_url && game.box_art_url.endsWith('.webm')) {
@@ -164,6 +292,7 @@
                 mediaElement.className = 'game-card-image';
                 mediaElement.alt = toTitleCase(game.name);
 
+                const cphValue = Math.round(game.credits_per_hour || 0);
                 gameCard.innerHTML = `
                     <a href="game.html?game=${encodeURIComponent(game.name)}" class="game-card-link">
                     </a>
@@ -172,7 +301,7 @@
                         <div class="game-card-stats">
                             <div class="stat">
                                 <span class="stat-label">CPH</span>
-                                <span class="stat-value">${Math.round(game.credits_per_hour || 0)}</span>
+                                <span class="stat-value">${cphValue}</span>
                             </div>
                             <div class="stat">
                                 <span class="stat-label">Hours</span>
@@ -192,7 +321,14 @@
                 
                 const link = gameCard.querySelector('.game-card-link');
                 link.insertBefore(mediaElement, link.firstChild);
-                document.querySelector('.games-grid').appendChild(gameCard);
+
+                // Always add CPH indicator, CSS will handle visibility
+                const cphIndicator = document.createElement('div');
+                cphIndicator.className = 'cph-indicator';
+                cphIndicator.textContent = `${cphValue} CPH`;
+                gameCard.appendChild(cphIndicator);
+
+                gamesGrid.appendChild(gameCard);
             });
             console.log('Finished rendering games');
         }
@@ -285,8 +421,73 @@
                 });
 
             // Existing all games page logic
-        fetchGames();
+            fetchGames();
+
+            // Add view toggle functionality
+            const viewButtons = document.querySelectorAll('.view-btn');
+            const gamesGrid = document.querySelector('.games-grid');
+
+            viewButtons.forEach(button => {
+                button.addEventListener('click', () => {
+                    // Update active button
+                    viewButtons.forEach(btn => btn.classList.remove('active'));
+                    button.classList.add('active');
+
+                    // Update view
+                    const view = button.dataset.view;
+                    gamesGrid.className = `games-grid ${view}-view`;
+
+                    // Update game cards
+                    const gameCards = document.querySelectorAll('.game-card');
+                    gameCards.forEach(card => {
+                        card.className = `game-card ${view}-view`;
+                    });
+                });
+            });
+
+            // Add search functionality
+            const searchInput = document.querySelector('.search-input');
+            if (searchInput) {
+                searchInput.addEventListener('input', function(e) {
+                    const searchTerm = e.target.value.toLowerCase();
+                    const gameCards = document.querySelectorAll('.game-card');
+                    const currentView = document.querySelector('.games-grid').classList.contains('grid-view') ? 'grid-view' : 'list-view';
+                    
+                    gameCards.forEach(card => {
+                        const gameName = card.querySelector('.game-card-title').textContent.toLowerCase();
+                        if (gameName.includes(searchTerm)) {
+                            card.style.display = '';
+                            // Ensure the view class is preserved
+                            card.className = `game-card ${currentView}`;
+                        } else {
+                            card.style.display = 'none';
+                        }
+                    });
+                });
+            }
         });
+
+        function toggleView(view) {
+            const grid = document.querySelector('.games-grid');
+            const cards = document.querySelectorAll('.game-card');
+            
+            if (view === 'grid') {
+                grid.classList.add('grid-view');
+                cards.forEach(card => {
+                    card.classList.remove('list-view');
+                    card.classList.add('grid-view');
+                });
+            } else {
+                grid.classList.remove('grid-view');
+                cards.forEach(card => {
+                    card.classList.remove('grid-view');
+                    card.classList.add('list-view');
+                });
+            }
+            
+            // Re-render games to update CPH indicators
+            renderGames();
+        }
     </script>
     <script src="script.js"></script>
 </body>
