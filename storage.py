@@ -740,9 +740,9 @@ class GameStorage:
             # Calculate credits earned
             credits_earned = hours * game.credits_per_hour
 
-            # Create timestamp in Central Time (UTC-6)
+            # Create timestamp in Central Time (UTC-5)
             current_time = datetime.now()
-            central_time = current_time - timedelta(hours=6)
+            central_time = current_time - timedelta(hours=5)
 
             # Create the gaming session
             gaming_session = GamingSession(
@@ -1635,7 +1635,7 @@ class GameStorage:
 
             # Create timestamp in Central Time (UTC-6)
             current_time = datetime.now()
-            central_time = current_time - timedelta(hours=6)
+            central_time = current_time - timedelta(hours=5)
 
             # Create the gaming session
             gaming_session = GamingSession(
