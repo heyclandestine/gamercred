@@ -741,8 +741,8 @@ class GameStorage:
             credits_earned = hours * game.credits_per_hour
 
             # Create timestamp in CST
-            current_time = datetime.now()
-            cst_time = current_time.replace(tzinfo=self.cst)
+            current_time = datetime.now(pytz.UTC)
+            cst_time = current_time.astimezone(self.cst)
 
             # Create the gaming session
             gaming_session = GamingSession(
@@ -1634,8 +1634,8 @@ class GameStorage:
             credits_earned = hours * game.credits_per_hour
 
             # Create timestamp in CST
-            current_time = datetime.now()
-            cst_time = current_time.replace(tzinfo=self.cst)
+            current_time = datetime.now(pytz.UTC)
+            cst_time = current_time.astimezone(self.cst)
 
             # Create the gaming session
             gaming_session = GamingSession(
