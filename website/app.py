@@ -746,7 +746,7 @@ def get_all_games():
 @app.route('/login')
 def login():
     """Redirect to Discord OAuth2 login page"""
-    return redirect('https://discord.com/oauth2/authorize?client_id=1344451764530708571&response_type=code&redirect_uri=http%3A%2F%2Flocalhost%3A5000%2Fcallback&scope=identify+guilds+email+guilds.join+connections')
+    return redirect('https://discord.com/oauth2/authorize?client_id=1344451764530708571&response_type=code&redirect_uri=https%3A%2F%2Fgamercred.onrender.com%2Fcallback&scope=identify+guilds+email+guilds.join+connections')
 
 @app.route('/callback')
 def callback():
@@ -764,7 +764,7 @@ def callback():
         'client_secret': DISCORD_CLIENT_SECRET,
         'grant_type': 'authorization_code',
         'code': code,
-        'redirect_uri': "https://gamercred.onrender.com/callback"
+        'redirect_uri': DISCORD_REDIRECT_URI
     }
     
     headers = {
