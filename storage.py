@@ -740,8 +740,9 @@ class GameStorage:
             # Calculate credits earned
             credits_earned = hours * game.credits_per_hour
 
-            # Create timestamp using current time
+            # Create timestamp in CST
             current_time = datetime.now()
+            cst_time = current_time.replace(tzinfo=self.cst)
 
             # Create the gaming session
             gaming_session = GamingSession(
@@ -749,7 +750,7 @@ class GameStorage:
                 game_id=game.id,
                 hours=hours,
                 credits_earned=credits_earned,
-                timestamp=current_time
+                timestamp=cst_time
             )
             session.add(gaming_session)
             session.commit()
@@ -1632,8 +1633,9 @@ class GameStorage:
             # Calculate credits earned
             credits_earned = hours * game.credits_per_hour
 
-            # Create timestamp using current time
+            # Create timestamp in CST
             current_time = datetime.now()
+            cst_time = current_time.replace(tzinfo=self.cst)
 
             # Create the gaming session
             gaming_session = GamingSession(
@@ -1641,7 +1643,7 @@ class GameStorage:
                 game_id=game.id,
                 hours=hours,
                 credits_earned=credits_earned,
-                timestamp=current_time
+                timestamp=cst_time
             )
             session.add(gaming_session)
             session.commit()
