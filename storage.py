@@ -170,9 +170,10 @@ class GameStorage:
         """Get or create the current leaderboard period."""
         session = self.Session()
         try:
-            # Use naive current time and localize to CST
-            naive_now = datetime.now()
-            current_time = self.cst.localize(naive_now)
+            # Get current time in UTC first
+            utc_now = datetime.now(pytz.UTC)
+            # Convert to CST
+            current_time = utc_now.astimezone(self.cst)
             
             # Calculate period start time based on leaderboard type
             if leaderboard_type == LeaderboardType.WEEKLY:
@@ -190,6 +191,13 @@ class GameStorage:
                     period_end = current_time.replace(month=current_time.month + 1, day=1)
                 period_end = period_end.replace(hour=0, minute=0, second=0, microsecond=0)
 
+            # Debug logging
+            print(f"\nCreating/Getting period for {leaderboard_type.value}:")
+            print(f"UTC time: {utc_now}")
+            print(f"CST time: {current_time}")
+            print(f"Period start: {period_start}")
+            print(f"Period end: {period_end}")
+
             # Check if we already have a period for this timeframe
             existing_period = session.query(LeaderboardPeriod).filter(
                 and_(
@@ -200,6 +208,7 @@ class GameStorage:
             ).first()
 
             if existing_period:
+                print(f"Found existing period: {existing_period.start_time} to {existing_period.end_time}")
                 return existing_period
 
             # Create new period
@@ -211,6 +220,7 @@ class GameStorage:
                 )
             session.add(new_period)
             session.commit()
+            print(f"Created new period: {period_start} to {period_end}")
 
             # If we have a bot and this is a new period, announce it (only for weekly leaderboards)
             if bot and leaderboard_type == LeaderboardType.WEEKLY:

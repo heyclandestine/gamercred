@@ -1064,9 +1064,11 @@ class GamingCommands(commands.Cog):
         try:
             print("\nChecking leaderboard periods...")
             
-            # Force a check of the current time against period boundaries
-            naive_now = datetime.now()
-            now = self.storage.cst.localize(naive_now)
+            # Get current time in UTC first
+            utc_now = datetime.now(pytz.UTC)
+            # Convert to CST
+            now = utc_now.astimezone(self.storage.cst)
+            print(f"Current time - UTC: {utc_now}, CST: {now}")
             
             # Check weekly period
             weekly_period = await self.storage.get_or_create_current_period(LeaderboardType.WEEKLY, self.bot)
