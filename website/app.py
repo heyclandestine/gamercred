@@ -47,38 +47,21 @@ CORS(app, resources={r"/*": {"origins": "*"}})
 
 # Add debug logging for database URL
 database_url = os.getenv('DATABASE_URL')
+print(f"Database URL: {database_url}")
 
-if not database_url:
-    print("ERROR: No database URL found in environment variables!")
-    print("Please set DATABASE_URL to your PostgreSQL connection string")
-    raise ValueError("Database URL not configured")
+# Initialize storage
+storage = GameStorage()
 
-# Initialize storage with debug logging
-try:
-    storage = GameStorage()
-    
-    # Test database connection and create tables if they don't exist
-    with storage.Session() as session:
-        try:
-            # Create tables if they don't exist
-            Base.metadata.create_all(storage.engine)
-            
-            result = session.execute(text("SELECT 1")).scalar()
-            if result != 1:
-                raise Exception("Database connection test failed")
-            
-            # Print database version
-            version = session.execute(text("SELECT version()")).scalar()
-        except Exception as e:
-            print(f"ERROR: Database initialization failed: {str(e)}")
-            print("Full traceback:")
-            traceback.print_exc()
-            raise
-except Exception as e:
-    print(f"ERROR: Failed to initialize GameStorage: {str(e)}")
-    print("Full traceback:")
-    traceback.print_exc()
-    raise
+# Cache for Discord user info with 5-minute expiration
+discord_user_cache = {}
+discord_user_cache_timestamps = {}
+
+# Cache for leaderboard and popular games data
+cache = {
+    'leaderboard': {'data': None, 'timestamp': 0},
+    'popular_games': {'data': None, 'timestamp': 0},
+    'recent_activity': {'data': None, 'timestamp': 0}
+}
 
 # Get RAWG API key from environment variable
 RAWG_API_KEY = os.getenv('RAWG_API_KEY')
@@ -86,13 +69,6 @@ RAWG_API_URL = os.getenv('RAWG_API_URL', 'https://api.rawg.io/api')
 
 if not RAWG_API_KEY:
     print("Warning: RAWG_API_KEY environment variable not set. Game details may not load.")
-
-# Add global cache variables at the top of the file, after imports
-cache = {
-    'leaderboard': {'data': None, 'timestamp': 0},
-    'popular_games': {'data': None, 'timestamp': 0},
-    'recent_activity': {'data': None, 'timestamp': 0}
-}
 
 # Add a function to refresh the cache
 def refresh_cache():
@@ -247,32 +223,56 @@ def clean_and_truncate_description(html_text):
 # Static file routes
 @app.route('/')
 def index():
-    return send_from_directory(app.static_folder, 'index.html')
+    try:
+        return send_from_directory(app.static_folder, 'index.html')
+    except Exception as e:
+        print(f"Error serving index.html: {str(e)}")
+        print("Full traceback:")
+        traceback.print_exc()
+        return "Error serving index.html", 500
 
 @app.route('/game.html')
 def game():
-    return send_from_directory(app.static_folder, 'game.html')
+    try:
+        return send_from_directory(app.static_folder, 'game.html')
+    except Exception as e:
+        print(f"Error serving game.html: {str(e)}")
+        print("Full traceback:")
+        traceback.print_exc()
+        return "Error serving game.html", 500
 
 @app.route('/user.html')
 def user():
-    return send_from_directory(app.static_folder, 'user.html')
+    try:
+        return send_from_directory(app.static_folder, 'user.html')
+    except Exception as e:
+        print(f"Error serving user.html: {str(e)}")
+        print("Full traceback:")
+        traceback.print_exc()
+        return "Error serving user.html", 500
 
 @app.route('/<path:path>')
 def serve_static(path):
-    # Skip API routes
-    if path.startswith('api/'):
-        return jsonify({'error': 'API endpoint not found'}), 404
-    
-    # Skip root path
-    if path == '':
-        return send_from_directory(app.static_folder, 'index.html')
-    
-    # Handle HTML files
-    if path.endswith('.html'):
+    try:
+        # Skip API routes
+        if path.startswith('api/'):
+            return jsonify({'error': 'API endpoint not found'}), 404
+        
+        # Skip root path
+        if path == '':
+            return send_from_directory(app.static_folder, 'index.html')
+        
+        # Handle HTML files
+        if path.endswith('.html'):
+            return send_from_directory(app.static_folder, path)
+        
+        # Handle static assets
         return send_from_directory(app.static_folder, path)
-    
-    # Handle static assets
-    return send_from_directory(app.static_folder, path)
+    except Exception as e:
+        print(f"Error serving static file {path}: {str(e)}")
+        print("Full traceback:")
+        traceback.print_exc()
+        return f"Error serving {path}", 500
 
 # API routes
 @app.route('/api/game')
