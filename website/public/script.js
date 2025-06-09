@@ -741,13 +741,10 @@ document.addEventListener('DOMContentLoaded', function() {
       const item = e.target.closest('.autocomplete-item');
       if (item) {
         const idx = parseInt(item.dataset.index);
-        if (idx >= 0 && idx < results.length) {
-          const result = results[idx];
-          if (result.type === 'game') {
-            window.location.href = `/game.html?game=${encodeURIComponent(result.title)}`;
-          } else {
-            window.location.href = `/user.html?user=${encodeURIComponent(result.user_id)}`;
-          }
+        if (results[idx]) {
+          navbarSearchInput.value = results[idx].title;
+          navbarDropdown.style.display = 'none';
+          navbarSearchInput.focus();
         }
       }
     });
@@ -1401,4 +1398,32 @@ document.addEventListener('DOMContentLoaded', function() {
     resumeTimerButton.addEventListener('click', resumeTimer);
     logTimerButton.addEventListener('click', logSession);
   })();
+
+  // Utility function to format timestamps in CST
+  function formatTimestampCST(timestamp) {
+    const date = new Date(timestamp);
+    return date.toLocaleString('en-US', {
+        timeZone: 'America/Chicago',
+        year: 'numeric',
+        month: 'numeric',
+        day: 'numeric',
+        hour: 'numeric',
+        minute: 'numeric',
+        second: 'numeric',
+        hour12: true
+    });
+  }
+
+  // Update formatTimeAgo to use CST
+  function formatTimeAgo(timestamp) {
+    const date = new Date(timestamp);
+    const now = new Date();
+    const diffInSeconds = Math.floor((now - date) / 1000);
+    
+    if (diffInSeconds < 60) return 'just now';
+    if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)}m ago`;
+    if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)}h ago`;
+    if (diffInSeconds < 604800) return `${Math.floor(diffInSeconds / 86400)}d ago`;
+    return formatTimestampCST(timestamp);
+  }
 }); 

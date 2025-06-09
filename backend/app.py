@@ -11,6 +11,7 @@ import aiohttp # Import aiohttp for async HTTP requests
 from functools import lru_cache # Import lru_cache for caching
 import time # Import time for cache expiration
 from datetime import datetime
+import pytz
 
 # Add the parent directory to the Python path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -47,6 +48,16 @@ DATABASE = 'C:/Users/kende/Downloads/DiscordCompanion/gamer_cred.db' # Use the m
 RAWG_API_KEY = os.getenv('RAWG_API_KEY') # Get RAWG API key from environment variables
 RAWG_API_URL = 'https://api.rawg.io/api'
 DISCORD_TOKEN = os.getenv('DISCORD_TOKEN') # Get Discord Token
+
+cst = pytz.timezone('America/Chicago')
+
+def format_timestamp_cst(timestamp):
+    """Format a timestamp in CST"""
+    if isinstance(timestamp, str):
+        timestamp = datetime.fromisoformat(timestamp.replace('Z', '+00:00'))
+    if timestamp.tzinfo is None:
+        timestamp = timestamp.replace(tzinfo=pytz.UTC)
+    return timestamp.astimezone(cst).strftime('%Y-%m-%d %H:%M:%S')
 
 def get_db():
     db = getattr(g, '_database', None)
@@ -323,19 +334,16 @@ def get_popular_games():
 @app.route('/api/recent-bonuses')
 def get_recent_bonuses_endpoint():
     try:
-        # Use run_async to handle the async storage function
         recent_bonuses_data = run_async(storage.get_recent_bonuses(limit=10))
-
         formatted_bonuses = []
+        
         for bonus_data in recent_bonuses_data:
             user_id = bonus_data['user_id']
-
-            # Fetch Discord user info using the cached function
             discord_info = get_cached_discord_user_info(user_id)
-
-            # Format timestamp
+            
+            # Format timestamp in CST
             timestamp = bonus_data['timestamp']
-            timestamp_str = timestamp.strftime('%Y-%m-%d %H:%M:%S') if isinstance(timestamp, datetime) else str(timestamp)
+            timestamp_str = format_timestamp_cst(timestamp)
 
             formatted_bonuses.append({
                 'id': bonus_data['id'],
@@ -348,11 +356,7 @@ def get_recent_bonuses_endpoint():
                 'avatar_url': discord_info['avatar_url'] if discord_info else f'https://randomuser.me/api/portraits/men/{user_id}.jpg'
             })
 
-        # Limit the results to the top 5 entries
-        final_bonuses = formatted_bonuses[:5]
-
-        print(f"DEBUG: /api/recent-bonuses returning: {final_bonuses}")
-        return jsonify(final_bonuses)
+        return jsonify(formatted_bonuses[:5])
     except Exception as e:
         print(f"Error processing /api/recent-bonuses: {e}")
         return jsonify({'error': 'Internal server error'}), 500
@@ -460,24 +464,18 @@ def get_leaderboard_history_endpoint():
 @app.route('/api/recent-activity')
 def recent_activity():
     try:
-        # Use run_async to handle the async storage function
-        # storage.get_recent_gaming_sessions now returns core session data with user_id
         recent_sessions_data = run_async(storage.get_recent_gaming_sessions())
-
         formatted_sessions = []
+        
         for session_data in recent_sessions_data:
             user_id = session_data['user_id']
-
-            # Fetch Discord user info using the cached function
             discord_info = get_cached_discord_user_info(user_id)
-
             username = discord_info['username'] if discord_info else f'User{user_id}'
-            avatar_url = discord_info['avatar_url'] if discord_info else f'https://randomuser.me/api/portraits/men/{user_id}.jpg' # Fallback
+            avatar_url = discord_info['avatar_url'] if discord_info else f'https://randomuser.me/api/portraits/men/{user_id}.jpg'
 
-            # Format timestamp for better display on the frontend
-            # Ensure timestamp is a datetime object before formatting
+            # Format timestamp in CST
             timestamp = session_data['timestamp']
-            timestamp_str = timestamp.strftime('%Y-%m-%d %H:%M:%S') if isinstance(timestamp, datetime) else str(timestamp)
+            timestamp_str = format_timestamp_cst(timestamp)
 
             formatted_sessions.append({
                 'id': session_data['id'],
@@ -488,33 +486,10 @@ def recent_activity():
                 'username': username,
                 'avatar_url': avatar_url,
                 'game_name': session_data['game_name'],
-                'box_art_url': session_data['box_art_url'] # This can be None, frontend should handle fallback
+                'box_art_url': session_data['box_art_url']
             })
 
-        # If there are no sessions fetched from the DB, return placeholders
-        if not formatted_sessions:
-            print("DEBUG: /api/recent-activity - No sessions fetched from DB, returning placeholders.") # Debug print
-            placeholder_sessions = []
-            for i in range(20): # Generate 20 placeholders
-                placeholder_user_id = f'placeholder_user_{i}'
-                placeholder_game_id = f'placeholder_game_{i}'
-                placeholder_sessions.append({
-                    'id': i,
-                    'user_id': placeholder_user_id,
-                    'game_id': placeholder_game_id,
-                    'hours': 0.0,
-                    'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S'), # Format placeholder timestamp
-                    'username': f'Player{i+1}',
-                    'avatar_url': f'https://randomuser.me/api/portraits/men/{i+1}.jpg', # Consistent random avatars
-                    'game_name': f'Game {i+1}',
-                    'box_art_url': f'https://static-cdn.jtvnw.net/ttv-boxart/{i+1}-285x380.jpg' # Consistent placeholder box art
-                })
-            print(f"DEBUG: /api/recent-activity - Returning placeholders: {placeholder_sessions}") # Debug print
-            return jsonify(placeholder_sessions)
-
-        print(f"DEBUG: /api/recent-activity returning: {formatted_sessions}") # Debug print
         return jsonify(formatted_sessions)
-
     except Exception as e:
         print(f"Error processing /api/recent-activity: {e}")
         return jsonify({'error': 'Internal server error'}), 500

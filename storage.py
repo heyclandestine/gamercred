@@ -1,5 +1,5 @@
 import os
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Dict, List, Tuple, Optional, Any
 from sqlalchemy import create_engine, func, DateTime as sqlalchemy_DateTime, and_, Integer, String, BigInteger, text, distinct
 from sqlalchemy.orm import sessionmaker, scoped_session
@@ -16,6 +16,11 @@ import traceback
 # Load environment variables
 load_dotenv()
 
+# Get database URL from environment variables
+DATABASE_URL = os.getenv('DATABASE_URL')
+if not DATABASE_URL:
+    raise ValueError("DATABASE_URL environment variable is not set")
+
 # Helper function to run async functions
 def run_async(coro):
     loop = asyncio.new_event_loop()
@@ -27,22 +32,11 @@ def run_async(coro):
 
 class GameStorage:
     def __init__(self):
-        # Get database URL from environment variables
-        database_url = os.getenv('DATABASE_URL')
-        if not database_url:
-            raise ValueError("No database URL found. Set DATABASE_URL to your PostgreSQL connection string")
-        
-        # Initialize timezone
+        """Initialize the storage with database connection"""
+        self.engine = create_engine(DATABASE_URL)
+        self.Session = sessionmaker(bind=self.engine)
         self.cst = pytz.timezone('America/Chicago')
-        
-        try:
-            self.engine = create_engine(database_url)
-        except Exception as e:
-            print(f"ERROR: Failed to initialize database connection: {str(e)}")
-            print("Full traceback:")
-            import traceback
-            traceback.print_exc()
-            raise
+        print('Storage initialized successfully!')
 
     def Session(self):
         return sessionmaker(bind=self.engine)()
@@ -166,76 +160,51 @@ class GameStorage:
         finally:
             session.close()
 
-    async def get_or_create_current_period(self, leaderboard_type: LeaderboardType, bot=None) -> LeaderboardPeriod:
+    async def get_or_create_current_period(self, timeframe: LeaderboardType) -> LeaderboardPeriod:
         """Get or create the current leaderboard period."""
-        session = self.Session()
         try:
-            # Get current time in UTC first
-            utc_now = datetime.now(pytz.UTC)
-            # Convert to CST
-            current_time = utc_now.astimezone(self.cst)
-            
-            # Calculate period start time based on leaderboard type
-            if leaderboard_type == LeaderboardType.WEEKLY:
-                # Start of current week (Monday)
-                period_start = current_time - timedelta(days=current_time.weekday())
-                period_start = period_start.replace(hour=0, minute=0, second=0, microsecond=0)
-                period_end = period_start + timedelta(days=7)
-            else:  # MONTHLY
-                # Start of current month
-                period_start = current_time.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-                # Start of next month
-                if current_time.month == 12:
-                    period_end = current_time.replace(year=current_time.year + 1, month=1, day=1)
-                else:
-                    period_end = current_time.replace(month=current_time.month + 1, day=1)
-                period_end = period_end.replace(hour=0, minute=0, second=0, microsecond=0)
-
-            # Debug logging
-            print(f"\nCreating/Getting period for {leaderboard_type.value}:")
-            print(f"UTC time: {utc_now}")
-            print(f"CST time: {current_time}")
-            print(f"Period start: {period_start}")
-            print(f"Period end: {period_end}")
-
-            # Check if we already have a period for this timeframe
-            existing_period = session.query(LeaderboardPeriod).filter(
-                and_(
-                    LeaderboardPeriod.leaderboard_type == leaderboard_type,
-                    LeaderboardPeriod.start_time == period_start,
-                    LeaderboardPeriod.end_time == period_end
-                )
-            ).first()
-
-            if existing_period:
-                print(f"Found existing period: {existing_period.start_time} to {existing_period.end_time}")
-                return existing_period
-
-            # Create new period
-            new_period = LeaderboardPeriod(
-                    leaderboard_type=leaderboard_type,
-                    start_time=period_start,
-                    end_time=period_end,
-                    is_active=True
-                )
-            session.add(new_period)
-            session.commit()
-            print(f"Created new period: {period_start} to {period_end}")
-
-            # If we have a bot and this is a new period, announce it (only for weekly leaderboards)
-            if bot and leaderboard_type == LeaderboardType.WEEKLY:
-                asyncio.create_task(self.announce_period_end(bot, leaderboard_type, new_period))
-
-            return new_period
-
+            with self.Session() as session:
+                # Use enum name (uppercase) for PostgreSQL enum
+                timeframe_str = timeframe.name
+                
+                # Get current period
+                period = session.query(LeaderboardPeriod).filter(
+                    LeaderboardPeriod.leaderboard_type == timeframe_str,
+                    LeaderboardPeriod.is_active == True
+                ).first()
+                
+                if not period:
+                    # Calculate start and end times based on timeframe
+                    now = datetime.now(timezone.utc)
+                    if timeframe == LeaderboardType.WEEKLY:
+                        # Start from Monday 00:00 CST
+                        start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+                        days_since_monday = start.weekday()
+                        start = start - timedelta(days=days_since_monday)
+                        end = start + timedelta(days=7)
+                    elif timeframe == LeaderboardType.MONTHLY:
+                        start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+                        if now.month == 12:
+                            end = now.replace(year=now.year + 1, month=1, day=1)
+                        else:
+                            end = now.replace(month=now.month + 1, day=1)
+                    else:  # ALLTIME
+                        start = datetime(2020, 1, 1, tzinfo=timezone.utc)
+                        end = datetime(2100, 1, 1, tzinfo=timezone.utc)
+                    
+                    # Create new period
+                    period = LeaderboardPeriod(
+                        leaderboard_type=timeframe_str,
+                        start_time=start,
+                        end_time=end,
+                        is_active=True
+                    )
+                    session.add(period)
+                    session.commit()
+                
+                return period
         except Exception as e:
-            print(f"ERROR: Failed to get/create period: {str(e)}")
-            print("Full traceback:")
-            traceback.print_exc()
-            session.rollback()
-            raise
-        finally:
-            session.close()
+            raise Exception(str(e))
 
     async def get_leaderboard_by_timeframe(self, timeframe: LeaderboardType, bot=None, period=None) -> List[Tuple[int, float, int, str, float]]:
         """Get leaderboard data for a specific timeframe."""
@@ -243,7 +212,7 @@ class GameStorage:
         try:
             # Get the current period if not provided
             if not period:
-                period = await self.get_or_create_current_period(timeframe, bot)
+                period = await self.get_or_create_current_period(timeframe)
 
             # Use a single query to get all the data we need
             results = db_session.query(
@@ -770,9 +739,9 @@ class GameStorage:
             # Calculate credits earned
             credits_earned = hours * game.credits_per_hour
 
-            # Create timestamp in Central Time (UTC-5)
-            current_time = datetime.now()
-            central_time = current_time - timedelta(hours=5)
+            # Create timestamp in CST
+            utc_now = datetime.now(pytz.UTC)
+            cst_time = utc_now.astimezone(self.cst)
 
             # Create the gaming session
             gaming_session = GamingSession(
@@ -780,7 +749,7 @@ class GameStorage:
                 game_id=game.id,
                 hours=hours,
                 credits_earned=credits_earned,
-                timestamp=central_time
+                timestamp=cst_time
             )
             session.add(gaming_session)
             session.commit()
@@ -1508,7 +1477,7 @@ class GameStorage:
             for row in rows:
                 sessions_data.append({
                     'id': row.id,
-                    'user_id': row.user_id,
+                    'user_id': str(row.user_id),  # Convert user_id to string to preserve precision
                     'hours': float(row.hours),
                     'timestamp': row.timestamp,
                     'game_name': row.game_name,
@@ -1682,9 +1651,9 @@ class GameStorage:
             # Calculate credits earned
             credits_earned = hours * game.credits_per_hour
 
-            # Create timestamp in Central Time (UTC-6)
-            current_time = datetime.now()
-            central_time = current_time - timedelta(hours=5)
+            # Create timestamp in CST
+            utc_now = datetime.now(pytz.UTC)
+            cst_time = utc_now.astimezone(self.cst)
 
             # Create the gaming session
             gaming_session = GamingSession(
@@ -1692,7 +1661,7 @@ class GameStorage:
                 game_id=game.id,
                 hours=hours,
                 credits_earned=credits_earned,
-                timestamp=central_time
+                timestamp=cst_time
             )
             session.add(gaming_session)
             session.commit()
@@ -1720,5 +1689,53 @@ class GameStorage:
             print("Full traceback:")
             traceback.print_exc()
             return []
+        finally:
+            session.close()
+
+    async def get_user_stats(self, user_id: int) -> Dict:
+        """Get user statistics"""
+        session = self.Session()
+        try:
+            # Get total credits and games played
+            total_credits = session.query(func.sum(GamingSession.credits_earned))\
+                .filter(GamingSession.user_id == user_id).scalar() or 0
+            
+            games_played = session.query(func.count(distinct(GamingSession.game_id)))\
+                .filter(GamingSession.user_id == user_id).scalar() or 0
+
+            # Get first and last played timestamps
+            first_played = session.query(func.min(GamingSession.timestamp))\
+                .filter(GamingSession.user_id == user_id).scalar()
+            last_played = session.query(func.max(GamingSession.timestamp))\
+                .filter(GamingSession.user_id == user_id).scalar()
+
+            # Convert timestamps to CST if they exist
+            if first_played and first_played.tzinfo is None:
+                first_played = first_played.replace(tzinfo=pytz.UTC).astimezone(self.cst)
+            if last_played and last_played.tzinfo is None:
+                last_played = last_played.replace(tzinfo=pytz.UTC).astimezone(self.cst)
+
+            # Get most played game
+            most_played = session.query(
+                Game.name,
+                func.sum(GamingSession.hours).label('total_hours')
+            ).join(Game, GamingSession.game_id == Game.id)\
+             .filter(GamingSession.user_id == user_id)\
+             .group_by(Game.name)\
+             .order_by(text('total_hours DESC'))\
+             .first()
+
+            return {
+                'total_credits': float(total_credits),
+                'games_played': games_played,
+                'first_played': first_played,
+                'last_played': last_played,
+                'most_played_game': most_played[0] if most_played else None,
+                'most_played_hours': float(most_played[1]) if most_played else 0
+            }
+
+        except Exception as e:
+            print(f"Error getting user stats: {str(e)}")
+            return None
         finally:
             session.close()

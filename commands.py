@@ -40,11 +40,10 @@ class GamingCommands(commands.Cog):
         return f"{number}{suffix}"
 
     def format_cst_time(self, dt):
-        """Convert UTC datetime to CST string"""
-        cst = pytz.timezone('America/Chicago')
+        """Convert datetime to CST string"""
         if dt.tzinfo is None:  # Make naive datetime UTC
             dt = dt.replace(tzinfo=pytz.UTC)
-        return dt.astimezone(cst).strftime('%Y-%m-%d')
+        return dt.astimezone(self.storage.cst).strftime('%Y-%m-%d %H:%M:%S %Z')
 
     @commands.command(name='log')
     async def log_hours(self, ctx, hours: float, *, game: str):

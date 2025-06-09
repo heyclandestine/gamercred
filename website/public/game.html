@@ -199,7 +199,7 @@
               <li>
                 <img class="avatar-sm" src="${activity.avatar_url}" alt="${activity.username}">
                 <div class="activity-details">
-                  <a class="user-link" href="user.html?user=${activity.user_id}">${activity.username}</a>
+                  <a class="user-link" href="user.html?user=${String(activity.user_id)}">${activity.username}</a>
                   <span class="activity-text">played for ${formatHours(activity.hours)}</span>
                 </div>
                 <span class="activity-time">${formatTimeAgo(activity.timestamp)}</span>
