@@ -701,10 +701,13 @@ document.addEventListener('DOMContentLoaded', function() {
           const games = (data.games || []).map(g => ({
             title: g.name,
             avatar: g.box_art_url || '/public/placeholder.png',
+            type: 'game'
           }));
           const users = (data.users || []).map(u => ({
             title: u.username,
             avatar: u.avatar_url || '/public/placeholder.png',
+            user_id: u.user_id,
+            type: 'user'
           }));
           results = [...games, ...users];
           activeIndex = -1;
@@ -737,21 +740,15 @@ document.addEventListener('DOMContentLoaded', function() {
       e.preventDefault();
       const item = e.target.closest('.autocomplete-item');
       if (item) {
-        const idx = item.getAttribute('data-index');
-        let selected;
-        if (idx.startsWith('g')) {
-          selected = parseInt(idx.slice(1), 10);
-          if (results[selected]) {
-            navbarSearchInput.value = results[selected].title;
-          }
-        } else if (idx.startsWith('u')) {
-          selected = parseInt(idx.slice(1), 10) + (results.length - (results.length - (results.filter(r => r.avatar && r.title).length)));
-          if (results[selected]) {
-            navbarSearchInput.value = results[selected].title;
+        const idx = parseInt(item.dataset.index);
+        if (idx >= 0 && idx < results.length) {
+          const result = results[idx];
+          if (result.type === 'game') {
+            window.location.href = `/game.html?game=${encodeURIComponent(result.title)}`;
+          } else {
+            window.location.href = `/user.html?user=${encodeURIComponent(result.user_id)}`;
           }
         }
-        navbarDropdown.style.display = 'none';
-        navbarSearchInput.focus();
       }
     });
 
