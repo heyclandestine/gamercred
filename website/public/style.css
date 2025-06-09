@@ -2516,8 +2516,8 @@ a:hover .game-cover-carousel, .activity-card:hover .game-cover-carousel {
 
 .form-row {
   display: flex;
-  align-items: flex-end;
-  gap: 4rem;
+  align-items: end;
+  gap: 1rem;
 }
 
 .form-group {
@@ -2608,6 +2608,7 @@ a:hover .game-cover-carousel, .activity-card:hover .game-cover-carousel {
   display: flex;
   align-items: center;
   gap: 0.5rem;
+  padding-bottom: 0.5rem;
 }
 
 .form-group label i {
@@ -2623,7 +2624,7 @@ a:hover .game-cover-carousel, .activity-card:hover .game-cover-carousel {
   color: #f8f8f2;
   font-size: 1rem;
   transition: all 0.2s ease;
-  width: 100%;
+  width: -webkit-fill-available;
 }
 
 .form-group input:focus {
@@ -2639,7 +2640,7 @@ a:hover .game-cover-carousel, .activity-card:hover .game-cover-carousel {
 .submit-button {
   background: #ff6fae;
   color: white;
-  border: none;
+  border: 2px solid #2d2d35;
   border-radius: 8px;
   padding: 0.8rem 1.2rem;
   font-size: 1rem;
@@ -2650,7 +2651,7 @@ a:hover .game-cover-carousel, .activity-card:hover .game-cover-carousel {
   justify-content: center;
   gap: 0.5rem;
   transition: all 0.2s ease;
-  height: 42px;
+  height: 46px;
   white-space: nowrap;
 }
 
@@ -2762,4 +2763,605 @@ a:hover .game-cover-carousel, .activity-card:hover .game-cover-carousel {
 #navbar-autocomplete-dropdown {
   min-width: 340px;
   max-width: 480px;
+}
+
+.timer-divider {
+  display: flex;
+  align-items: center;
+  text-align: center;
+  margin: 1.5rem 0;
+  color: #666;
+}
+
+.timer-divider::before,
+.timer-divider::after {
+  content: '';
+  flex: 1;
+  border-bottom: 1px solid #444;
+}
+
+.timer-divider span {
+  padding: 0 1rem;
+  font-size: 0.9rem;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.timer-widget {
+  background: #1a1a2a;
+  border-radius: 10px;
+  padding: 1.5rem;
+  margin-top: 1rem;
+}
+
+.timer-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.timer-display {
+  font-family: 'Inter', sans-serif;
+  font-size: 3rem;
+  font-weight: 700;
+  text-align: center;
+  color: #ff6fae;
+  background: #2a2a3a;
+  padding: 1rem;
+  border-radius: 10px;
+  margin: 1rem 0;
+}
+
+.timer-buttons {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+}
+
+.timer-button {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.8rem 2rem;
+  border: none;
+  border-radius: 50px;
+  font-weight: 600;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.timer-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.timer-button.start {
+  background: #4CAF50;
+  color: white;
+}
+
+.timer-button.start:hover:not(:disabled) {
+  background: #45a049;
+  transform: scale(1.05);
+}
+
+.timer-button.stop {
+  background: #f44336;
+  color: white;
+}
+
+.timer-button.stop:hover:not(:disabled) {
+  background: #da190b;
+  transform: scale(1.05);
+}
+
+.timer-button i {
+  font-size: 1.1rem;
+}
+
+@media (max-width: 768px) {
+  .timer-controls {
+    gap: 1rem;
+  }
+  
+  .timer-display {
+    font-size: 2.5rem;
+    padding: 0.8rem;
+  }
+  
+  .timer-button {
+    padding: 0.6rem 1.5rem;
+    font-size: 0.9rem;
+  }
+}
+
+.timer-dropdown {
+  background: #2a2a3a;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  max-height: 300px;
+  overflow-y: auto;
+  margin-top: 4px;
+}
+
+.timer-dropdown .autocomplete-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.timer-dropdown .autocomplete-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 12px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.timer-dropdown .autocomplete-item:hover,
+.timer-dropdown .autocomplete-item.active {
+  background-color: #3a3a4a;
+}
+
+.timer-dropdown .autocomplete-avatar {
+  width: 40px;
+  height: 40px;
+  object-fit: cover;
+  border-radius: 4px;
+}
+
+.timer-dropdown .autocomplete-title {
+  color: #fff;
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+/* Scrollbar styling for the dropdown */
+.timer-dropdown::-webkit-scrollbar {
+  width: 8px;
+}
+
+.timer-dropdown::-webkit-scrollbar-track {
+  background: #1a1a2a;
+  border-radius: 4px;
+}
+
+.timer-dropdown::-webkit-scrollbar-thumb {
+  background: #3a3a4a;
+  border-radius: 4px;
+}
+
+.timer-dropdown::-webkit-scrollbar-thumb:hover {
+  background: #4a4a5a;
+}
+
+.sign-in-message {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.8rem;
+  color: #666;
+  font-size: 0.9rem;
+}
+
+.sign-in-message i {
+  color: #5865F2;
+  font-size: 1.1rem;
+}
+
+.log-game.disabled {
+  opacity: 0.7;
+  pointer-events: none;
+}
+
+.log-game.disabled .sign-in-message {
+  display: none;
+}
+
+.log-game.disabled .timer-widget {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.timer-section {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  transition: all 0.3s ease;
+  height: auto;
+  flex: 1;
+}
+
+.timer-input {
+  display: flex;
+  flex-direction: row;
+  gap: 1rem;
+  align-items: flex-end;
+}
+
+.timer-display {
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 8px;
+  margin: 1rem 0;
+  opacity: 0;
+  transform: scale(0.95);
+  transition: all 0.3s ease-out;
+}
+
+.timer-display.active {
+  display: flex;
+  opacity: 1;
+  transform: scale(1);
+}
+
+.timer-display .timer-box-art {
+  width: 200px;
+  height: 300px;
+  object-fit: cover;
+  border-radius: 8px;
+  margin-bottom: 1rem;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+  transition: all 0.3s ease-out;
+}
+
+.timer-display.active .timer-box-art {
+  transform: scale(1);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3);
+}
+
+.timer-display .timer-time {
+  font-size: 2.5rem;
+  font-weight: bold;
+  margin: 1rem 0;
+  color: #fff;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  opacity: 0;
+  transform: translateY(20px);
+  transition: all 0.3s ease-out 0.1s;
+}
+
+.timer-display.active .timer-time {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.timer-display .timer-controls {
+  display: flex;
+  gap: 1rem;
+  opacity: 0;
+  transform: translateY(20px);
+  transition: all 0.3s ease-out 0.2s;
+}
+
+.timer-display.active .timer-controls {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.timer-display .timer-controls button {
+  padding: 0.5rem 1rem;
+  border: none;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.timer-display .timer-controls button:hover {
+  background: rgba(255, 255, 255, 0.2);
+  transform: translateY(-2px);
+}
+
+.timer-display .timer-controls button:active {
+  transform: translateY(0);
+}
+
+.timer-display .timer-controls button i {
+  margin-right: 0.5rem;
+}
+
+.timer-display .timer-controls button.pause {
+  background: rgba(255, 193, 7, 0.2);
+}
+
+.timer-display .timer-controls button.pause:hover {
+  background: rgba(255, 193, 7, 0.3);
+}
+
+.timer-display .timer-controls button.stop {
+  background: rgba(220, 53, 69, 0.2);
+}
+
+.timer-display .timer-controls button.stop:hover {
+  background: rgba(220, 53, 69, 0.3);
+}
+
+.timer-display .timer-controls button.log {
+  background: rgba(40, 167, 69, 0.2);
+}
+
+.timer-display .timer-controls button.log:hover {
+  background: rgba(40, 167, 69, 0.3);
+}
+
+.timer-box-art {
+  width: 200px;
+  height: 300px;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+  flex-shrink: 0;
+}
+
+.timer-box-art img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.timer-time {
+  font-size: 4rem;
+  font-weight: 600;
+  font-family: 'JetBrains Mono', monospace;
+  color: #fff;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  flex-grow: 1;
+  text-align: center;
+}
+
+.timer-active-controls {
+  display: flex;
+  gap: 1rem;
+  flex-shrink: 0;
+}
+
+/* When timer is active */
+.timer-section.active .timer-input {
+  display: none;
+}
+
+.timer-section.active .timer-display {
+  display: flex;
+  flex: 1;
+}
+
+.timer-section.active #stop-timer {
+  display: block;
+}
+
+.timer-section.active #start-timer {
+  display: none;
+}
+
+.timer-input .search-container {
+  position: relative;
+  width: 93%;
+}
+
+.timer-input input[type="text"] {
+  width: 100%;
+  padding: 0.8rem 1rem;
+  background: #23232b;
+  border: 1px solid #3a3a4a;
+  border-radius: 8px;
+  color: #fff;
+  font-size: 1rem;
+  transition: all 0.2s ease;
+}
+
+.timer-input input[type="text"]:focus {
+  border-color: #5865F2;
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(88, 101, 242, 0.2);
+}
+
+.timer-controls {
+  display: contents;
+}
+
+.timer-button {
+  padding: 0.8rem 1.5rem;
+  border: none;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-transform: uppercase;
+  font-size: 0.9rem;
+  letter-spacing: 0.5px;
+  min-width: 120px;
+}
+
+.timer-section:not(.active) .timer-button {
+  justify-content: center;
+  min-width: 13%;
+  align-self: center;
+  padding: 0.8rem 1rem;
+}
+
+.timer-section:not(.active) #start-timer {
+  width: 28%;
+  margin-top: 2.2rem;
+}
+
+.timer-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+#start-timer {
+  background: #5865F2;
+  color: white;
+}
+
+#start-timer:hover:not(:disabled) {
+  background: #4752c4;
+}
+
+#stop-timer {
+  background: #ed4245;
+  color: white;
+}
+
+#stop-timer:hover:not(:disabled) {
+  background: #c03537;
+}
+
+#pause-timer {
+  background: #faa61a;
+  color: white;
+}
+
+#pause-timer:hover {
+  background: #d88a15;
+}
+
+#resume-timer {
+  background: #3ba55c;
+  color: white;
+}
+
+#resume-timer:hover {
+  background: #2d8047;
+}
+
+#log-timer {
+  background: #3ba55c;
+  color: white;
+}
+
+#log-timer:hover {
+  background: #2d8047;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .timer-display {
+    flex-direction: column;
+    text-align: center;
+  }
+
+  .timer-time {
+    font-size: 3rem;
+  }
+
+  .timer-active-controls {
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+}
+
+.timer-section.active .log-game-title,
+.timer-section.active .or-divider {
+  display: none;
+}
+
+.timer-section.active {
+  position: relative;
+  min-height: 300px;
+}
+
+.timer-section.active ~ .log-game h2,
+.timer-section.active ~ .timer-divider {
+  display: none;
+}
+
+.timer-section.active {
+  position: relative;
+  min-height: 300px;
+}
+
+.timer-section.active .timer-display {
+  display: flex;
+  flex: 1;
+  margin: -1.5rem;
+  border-radius: 15px;
+}
+
+.log-game.timer-session-active {
+  padding: 0;
+}
+
+.log-game.timer-session-active .timer-section {
+  min-height: 300px;
+}
+
+.log-game.timer-session-active .timer-display {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  margin: 0;
+  border-radius: 15px;
+}
+
+.toast-container {
+  position: fixed;
+  bottom: 2rem;
+  right: 2rem;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.toast {
+  background: #2a2a3a;
+  color: #fff;
+  padding: 1rem 1.5rem;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  min-width: 300px;
+  max-width: 400px;
+  transform: translateX(120%);
+  transition: transform 0.3s ease;
+  border-left: 4px solid #3ba55c;
+}
+
+.toast.show {
+  transform: translateX(0);
+}
+
+.toast i {
+  font-size: 1.5rem;
+  color: #3ba55c;
+}
+
+.toast-content {
+  flex: 1;
+}
+
+.toast-title {
+  font-weight: 600;
+  margin-bottom: 0.25rem;
+}
+
+.toast-message {
+  font-size: 0.9rem;
+  opacity: 0.9;
+}
+
+.toast-close {
+  background: none;
+  border: none;
+  color: #fff;
+  opacity: 0.7;
+  cursor: pointer;
+  padding: 0.25rem;
+  transition: opacity 0.2s ease;
+}
+
+.toast-close:hover {
+  opacity: 1;
 }

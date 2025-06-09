@@ -897,5 +897,28 @@ def log_game():
         logger.error(error_msg, exc_info=True)
         return jsonify({'error': 'Internal server error', 'details': str(e)}), 500
 
+@app.route('/api/search-games', methods=['GET'])
+def search_games():
+    """Search for games by name"""
+    try:
+        query = request.args.get('query', '').strip()
+        if not query:
+            return jsonify([])
+
+        # Get games from storage that match the query
+        games = storage.search_games(query)
+        
+        # Format the response
+        results = [{
+            'name': game.name,
+            'box_art_url': game.box_art_url
+        } for game in games]
+
+        return jsonify(results)
+
+    except Exception as e:
+        logger.error(f"Error searching games: {str(e)}", exc_info=True)
+        return jsonify({'error': 'Failed to search games'}), 500
+
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True) 

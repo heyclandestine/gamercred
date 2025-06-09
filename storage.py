@@ -1702,3 +1702,23 @@ class GameStorage:
             raise Exception(str(e))
         finally:
             session.close()
+
+    def search_games(self, query: str, limit: int = 10) -> List[Game]:
+        """Search for games by name"""
+        session = self.Session()
+        try:
+            # Search for games that match the query (case-insensitive)
+            games = session.query(Game)\
+                .filter(func.lower(Game.name).like(f'%{query.lower()}%'))\
+                .order_by(Game.name)\
+                .limit(limit)\
+                .all()
+            
+            return games
+        except Exception as e:
+            print(f"Error searching games: {str(e)}")
+            print("Full traceback:")
+            traceback.print_exc()
+            return []
+        finally:
+            session.close()

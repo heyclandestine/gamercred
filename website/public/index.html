@@ -135,7 +135,7 @@
           <div class="form-group game-name-group">
             <label for="game-name">
               <i class="fas fa-gamepad"></i>
-              Game Name
+              Manual Entry
             </label>
             <div class="search-container">
               <input type="text" id="game-name" placeholder="Enter game name..." required>
@@ -155,6 +155,43 @@
           </button>
         </div>
       </form>
+      <div class="timer-divider">
+        <span>OR</span>
+      </div>
+      <div class="timer-section">
+        <div class="timer-input">
+          <div class="form-group">
+            <label for="timer-game-name">
+              <i class="fas fa-gamepad"></i>
+              Session Timer
+            </label>
+            <div class="search-container">
+              <input type="text" id="timer-game-name" placeholder="Search for a game..." autocomplete="off">
+            </div>
+          </div>
+          <div class="timer-controls">
+            <button id="start-timer" class="timer-button" disabled>START TIMER</button>
+            <button id="stop-timer" class="timer-button" disabled style="display: none;">STOP</button>
+          </div>
+        </div>
+        <div class="timer-display" style="display: none;">
+          <div class="timer-box-art">
+            <img src="https://static-cdn.jtvnw.net/ttv-boxart/loading_boxart.png" alt="Game Box Art" id="timer-box-art">
+          </div>
+          <div class="timer-time">
+            <span id="timer-hours">00</span>:<span id="timer-minutes">00</span>:<span id="timer-seconds">00</span>
+          </div>
+          <div class="timer-active-controls">
+            <button id="pause-timer" class="timer-button">PAUSE</button>
+            <button id="resume-timer" class="timer-button" style="display: none;">RESUME</button>
+            <button id="log-timer" class="timer-button">LOG SESSION</button>
+          </div>
+        </div>
+      </div>
+      <div class="sign-in-message">
+        <i class="fab fa-discord"></i>
+        Please sign in to use
+      </div>
     </section>
     <section class="activity card activity-wide">
       <h2><i class="fas fa-gamepad"></i> Recent Activity</h2>
