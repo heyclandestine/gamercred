@@ -534,11 +534,19 @@ class GameStorage:
                 game.added_by = user_id
                 
                 # Always fetch and update RAWG data for existing games
-                rawg_data = await self.fetch_game_details_from_rawg(game.name)
-                if rawg_data:
-                    game.rawg_id = rawg_data.get('rawg_id')
-                    game.box_art_url = rawg_data.get('box_art_url')
-                    game.release_date = rawg_data.get('release_date')
+                try:
+                    rawg_data = await self.fetch_game_details_from_rawg(game.name)
+                    if rawg_data:
+                        game.rawg_id = rawg_data.get('rawg_id')
+                        game.box_art_url = rawg_data.get('box_art_url')
+                        game.release_date = rawg_data.get('release_date')
+                        print(f"Successfully updated RAWG data for existing game: {game.name}")
+                    else:
+                        print(f"Failed to fetch RAWG data for existing game: {game.name}")
+                except Exception as e:
+                    print(f"Error fetching RAWG data for existing game {game.name}: {str(e)}")
+                    print("Full traceback:")
+                    traceback.print_exc()
                 
                 # Update all existing gaming sessions for this game
                 gaming_sessions = session.query(GamingSession).filter(GamingSession.game_id == game.id).all()
@@ -558,7 +566,17 @@ class GameStorage:
                 backloggd_url = f"https://www.backloggd.com/games/{url_name}/"
                 
                 # Fetch RAWG data
-                rawg_data = await self.fetch_game_details_from_rawg(formatted_name)
+                rawg_data = None
+                try:
+                    rawg_data = await self.fetch_game_details_from_rawg(formatted_name)
+                    if rawg_data:
+                        print(f"Successfully fetched RAWG data for new game: {formatted_name}")
+                    else:
+                        print(f"Failed to fetch RAWG data for new game: {formatted_name}")
+                except Exception as e:
+                    print(f"Error fetching RAWG data for new game {formatted_name}: {str(e)}")
+                    print("Full traceback:")
+                    traceback.print_exc()
                 
                 # Create new game with all data
                 game = Game(
@@ -579,6 +597,8 @@ class GameStorage:
         except Exception as e:
             session.rollback()
             print(f"Error setting game credits per hour: {str(e)}")
+            print("Full traceback:")
+            traceback.print_exc()
             return False
         finally:
             session.close()
@@ -1178,6 +1198,8 @@ class GameStorage:
             return None
 
         try:
+            print(f"Fetching RAWG data for game: {game_name}")
+            
             # Step 1: Search for the game by name
             search_url = f'{rawg_api_url}/games'
             search_params = {'key': rawg_api_key, 'search': game_name, 'page_size': 1}
@@ -1186,6 +1208,7 @@ class GameStorage:
                 async with session.get(search_url, params=search_params) as response:
                     if response.status != 200:
                         print(f"RAWG search API error for '{game_name}': {response.status}")
+                        print(f"Response text: {await response.text()}")
                         return None
                     search_data = await response.json()
 
@@ -1196,6 +1219,7 @@ class GameStorage:
             # Get the ID of the first result
             game_id = search_data['results'][0]['id']
             rawg_display_name = search_data['results'][0].get('name', game_name)
+            print(f"Found RAWG game ID {game_id} for '{game_name}' (display name: {rawg_display_name})")
 
             # Step 2: Get full game details by ID
             details_url = f'{rawg_api_url}/games/{game_id}'
@@ -1205,6 +1229,7 @@ class GameStorage:
                 async with session.get(details_url, params=details_params) as response:
                     if response.status != 200:
                         print(f"RAWG details API error for ID {game_id}: {response.status}")
+                        print(f"Response text: {await response.text()}")
                         return None
                     details_data = await response.json()
 
@@ -1212,6 +1237,10 @@ class GameStorage:
             box_art_url = details_data.get('background_image')
             description = details_data.get('description_raw', 'No description available.')
             release_date = details_data.get('released')  # Get the release date
+
+            print(f"Successfully fetched RAWG details for '{game_name}':")
+            print(f"- Box art URL: {box_art_url}")
+            print(f"- Release date: {release_date}")
 
             return {
                 'rawg_id': game_id,  # Changed from 'id' to 'rawg_id' to match database column
@@ -1223,8 +1252,8 @@ class GameStorage:
 
         except Exception as e:
             print(f"Error fetching game details from RAWG for '{game_name}': {e}")
-            import traceback
-            print(f"DEBUG: Full traceback: {traceback.format_exc()}")
+            print("Full traceback:")
+            traceback.print_exc()
             return None
 
     async def get_recent_gaming_sessions(self, limit: int = 20) -> List[Dict[str, Any]]:
