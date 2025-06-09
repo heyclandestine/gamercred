@@ -1231,6 +1231,9 @@ class GameStorage:
         rawg_api_key = os.getenv('RAWG_API_KEY') # Get RAWG API key
         rawg_api_url = os.getenv('RAWG_API_URL', 'https://api.rawg.io/api') # Get RAWG API URL
 
+        print(f"Debug: RAWG API Key: {rawg_api_key}")  # Debug print
+        print(f"Debug: RAWG API URL: {rawg_api_url}")  # Debug print
+
         if not rawg_api_key:
             print("RAWG_API_KEY not set. Cannot fetch game details from RAWG.")
             return None
@@ -1241,6 +1244,9 @@ class GameStorage:
             # Step 1: Search for the game by name
             search_url = f'{rawg_api_url}/games'
             search_params = {'key': rawg_api_key, 'search': game_name, 'page_size': 1}
+            
+            print(f"Debug: Search URL: {search_url}")  # Debug print
+            print(f"Debug: Search params: {search_params}")  # Debug print
             
             async with aiohttp.ClientSession() as session:
                 async with session.get(search_url, params=search_params) as response:
@@ -1262,6 +1268,9 @@ class GameStorage:
             # Step 2: Get full game details by ID
             details_url = f'{rawg_api_url}/games/{game_id}'
             details_params = {'key': rawg_api_key}
+            
+            print(f"Debug: Details URL: {details_url}")  # Debug print
+            print(f"Debug: Details params: {details_params}")  # Debug print
             
             async with aiohttp.ClientSession() as session:
                 async with session.get(details_url, params=details_params) as response:

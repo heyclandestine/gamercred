@@ -28,7 +28,7 @@ env_path = os.path.join(app_dir, '..', '.env')
 load_dotenv(dotenv_path=env_path)
 
 # Debug print to check if the key was loaded
-print(f"Debug: RAWG_API_KEY value after loading .env: {os.getenv('key')}")
+print(f"Debug: RAWG_API_KEY value after loading .env: {os.getenv('RAWG_API_KEY')}")
 print(f"Debug: DISCORD_TOKEN value after loading .env: {os.getenv('DISCORD_TOKEN')}") # Debug print for Discord token
 
 # Get the database path from the environment variable
