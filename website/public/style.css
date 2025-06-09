@@ -1622,6 +1622,7 @@ a:hover .game-cover-carousel, .activity-card:hover .game-cover-carousel {
 .backloggd-link-below-cover {
   display: block;
   margin-top: 1rem;
+  margin-left: 5%;
   height: 42px;
   width: 285px;
   text-align: center;
