@@ -98,17 +98,31 @@ cache = {
 def refresh_cache():
     global cache
     current_time = time.time()
-    if current_time - cache['leaderboard']['timestamp'] > 30:
-        # Get current period and leaderboard data for weekly
-        current_period = run_async(storage.get_or_create_current_period(LeaderboardType.WEEKLY))
-        cache['leaderboard']['data'] = run_async(storage.get_leaderboard_by_timeframe(LeaderboardType.WEEKLY, period=current_period))
-        cache['leaderboard']['timestamp'] = current_time
-    if current_time - cache['popular_games']['timestamp'] > 30:
-        cache['popular_games']['data'] = run_async(storage.get_total_game_hours_by_timeframe('weekly'))
-        cache['popular_games']['timestamp'] = current_time
-    if current_time - cache['recent_activity']['timestamp'] > 30:
-        cache['recent_activity']['data'] = run_async(storage.get_recent_gaming_sessions())
-        cache['recent_activity']['timestamp'] = current_time
+    try:
+        if current_time - cache['leaderboard']['timestamp'] > 30:
+            print("Refreshing leaderboard cache...")
+            # Get current period and leaderboard data for weekly
+            current_period = run_async(storage.get_or_create_current_period(LeaderboardType.WEEKLY))
+            cache['leaderboard']['data'] = run_async(storage.get_leaderboard_by_timeframe(LeaderboardType.WEEKLY, period=current_period))
+            cache['leaderboard']['timestamp'] = current_time
+            print("Leaderboard cache refreshed successfully")
+        
+        if current_time - cache['popular_games']['timestamp'] > 30:
+            print("Refreshing popular games cache...")
+            cache['popular_games']['data'] = run_async(storage.get_total_game_hours_by_timeframe('weekly'))
+            cache['popular_games']['timestamp'] = current_time
+            print("Popular games cache refreshed successfully")
+        
+        if current_time - cache['recent_activity']['timestamp'] > 30:
+            print("Refreshing recent activity cache...")
+            cache['recent_activity']['data'] = run_async(storage.get_recent_gaming_sessions())
+            cache['recent_activity']['timestamp'] = current_time
+            print("Recent activity cache refreshed successfully")
+    except Exception as e:
+        print(f"Error refreshing cache: {str(e)}")
+        print("Full traceback:")
+        traceback.print_exc()
+        # Don't raise the exception, just log it and continue
 
 # Cache for Discord user info with 5-minute expiration
 @lru_cache(maxsize=1000)
@@ -206,12 +220,18 @@ async def get_discord_user_info(user_id_str):
 
 # Helper function to run async functions
 def run_async(coro):
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
+    try:
+        loop = asyncio.get_event_loop()
+    except RuntimeError:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
     try:
         return loop.run_until_complete(coro)
-    finally:
-        loop.close()
+    except Exception as e:
+        print(f"Error in run_async: {str(e)}")
+        print("Full traceback:")
+        traceback.print_exc()
+        raise
 
 # Helper function to clean HTML and truncate text
 def clean_and_truncate_description(html_text):
