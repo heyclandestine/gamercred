@@ -575,7 +575,7 @@ class GameStorage:
                 try:
                     rawg_data = await self.fetch_game_details_from_rawg(game.name)
                     if rawg_data:
-                        game.rawg_id = rawg_data.get('rawg_id')
+                        game.rawg_id = rawg_data.get('id')
                         game.box_art_url = rawg_data.get('box_art_url')
                         game.release_date = rawg_data.get('release_date')
                         print(f"Successfully updated RAWG data for existing game: {game.name}")
@@ -622,7 +622,7 @@ class GameStorage:
                     credits_per_hour=credits, 
                     added_by=user_id,
                     backloggd_url=backloggd_url,
-                    rawg_id=rawg_data.get('rawg_id') if rawg_data else None,
+                    rawg_id=rawg_data.get('id') if rawg_data else None,
                     box_art_url=rawg_data.get('box_art_url') if rawg_data else None,
                     release_date=rawg_data.get('release_date') if rawg_data else None
                 )
@@ -1281,7 +1281,7 @@ class GameStorage:
             print(f"- Release date: {release_date}")
 
             return {
-                'rawg_id': game_id,  # Changed from 'id' to 'rawg_id' to match database column
+                'id': game_id,  # Changed from 'rawg_id' to 'id' to match the get() call in set_game_credits_per_hour
                 'display_name': rawg_display_name,
                 'box_art_url': box_art_url,
                 'description': description,
