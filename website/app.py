@@ -76,25 +76,43 @@ def refresh_cache():
     try:
         if current_time - cache['leaderboard']['timestamp'] > 30:
             print("Refreshing leaderboard cache...")
-            # Get current period and leaderboard data for weekly
-            current_period = run_async(storage.get_or_create_current_period(LeaderboardType.WEEKLY))
-            cache['leaderboard']['data'] = run_async(storage.get_leaderboard_by_timeframe(LeaderboardType.WEEKLY, period=current_period))
-            cache['leaderboard']['timestamp'] = current_time
-            print("Leaderboard cache refreshed successfully")
+            try:
+                # Get current period and leaderboard data for weekly
+                current_period = run_async(storage.get_or_create_current_period(LeaderboardType.WEEKLY))
+                print(f"Got current period: {current_period}")
+                leaderboard_data = run_async(storage.get_leaderboard_by_timeframe(LeaderboardType.WEEKLY, period=current_period))
+                print(f"Got leaderboard data: {leaderboard_data}")
+                cache['leaderboard']['data'] = leaderboard_data
+                cache['leaderboard']['timestamp'] = current_time
+                print("Leaderboard cache refreshed successfully")
+            except Exception as e:
+                print(f"Error refreshing leaderboard cache: {str(e)}")
+                print("Full traceback:")
+                traceback.print_exc()
         
         if current_time - cache['popular_games']['timestamp'] > 30:
             print("Refreshing popular games cache...")
-            cache['popular_games']['data'] = run_async(storage.get_total_game_hours_by_timeframe('weekly'))
-            cache['popular_games']['timestamp'] = current_time
-            print("Popular games cache refreshed successfully")
+            try:
+                cache['popular_games']['data'] = run_async(storage.get_total_game_hours_by_timeframe('weekly'))
+                cache['popular_games']['timestamp'] = current_time
+                print("Popular games cache refreshed successfully")
+            except Exception as e:
+                print(f"Error refreshing popular games cache: {str(e)}")
+                print("Full traceback:")
+                traceback.print_exc()
         
         if current_time - cache['recent_activity']['timestamp'] > 30:
             print("Refreshing recent activity cache...")
-            cache['recent_activity']['data'] = run_async(storage.get_recent_gaming_sessions())
-            cache['recent_activity']['timestamp'] = current_time
-            print("Recent activity cache refreshed successfully")
+            try:
+                cache['recent_activity']['data'] = run_async(storage.get_recent_gaming_sessions())
+                cache['recent_activity']['timestamp'] = current_time
+                print("Recent activity cache refreshed successfully")
+            except Exception as e:
+                print(f"Error refreshing recent activity cache: {str(e)}")
+                print("Full traceback:")
+                traceback.print_exc()
     except Exception as e:
-        print(f"Error refreshing cache: {str(e)}")
+        print(f"Error in refresh_cache: {str(e)}")
         print("Full traceback:")
         traceback.print_exc()
         # Don't raise the exception, just log it and continue
@@ -393,78 +411,111 @@ def handle_error(error):
 def get_leaderboard():
     timeframe = request.args.get('timeframe', 'weekly')
     try:
+        print(f"Getting leaderboard for timeframe: {timeframe}")
         if timeframe == 'weekly':
             # For weekly, use the cache
+            print("Using weekly cache")
             refresh_cache()
             leaderboard_data = cache['leaderboard']['data']
+            print(f"Got leaderboard data from cache: {leaderboard_data}")
             if not leaderboard_data:
+                print("No leaderboard data found in cache")
                 return jsonify([])
             formatted_data = []
             for user_id, credits, games_played, most_played_game, most_played_hours, total_hours in leaderboard_data:
-                user_id_str = str(user_id)
-                discord_info = get_cached_discord_user_info(user_id_str)
-                if discord_info:
-                    user_data = {
-                        'user_id': user_id_str,
-                        'username': discord_info.get('username', 'Unknown'),
-                        'avatar_url': discord_info.get('avatar_url', ''),
-                        'total_credits': float(credits or 0),
-                        'games_played': int(games_played or 0),
-                        'most_played_game': most_played_game or 'Unknown',
-                        'most_played_hours': float(most_played_hours or 0),
-                        'total_hours': float(total_hours or 0)
-                    }
-                    formatted_data.append(user_data)
+                try:
+                    user_id_str = str(user_id)
+                    discord_info = get_cached_discord_user_info(user_id_str)
+                    if discord_info:
+                        user_data = {
+                            'user_id': user_id_str,
+                            'username': discord_info.get('username', 'Unknown'),
+                            'avatar_url': discord_info.get('avatar_url', ''),
+                            'total_credits': float(credits or 0),
+                            'games_played': int(games_played or 0),
+                            'most_played_game': most_played_game or 'Unknown',
+                            'most_played_hours': float(most_played_hours or 0),
+                            'total_hours': float(total_hours or 0)
+                        }
+                        formatted_data.append(user_data)
+                except Exception as e:
+                    print(f"Error formatting user data for user {user_id}: {str(e)}")
+                    print("Full traceback:")
+                    traceback.print_exc()
+            print(f"Returning formatted data: {formatted_data}")
             return jsonify(formatted_data)
         elif timeframe == 'monthly':
             # For monthly, query the database directly
+            print("Getting monthly leaderboard")
             leaderboard_type = LeaderboardType.MONTHLY
             current_period = run_async(storage.get_or_create_current_period(leaderboard_type))
+            print(f"Got current period: {current_period}")
             leaderboard_data = run_async(storage.get_leaderboard_by_timeframe(leaderboard_type, period=current_period))
+            print(f"Got leaderboard data: {leaderboard_data}")
             if not leaderboard_data:
+                print("No leaderboard data found")
                 return jsonify([])
             formatted_data = []
             for user_id, credits, games_played, most_played_game, most_played_hours, total_hours in leaderboard_data:
-                user_id_str = str(user_id)
-                discord_info = get_cached_discord_user_info(user_id_str)
-                if discord_info:
-                    user_data = {
-                        'user_id': user_id_str,
-                        'username': discord_info.get('username', 'Unknown'),
-                        'avatar_url': discord_info.get('avatar_url', ''),
-                        'total_credits': float(credits or 0),
-                        'games_played': int(games_played or 0),
-                        'most_played_game': most_played_game or 'Unknown',
-                        'most_played_hours': float(most_played_hours or 0),
-                        'total_hours': float(total_hours or 0)
-                    }
-                    formatted_data.append(user_data)
+                try:
+                    user_id_str = str(user_id)
+                    discord_info = get_cached_discord_user_info(user_id_str)
+                    if discord_info:
+                        user_data = {
+                            'user_id': user_id_str,
+                            'username': discord_info.get('username', 'Unknown'),
+                            'avatar_url': discord_info.get('avatar_url', ''),
+                            'total_credits': float(credits or 0),
+                            'games_played': int(games_played or 0),
+                            'most_played_game': most_played_game or 'Unknown',
+                            'most_played_hours': float(most_played_hours or 0),
+                            'total_hours': float(total_hours or 0)
+                        }
+                        formatted_data.append(user_data)
+                except Exception as e:
+                    print(f"Error formatting user data for user {user_id}: {str(e)}")
+                    print("Full traceback:")
+                    traceback.print_exc()
+            print(f"Returning formatted data: {formatted_data}")
             return jsonify(formatted_data)
         elif timeframe == 'alltime':
             # Get all-time leaderboard data
+            print("Getting all-time leaderboard")
             leaderboard_data = storage.get_alltime_leaderboard()
+            print(f"Got leaderboard data: {leaderboard_data}")
             if not leaderboard_data:
+                print("No leaderboard data found")
                 return jsonify([])
             formatted_data = []
-            for user_id, credits, games_played, most_played_game, most_played_hours in leaderboard_data:
-                user_id_str = str(user_id)
-                discord_info = get_cached_discord_user_info(user_id_str)
-                if discord_info:
-                    user_data = {
-                        'user_id': user_id_str,
-                        'username': discord_info.get('username', 'Unknown'),
-                        'avatar_url': discord_info.get('avatar_url', ''),
-                        'total_credits': float(credits or 0),
-                        'games_played': int(games_played or 0),
-                        'most_played_game': most_played_game or 'Unknown',
-                        'most_played_hours': float(most_played_hours or 0)
-                    }
-                    formatted_data.append(user_data)
+            for user_id, credits, games_played, most_played_game, most_played_hours, total_hours in leaderboard_data:
+                try:
+                    user_id_str = str(user_id)
+                    discord_info = get_cached_discord_user_info(user_id_str)
+                    if discord_info:
+                        user_data = {
+                            'user_id': user_id_str,
+                            'username': discord_info.get('username', 'Unknown'),
+                            'avatar_url': discord_info.get('avatar_url', ''),
+                            'total_credits': float(credits or 0),
+                            'games_played': int(games_played or 0),
+                            'most_played_game': most_played_game or 'Unknown',
+                            'most_played_hours': float(most_played_hours or 0),
+                            'total_hours': float(total_hours or 0)
+                        }
+                        formatted_data.append(user_data)
+                except Exception as e:
+                    print(f"Error formatting user data for user {user_id}: {str(e)}")
+                    print("Full traceback:")
+                    traceback.print_exc()
+            print(f"Returning formatted data: {formatted_data}")
             return jsonify(formatted_data)
         else:
+            print(f"Invalid timeframe specified: {timeframe}")
             return jsonify({'error': 'Invalid timeframe specified'}), 400
     except Exception as e:
         print(f"Error getting leaderboard data: {str(e)}")
+        print("Full traceback:")
+        traceback.print_exc()
         return jsonify({'error': 'Failed to get leaderboard data'}), 500
 
 # Add endpoint to fetch recent bonuses
