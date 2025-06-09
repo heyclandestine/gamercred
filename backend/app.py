@@ -340,7 +340,7 @@ def get_recent_bonuses_endpoint():
         for bonus_data in recent_bonuses_data:
             user_id = bonus_data['user_id']
             discord_info = get_cached_discord_user_info(user_id)
-            
+
             # Format timestamp in CST
             timestamp = bonus_data['timestamp']
             timestamp_str = format_timestamp_cst(timestamp)

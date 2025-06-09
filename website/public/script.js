@@ -742,9 +742,12 @@ document.addEventListener('DOMContentLoaded', function() {
       if (item) {
         const idx = parseInt(item.dataset.index);
         if (results[idx]) {
-          navbarSearchInput.value = results[idx].title;
-          navbarDropdown.style.display = 'none';
-          navbarSearchInput.focus();
+          const result = results[idx];
+          if (result.type === 'game') {
+            window.location.href = `/game.html?game=${encodeURIComponent(result.title)}`;
+          } else {
+            window.location.href = `/user.html?user=${result.user_id}`;
+          }
         }
       }
     });

@@ -171,8 +171,8 @@ class GameStorage:
                 period = session.query(LeaderboardPeriod).filter(
                     LeaderboardPeriod.leaderboard_type == timeframe_str,
                     LeaderboardPeriod.is_active == True
-                ).first()
-                
+            ).first()
+
                 if not period:
                     # Calculate start and end times based on timeframe
                     now = datetime.now(timezone.utc)
@@ -191,17 +191,17 @@ class GameStorage:
                     else:  # ALLTIME
                         start = datetime(2020, 1, 1, tzinfo=timezone.utc)
                         end = datetime(2100, 1, 1, tzinfo=timezone.utc)
-                    
-                    # Create new period
+
+            # Create new period
                     period = LeaderboardPeriod(
                         leaderboard_type=timeframe_str,
                         start_time=start,
                         end_time=end,
-                        is_active=True
-                    )
+                    is_active=True
+                )
                     session.add(period)
-                    session.commit()
-                
+            session.commit()
+
                 return period
         except Exception as e:
             raise Exception(str(e))
