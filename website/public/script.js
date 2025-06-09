@@ -1344,6 +1344,60 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
+    function setRate(rating) {
+      if (!currentGame) {
+        showToast('Error', 'Please select a game first', 'error');
+        return;
+      }
+
+      if (!isLoggedIn) {
+        showToast('Error', 'Please log in to rate a game', 'error');
+        return;
+      }
+
+      fetch('/api/user')
+        .then(response => {
+          if (!response.ok) throw new Error('Not logged in');
+          return response.json();
+        })
+        .then(user => {
+          fetch('/api/rate-game', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              user_id: user.id,
+              game_name: currentGame.name,
+              rating: rating,
+              rawg_id: currentGame.rawg_id,
+              box_art_url: currentGame.box_art_url,
+              release_date: currentGame.release_date
+            })
+          })
+          .then(response => response.json())
+          .then(data => {
+            if (data.error) {
+              showToast('Error', data.error, 'error');
+            } else {
+              showToast('Success', `Rated ${currentGame.name} ${rating}/10!`);
+              // Update the rating display
+              const ratingDisplay = document.querySelector('.rating-display');
+              if (ratingDisplay) {
+                ratingDisplay.textContent = `${rating}/10`;
+              }
+            }
+          })
+          .catch(error => {
+            console.error('Error:', error);
+            showToast('Error', 'An error occurred while rating the game.', 'error');
+          });
+        })
+        .catch(() => {
+          showToast('Error', 'Please log in to rate a game.', 'error');
+        });
+    }
+
     startTimerButton.addEventListener('click', startTimer);
     stopTimerButton.addEventListener('click', stopTimer);
     pauseTimerButton.addEventListener('click', pauseTimer);
