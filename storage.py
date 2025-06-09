@@ -202,7 +202,7 @@ class GameStorage:
                     session.add(period)
             session.commit()
 
-                return period
+            return period
         except Exception as e:
             raise Exception(str(e))
 
