@@ -1361,27 +1361,32 @@ class GameStorage:
         """Get the user's most played game(s) and hours for a given timeframe, up to a specified limit."""
         session = self.Session()
         try:
-            # Get naive current time and localize to CST
-            naive_now = datetime.now()
-            now = self.cst.localize(naive_now)
+            # Get current time in UTC first
+            utc_now = datetime.now(pytz.UTC)
+            # Convert to CST
+            now = utc_now.astimezone(self.cst)
+            print(f"\nGetting most played games for user {user_id} in {timeframe} timeframe:")
+            print(f"UTC time: {utc_now}")
+            print(f"CST time: {now}")
 
             start_time = None
             end_time = now # End time is always now for current period calculations
 
             if timeframe == 'weekly':
                 # Start from last Monday 00:00 CST
-                days_since_monday = naive_now.weekday()
-                naive_start = (naive_now - timedelta(days=days_since_monday)).replace(
+                days_since_monday = now.weekday()
+                start_time = (now - timedelta(days=days_since_monday)).replace(
                     hour=0, minute=0, second=0, microsecond=0
                 )
-                start_time = self.cst.localize(naive_start)
+                print(f"Weekly start time: {start_time}")
             elif timeframe == 'monthly':
                 # Start from 1st of current month CST
-                naive_start = naive_now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-                start_time = self.cst.localize(naive_start)
+                start_time = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+                print(f"Monthly start time: {start_time}")
             elif timeframe == 'alltime':
                 # No start time limit for all-time
                 start_time = None # Set start_time to None for all-time
+                print("All-time timeframe - no start time limit")
             else:
                 # Invalid timeframe
                 print(f"Error: Invalid timeframe provided to get_user_most_played_game_by_timeframe: {timeframe}")
@@ -1397,8 +1402,7 @@ class GameStorage:
 
             # Apply timeframe filtering
             if start_time:
-                 # Ensure both timestamp and start_time are timezone-aware or naive for comparison
-                 # Assuming GamingSession.timestamp is stored as TZDateTime and thus timezone-aware
+                print(f"Filtering sessions after: {start_time}")
                 query = query.filter(GamingSession.timestamp >= start_time)
 
             query = query.group_by(Game.id, Game.name, Game.box_art_url)\
@@ -1406,21 +1410,27 @@ class GameStorage:
                          .limit(limit)
 
             results = query.all()
+            print(f"Found {len(results)} games for user {user_id}")
 
             # Format the results as a list of dictionaries
             formatted_results = []
             for result in results:
                 formatted_results.append({
                     'game_name': result.name,
-                    'total_hours': result.total_hours,
+                    'total_hours': float(result.total_hours),
                     'box_art_url': result.box_art_url
                 })
+                print(f"Game: {result.name}, Hours: {result.total_hours}")
 
             return formatted_results # Return a list of dictionaries
 
         except Exception as e:
             print(f"Error in get_user_most_played_game_by_timeframe for user {user_id}, timeframe {timeframe}: {e}")
+            print("Full traceback:")
+            traceback.print_exc()
             return []
+        finally:
+            session.close()
 
     def get_recent_players_for_game(self, game_name: str, timeframe: str = 'alltime', limit: int = 10) -> List[Dict[str, Any]]:
         """Get a list of users who recently played a specific game."""
