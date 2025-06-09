@@ -400,7 +400,7 @@ def get_leaderboard():
             if not leaderboard_data:
                 return jsonify([])
             formatted_data = []
-            for user_id, credits, games_played, most_played_game, most_played_hours in leaderboard_data:
+            for user_id, credits, games_played, most_played_game, most_played_hours, total_hours in leaderboard_data:
                 user_id_str = str(user_id)
                 discord_info = get_cached_discord_user_info(user_id_str)
                 if discord_info:
@@ -411,7 +411,8 @@ def get_leaderboard():
                         'total_credits': float(credits or 0),
                         'games_played': int(games_played or 0),
                         'most_played_game': most_played_game or 'Unknown',
-                        'most_played_hours': float(most_played_hours or 0)
+                        'most_played_hours': float(most_played_hours or 0),
+                        'total_hours': float(total_hours or 0)
                     }
                     formatted_data.append(user_data)
             return jsonify(formatted_data)
@@ -423,7 +424,7 @@ def get_leaderboard():
             if not leaderboard_data:
                 return jsonify([])
             formatted_data = []
-            for user_id, credits, games_played, most_played_game, most_played_hours in leaderboard_data:
+            for user_id, credits, games_played, most_played_game, most_played_hours, total_hours in leaderboard_data:
                 user_id_str = str(user_id)
                 discord_info = get_cached_discord_user_info(user_id_str)
                 if discord_info:
@@ -434,7 +435,8 @@ def get_leaderboard():
                         'total_credits': float(credits or 0),
                         'games_played': int(games_played or 0),
                         'most_played_game': most_played_game or 'Unknown',
-                        'most_played_hours': float(most_played_hours or 0)
+                        'most_played_hours': float(most_played_hours or 0),
+                        'total_hours': float(total_hours or 0)
                     }
                     formatted_data.append(user_data)
             return jsonify(formatted_data)
