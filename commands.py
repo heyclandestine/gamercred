@@ -174,7 +174,7 @@ class GamingCommands(commands.Cog):
         """Show the weekly gamer cred leaderboard"""
         try:
             # Get current period and leaderboard
-            period = await self.storage.get_or_create_current_period(LeaderboardType.WEEKLY, self.bot)
+            period = await self.storage.get_or_create_current_period(LeaderboardType.WEEKLY)
             leaderboard = await self.storage.get_leaderboard_by_timeframe(LeaderboardType.WEEKLY, self.bot, period=period)
 
             if not leaderboard:
@@ -209,7 +209,7 @@ class GamingCommands(commands.Cog):
         """Show the monthly gamer cred leaderboard"""
         try:
             # Get current period and leaderboard
-            period = await self.storage.get_or_create_current_period(LeaderboardType.MONTHLY, self.bot)
+            period = await self.storage.get_or_create_current_period(LeaderboardType.MONTHLY)
             leaderboard = await self.storage.get_leaderboard_by_timeframe(LeaderboardType.MONTHLY, self.bot, period=period)
 
             if not leaderboard:
@@ -1070,11 +1070,11 @@ class GamingCommands(commands.Cog):
             print(f"Current time - UTC: {utc_now}, CST: {now}")
             
             # Check weekly period
-            weekly_period = await self.storage.get_or_create_current_period(LeaderboardType.WEEKLY, self.bot)
+            weekly_period = await self.storage.get_or_create_current_period(LeaderboardType.WEEKLY)
             print(f"Weekly period: {weekly_period.start_time} to {weekly_period.end_time} CST")
             
             # Check monthly period
-            monthly_period = await self.storage.get_or_create_current_period(LeaderboardType.MONTHLY, self.bot)
+            monthly_period = await self.storage.get_or_create_current_period(LeaderboardType.MONTHLY)
             print(f"Monthly period: {monthly_period.start_time} to {monthly_period.end_time} CST")
             
             # Check if either period has ended
