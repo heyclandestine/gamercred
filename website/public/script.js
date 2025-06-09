@@ -745,7 +745,7 @@ document.addEventListener('DOMContentLoaded', function() {
           const result = results[idx];
           if (result.type === 'game') {
             window.location.href = `/game.html?game=${encodeURIComponent(result.title)}`;
-          } else {
+          } else if (result.type === 'user') {
             window.location.href = `/user.html?user=${result.user_id}`;
           }
         }
@@ -753,8 +753,8 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     navbarSearchInput.addEventListener('keydown', function(e) {
-      const gamesCount = results.filter(r => r.avatar && r.title && !r.username).length;
-      const usersCount = results.length - gamesCount;
+      const gamesCount = results.filter(r => r.type === 'game').length;
+      const usersCount = results.filter(r => r.type === 'user').length;
       const total = gamesCount + usersCount;
       if (!total || navbarDropdown.style.display === 'none') return;
       if (e.key === 'ArrowDown') {
@@ -768,8 +768,12 @@ document.addEventListener('DOMContentLoaded', function() {
         e.preventDefault();
       } else if (e.key === 'Enter') {
         if (activeIndex >= 0 && results[activeIndex]) {
-          navbarSearchInput.value = results[activeIndex].title;
-          navbarDropdown.style.display = 'none';
+          const result = results[activeIndex];
+          if (result.type === 'game') {
+            window.location.href = `/game.html?game=${encodeURIComponent(result.title)}`;
+          } else if (result.type === 'user') {
+            window.location.href = `/user.html?user=${result.user_id}`;
+          }
           e.preventDefault();
         }
       } else if (e.key === 'Escape') {
