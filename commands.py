@@ -190,12 +190,12 @@ class GamingCommands(commands.Cog):
                 color=0x00ff00,
                 url="https://gamercred.onrender.com"
             )
-            for position, (user_id, credits, games, most_played, most_played_hours) in enumerate(leaderboard[:10], 1):
+            for position, (user_id, credits, games, most_played, most_played_hours, total_hours) in enumerate(leaderboard[:10], 1):
                 member = ctx.guild.get_member(user_id)
                 username = member.display_name if member else f"User{user_id}"
                 embed.add_field(
                     name=f"{position}. {username}",
-                    value=f"💎 {credits:,.1f} cred\n🎮 {games} games\n🏆 Most played: {most_played} ({most_played_hours:,.1f}h)",
+                    value=f"💎 {credits:,.1f} cred\n🎮 {games} games\n⏱️ Total hours: {total_hours:,.1f}h\n🏆 Most played: {most_played} ({most_played_hours:,.1f}h)",
                     inline=False
                 )
 
@@ -225,12 +225,12 @@ class GamingCommands(commands.Cog):
                 color=0x00ff00,
                 url="https://gamercred.onrender.com"
             )
-            for position, (user_id, credits, games, most_played, most_played_hours) in enumerate(leaderboard[:10], 1):
+            for position, (user_id, credits, games, most_played, most_played_hours, total_hours) in enumerate(leaderboard[:10], 1):
                 member = ctx.guild.get_member(user_id)
                 username = member.display_name if member else f"User{user_id}"
                 embed.add_field(
                     name=f"{position}. {username}",
-                    value=f"💎 {credits:,.1f} cred\n🎮 {games} games\n🏆 Most played: {most_played} ({most_played_hours:,.1f}h)",
+                    value=f"💎 {credits:,.1f} cred\n🎮 {games} games\n⏱️ Total hours: {total_hours:,.1f}h\n🏆 Most played: {most_played} ({most_played_hours:,.1f}h)",
                     inline=False
                 )
 

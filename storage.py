@@ -206,7 +206,7 @@ class GameStorage:
         except Exception as e:
             raise Exception(str(e))
 
-    async def get_leaderboard_by_timeframe(self, timeframe: LeaderboardType, bot=None, period=None) -> List[Tuple[int, float, int, str, float]]:
+    async def get_leaderboard_by_timeframe(self, timeframe: LeaderboardType, bot=None, period=None) -> List[Tuple[int, float, int, str, float, float]]:
         """Get leaderboard data for a specific timeframe."""
         db_session = self.Session()
         try:
@@ -214,30 +214,89 @@ class GameStorage:
             if not period:
                 period = await self.get_or_create_current_period(timeframe)
 
-            # Use a single query to get all the data we need
-            results = db_session.query(
+            # First, get the most played game for each user
+            user_most_played = db_session.query(
                 GamingSession.user_id,
-                func.sum(GamingSession.credits_earned).label('total_credits'),
-                func.count(GamingSession.game_id.distinct()).label('games_played'),
-                func.max(Game.name).label('most_played_game'),
-                func.sum(GamingSession.hours).label('most_played_hours')
+                Game.name.label('game_name'),
+                func.sum(GamingSession.hours).label('game_hours')
             ).join(
                 Game, GamingSession.game_id == Game.id
             ).filter(
                 and_(
                     GamingSession.timestamp >= period.start_time,
                     GamingSession.timestamp < period.end_time
-            )
+                )
+            ).group_by(
+                GamingSession.user_id,
+                Game.name
+            ).subquery()
+
+            # Then get the max hours for each user's most played game
+            max_hours = db_session.query(
+                user_most_played.c.user_id,
+                func.max(user_most_played.c.game_hours).label('max_hours')
+            ).group_by(
+                user_most_played.c.user_id
+            ).subquery()
+
+            # Get the most played game name for each user
+            most_played_games = db_session.query(
+                user_most_played.c.user_id,
+                user_most_played.c.game_name,
+                user_most_played.c.game_hours
+            ).join(
+                max_hours,
+                and_(
+                    user_most_played.c.user_id == max_hours.c.user_id,
+                    user_most_played.c.game_hours == max_hours.c.max_hours
+                )
+            ).subquery()
+
+            # Get total hours for each user
+            total_hours = db_session.query(
+                GamingSession.user_id,
+                func.sum(GamingSession.hours).label('total_hours')
+            ).filter(
+                and_(
+                    GamingSession.timestamp >= period.start_time,
+                    GamingSession.timestamp < period.end_time
+                )
             ).group_by(
                 GamingSession.user_id
+            ).subquery()
+
+            # Finally, get all the data we need
+            results = db_session.query(
+                GamingSession.user_id,
+                func.sum(GamingSession.credits_earned).label('total_credits'),
+                func.count(GamingSession.game_id.distinct()).label('games_played'),
+                most_played_games.c.game_name.label('most_played_game'),
+                most_played_games.c.game_hours.label('most_played_hours'),
+                total_hours.c.total_hours.label('total_hours')
+            ).join(
+                most_played_games,
+                GamingSession.user_id == most_played_games.c.user_id
+            ).join(
+                total_hours,
+                GamingSession.user_id == total_hours.c.user_id
+            ).filter(
+                and_(
+                    GamingSession.timestamp >= period.start_time,
+                    GamingSession.timestamp < period.end_time
+                )
+            ).group_by(
+                GamingSession.user_id,
+                most_played_games.c.game_name,
+                most_played_games.c.game_hours,
+                total_hours.c.total_hours
             ).order_by(
                 func.sum(GamingSession.credits_earned).desc()
             ).all()
 
             # Format the results
             leaderboard = []
-            for user_id, credits, games_played, most_played_game, most_played_hours in results:
-                leaderboard.append((user_id, credits, games_played, most_played_game, most_played_hours))
+            for user_id, credits, games_played, most_played_game, most_played_hours, total_hours in results:
+                leaderboard.append((user_id, credits, games_played, most_played_game, most_played_hours, total_hours))
                 print(f"DEBUG: Added user {user_id} to leaderboard with {credits} credits")
 
             return leaderboard
