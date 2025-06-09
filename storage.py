@@ -571,14 +571,19 @@ class GameStorage:
                 game.credits_per_hour = credits
                 game.added_by = user_id
                 
-                # Always fetch and update RAWG data for existing games
+                # Force fetch and update RAWG data for existing games
                 try:
+                    print(f"Force fetching RAWG data for existing game: {game.name}")
                     rawg_data = await self.fetch_game_details_from_rawg(game.name)
                     if rawg_data:
+                        # Force update all RAWG-related fields
                         game.rawg_id = rawg_data.get('id')
                         game.box_art_url = rawg_data.get('box_art_url')
                         game.release_date = rawg_data.get('release_date')
-                        print(f"Successfully updated RAWG data for existing game: {game.name}")
+                        print(f"Successfully force updated RAWG data for existing game: {game.name}")
+                        print(f"- RAWG ID: {game.rawg_id}")
+                        print(f"- Box art URL: {game.box_art_url}")
+                        print(f"- Release date: {game.release_date}")
                     else:
                         print(f"Failed to fetch RAWG data for existing game: {game.name}")
                 except Exception as e:
@@ -606,9 +611,13 @@ class GameStorage:
                 # Fetch RAWG data
                 rawg_data = None
                 try:
+                    print(f"Fetching RAWG data for new game: {formatted_name}")
                     rawg_data = await self.fetch_game_details_from_rawg(formatted_name)
                     if rawg_data:
                         print(f"Successfully fetched RAWG data for new game: {formatted_name}")
+                        print(f"- RAWG ID: {rawg_data.get('id')}")
+                        print(f"- Box art URL: {rawg_data.get('box_art_url')}")
+                        print(f"- Release date: {rawg_data.get('release_date')}")
                     else:
                         print(f"Failed to fetch RAWG data for new game: {formatted_name}")
                 except Exception as e:
