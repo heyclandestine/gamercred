@@ -896,9 +896,6 @@ class GameStorage:
             # Commit changes
             session.commit()
             
-            # Log the session
-            self.log_game_session(user_id, game_name, hours)
-            
             return credits_earned
             
         except Exception as e:
