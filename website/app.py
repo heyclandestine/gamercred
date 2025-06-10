@@ -850,7 +850,8 @@ def get_all_games():
 @app.route('/login')
 def login():
     """Redirect to Discord OAuth2 login page"""
-    return redirect('https://discord.com/oauth2/authorize?client_id=1344451764530708571&response_type=code&redirect_uri=https%3A%2F%2Fgamercred.onrender.com%2Fcallback&scope=identify+guilds+email+guilds.join+connections')
+    #return redirect('https://discord.com/oauth2/authorize?client_id=1344451764530708571&response_type=code&redirect_uri=https%3A%2F%2Fgamercred.onrender.com%2Fcallback&scope=identify+guilds+email+guilds.join+connections')
+    return redirect('https://discord.com/oauth2/authorize?client_id=1344451764530708571&response_type=code&redirect_uri=http%3A%2F%2Flocalhost%3A5000%2Fcallback&scope=identify+guilds+email+guilds.join+connections')
 
 @app.route('/callback')
 def callback():
@@ -1003,6 +1004,31 @@ def search_games():
     except Exception as e:
         logger.error(f"Error searching games: {str(e)}", exc_info=True)
         return jsonify({'error': 'Failed to search games'}), 500
+
+@app.route('/api/user-stats/<user_identifier>/game')
+def get_user_game_stats_endpoint(user_identifier):
+    try:
+        game_name = request.args.get('name')
+        if not game_name:
+            return jsonify({'error': 'Game name parameter missing'}), 400
+
+        # Get user's stats for this game
+        user_game_stats = storage.get_user_game_stats(user_identifier, game_name)
+        
+        if not user_game_stats:
+            return jsonify({
+                'total_hours': 0,
+                'total_credits': 0,
+                'total_sessions': 0,
+                'first_played': None,
+                'last_played': None
+            })
+
+        return jsonify(user_game_stats)
+
+    except Exception as e:
+        print(f"Error getting user game stats: {str(e)}")
+        return jsonify({'error': 'Failed to get user game stats'}), 500
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True) 

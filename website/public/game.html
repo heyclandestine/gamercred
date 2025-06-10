@@ -36,41 +36,62 @@
   <main class="game-main">
     <section class="game-header-section card">
       <div class="game-header">
-        <div class="game-cover-container">
+        <div class="game-cover-container" style="display: grid; place-items: center;">
           <img id="gameCover" class="game-cover" src="" alt="Game Cover">
           <a id="backloggdLink" href="#" class="game-link backloggd-link-below-cover" style="display: none;">Check it out on Backloggd</a>
         </div>
-        <div class="game-info-and-description-container">
-          <h1 id="gameTitle">Loading...</h1>
-          <div class="stats-and-description-container">
-            <div class="game-info">
-              <div class="game-stats">
+        <div class="game-header-right">
+          <h1 id="gameTitle" style="color: #ffb86c;">Loading...</h1>
+          <div class="game-stats-and-user">
+            <div class="game-stats">
+              <div class="stat">
+                <span class="stat-label">CPH</span>
+                <span class="stat-value" id="creditsPerHour">-</span>
+              </div>
+              <div class="stat">
+                <span class="stat-label">Total Hours</span>
+                <span class="stat-value" id="totalHours">-</span>
+              </div>
+              <div class="stat">
+                <span class="stat-label">Total Players</span>
+                <span class="stat-value" id="uniquePlayers">-</span>
+              </div>
+            </div>
+            <div id="userGameStats" class="user-game-stats" style="display: none;">
+              <div class="user-stats-header" style="color: #8be9fd;display: none; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
+                <i class="fas fa-user"></i>
+                <span>Your Stats</span>
+              </div>
+              <div class="loading-spinner"><i class="fas fa-spinner fa-spin"></i> Loading your stats...</div>
+              <div class="user-stats-grid" style="display: none;">
                 <div class="stat">
-                  <span class="stat-label">Total Players</span>
-                  <span class="stat-value" id="uniquePlayers">-</span>
+                  <span class="stat-label">Your Hours</span>
+                  <span class="stat-value" id="userHours">-</span>
                 </div>
                 <div class="stat">
-                  <span class="stat-label">Total Hours</span>
-                  <span class="stat-value" id="totalHours">-</span>
+                  <span class="stat-label">Credits Earned</span>
+                  <span class="stat-value" id="userCredits">-</span>
                 </div>
                 <div class="stat">
-                  <span class="stat-label">CPH</span>
-                  <span class="stat-value" id="creditsPerHour">-</span>
+                  <span class="stat-label">Gaming Sessions</span>
+                  <span class="stat-value" id="userSessions">-</span>
                 </div>
                 <div class="stat">
-                  <span class="stat-label">Avg Hours</span>
-                  <span class="stat-value" id="avgHours">-</span>
+                  <span class="stat-label">First Played</span>
+                  <span class="stat-value" id="firstPlayed">-</span>
+                </div>
+                <div class="stat">
+                  <span class="stat-label">Last Played</span>
+                  <span class="stat-value" id="lastPlayed">-</span>
                 </div>
               </div>
             </div>
-            <div class="game-details-right">
-              <div class="game-details-extra">
-                <h3><i class="fas fa-file-alt"></i> Description</h3>
-                <p class="game-desc" id="gameDescription">Loading game description...</p>
-                <button class="more-button" style="display: none;">More</button>
-                <button class="less-button" style="display: none;">Less</button>
-              </div>
-            </div>
+          </div>
+          <div class="game-details-extra">
+            <h3 style="margin: 0;"><i class="fas fa-file-alt"></i> Description</h3>
+            <p class="game-desc" id="gameDescription">Loading game description...</p>
+            <button class="more-button" style="display: none;">More</button>
+            <button class="less-button" style="display: none;">Less</button>
           </div>
         </div>
       </div>
@@ -118,6 +139,44 @@
               <i class="fas fa-sign-out-alt"></i>
             </a>
           `;
+
+          // Show user stats section and fetch user's game stats
+          const userStatsSection = document.getElementById('userGameStats');
+          userStatsSection.style.display = 'block';
+          
+          // Get game name from URL
+          const urlParams = new URLSearchParams(window.location.search);
+          const gameName = urlParams.get('game');
+          
+          // Fetch user's stats for this game
+          fetch(`/api/user-stats/${user.id}/game?name=${encodeURIComponent(gameName)}`)
+            .then(response => response.json())
+            .then(data => {
+              const loadingSpinner = userStatsSection.querySelector('.loading-spinner');
+              const statsContainer = userStatsSection.querySelector('.user-stats-grid');
+              
+              if (data.error) {
+                loadingSpinner.innerHTML = `<i class="fas fa-exclamation-circle"></i> ${data.error}`;
+                return;
+              }
+              
+              // Update stats
+              document.getElementById('userHours').textContent = formatNumber(data.total_hours || 0);
+              document.getElementById('userCredits').textContent = formatNumber(data.total_credits || 0);
+              document.getElementById('userSessions').textContent = formatNumber(data.total_sessions || 0);
+              document.getElementById('firstPlayed').textContent = data.first_played ? new Date(data.first_played).toLocaleDateString() : 'Never';
+              document.getElementById('lastPlayed').textContent = data.last_played ? new Date(data.last_played).toLocaleDateString() : 'Never';
+              
+              // Show stats container and hide loading spinner
+              loadingSpinner.style.display = 'none';
+              statsContainer.style.display = 'flex';
+              userStatsSection.querySelector('.user-stats-header').style.display = 'flex';
+            })
+            .catch(error => {
+              console.error('Error fetching user game stats:', error);
+              const loadingSpinner = userStatsSection.querySelector('.loading-spinner');
+              loadingSpinner.innerHTML = '<i class="fas fa-exclamation-circle"></i> Error loading your stats';
+            });
         })
         .catch(() => {
           // User is not authenticated, keep the login button
@@ -244,7 +303,6 @@
       document.getElementById('totalHours').textContent = formatNumber(game.total_hours || 0);
       document.getElementById('uniquePlayers').textContent = formatNumber(game.unique_players || 0);
       document.getElementById('creditsPerHour').textContent = formatNumber(game.credits_per_hour || 0);
-      document.getElementById('avgHours').textContent = formatNumber(game.avg_hours || 0);
 
       // Update game cover
       const coverElement = document.getElementById('gameCover');
@@ -266,12 +324,6 @@
       } else {
         backloggdLink.style.display = 'none';
       }
-
-      // Load recent players
-      loadRecentPlayers(game.name);
-
-      // Load recent activity
-      loadRecentActivity(game.name);
     }
 
     function formatNumber(num) {
