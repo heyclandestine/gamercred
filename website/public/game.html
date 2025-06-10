@@ -36,37 +36,37 @@
   <main class="game-main">
     <section class="game-header-section card">
       <div class="game-header">
-        <div class="game-cover-container"> <style>
-          .game-cover-container {
-            place-items: anchor-center;
-          }
-        </style>
-          <img class="game-cover" src="" alt="Game Cover">
-          <a href="#" class="game-link backloggd-link-below-cover" style="display: none;">Check it out on Backloggd</a>
+        <div class="game-cover-container">
+          <img id="gameCover" class="game-cover" src="" alt="Game Cover">
+          <a id="backloggdLink" href="#" class="game-link backloggd-link-below-cover" style="display: none;">Check it out on Backloggd</a>
         </div>
         <div class="game-info-and-description-container">
-          <h1>Loading...</h1>
+          <h1 id="gameTitle">Loading...</h1>
           <div class="stats-and-description-container">
             <div class="game-info">
               <div class="game-stats">
                 <div class="stat">
                   <span class="stat-label">Total Players</span>
-                  <span class="stat-value">-</span>
+                  <span class="stat-value" id="uniquePlayers">-</span>
                 </div>
                 <div class="stat">
                   <span class="stat-label">Total Hours</span>
-                  <span class="stat-value">-</span>
+                  <span class="stat-value" id="totalHours">-</span>
                 </div>
                 <div class="stat">
                   <span class="stat-label">CPH</span>
-                  <span class="stat-value">-</span>
+                  <span class="stat-value" id="creditsPerHour">-</span>
+                </div>
+                <div class="stat">
+                  <span class="stat-label">Avg Hours</span>
+                  <span class="stat-value" id="avgHours">-</span>
                 </div>
               </div>
             </div>
             <div class="game-details-right">
-              <div class="game-details-extra" style="display: none;">
+              <div class="game-details-extra">
                 <h3><i class="fas fa-file-alt"></i> Description</h3>
-                <p class="game-desc">Loading game description...</p>
+                <p class="game-desc" id="gameDescription">Loading game description...</p>
                 <button class="more-button" style="display: none;">More</button>
                 <button class="less-button" style="display: none;">Less</button>
               </div>
