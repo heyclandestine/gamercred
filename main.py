@@ -35,8 +35,12 @@ intents.members = True  # Enable members intent for user information
 intents.guilds = True   # Enable guilds intent for server information
 bot = commands.Bot(command_prefix=COMMAND_PREFIX, intents=intents)
 
+# Create a single GameStorage instance
+storage = None
+
 @bot.event
 async def on_ready():
+    global storage
     print(f'Bot is ready! Logged in as {bot.user.name}')
     print(f'Connected to {len(bot.guilds)} servers')
     
@@ -48,7 +52,7 @@ async def on_ready():
             await bot.remove_cog(cog)
         
         # Add commands
-        gaming_commands = GamingCommands(bot)
+        gaming_commands = GamingCommands(bot, storage)
         await bot.add_cog(gaming_commands)
         print('Commands initialized successfully!')
         print(f'Command prefix is: {bot.command_prefix}')
@@ -84,6 +88,7 @@ async def on_disconnect():
         delattr(bot, 'commands_added')
 
 async def async_main():
+    global storage
     # Check if bot is already running
     if is_bot_already_running():
         print("Error: Bot is already running! Exiting to prevent duplicate instances.")

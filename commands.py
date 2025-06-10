@@ -13,15 +13,14 @@ from datetime import datetime, timedelta
 import urllib.parse
 
 class GamingCommands(commands.Cog):
-    def __init__(self, bot):
+    def __init__(self, bot, storage):
         self.bot = bot
+        self.storage = storage
         
         # Remove default help command first
         if bot.help_command:
             bot.remove_command('help')
         
-        # Initialize storage
-        self.storage = GameStorage()
         print('Commands initialized successfully!')
 
     async def cog_check(self, ctx):
