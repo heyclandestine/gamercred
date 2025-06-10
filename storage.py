@@ -1700,74 +1700,70 @@ class GameStorage:
         """Get all-time leaderboard data."""
         db_session = self.Session()
         try:
-            # First, get the most played game for each user
-            user_most_played = db_session.query(
+            # Get total credits from gaming sessions for each user
+            session_credits = db_session.query(
                 GamingSession.user_id,
-                Game.name.label('game_name'),
-                func.sum(GamingSession.hours).label('game_hours')
-            ).join(
-                Game, GamingSession.game_id == Game.id
-            ).group_by(
-                GamingSession.user_id,
-                Game.name
-            ).subquery()
-
-            # Then get the max hours for each user's most played game
-            max_hours = db_session.query(
-                user_most_played.c.user_id,
-                func.max(user_most_played.c.game_hours).label('max_hours')
-            ).group_by(
-                user_most_played.c.user_id
-            ).subquery()
-
-            # Get the most played game name for each user
-            most_played_games = db_session.query(
-                user_most_played.c.user_id,
-                user_most_played.c.game_name,
-                user_most_played.c.game_hours
-            ).join(
-                max_hours,
-                and_(
-                    user_most_played.c.user_id == max_hours.c.user_id,
-                    user_most_played.c.game_hours == max_hours.c.max_hours
-                )
-            ).subquery()
-
-            # Get total hours for each user
-            total_hours = db_session.query(
-                GamingSession.user_id,
+                func.sum(GamingSession.credits_earned).label('session_credits'),
+                func.count(GamingSession.game_id.distinct()).label('games_played'),
                 func.sum(GamingSession.hours).label('total_hours')
             ).group_by(
                 GamingSession.user_id
             ).subquery()
 
-            # Finally, get all the data we need
-            results = db_session.query(
-                GamingSession.user_id,
-                func.sum(GamingSession.credits_earned).label('total_credits'),
-                func.count(GamingSession.game_id.distinct()).label('games_played'),
-                most_played_games.c.game_name.label('most_played_game'),
-                most_played_games.c.game_hours.label('most_played_hours'),
-                total_hours.c.total_hours.label('total_hours')
-            ).join(
-                most_played_games,
-                GamingSession.user_id == most_played_games.c.user_id
-            ).join(
-                total_hours,
-                GamingSession.user_id == total_hours.c.user_id
+            # Get total bonus credits for each user
+            bonus_credits = db_session.query(
+                Bonus.user_id,
+                func.sum(Bonus.credits).label('bonus_credits')
             ).group_by(
-                GamingSession.user_id,
-                most_played_games.c.game_name,
-                most_played_games.c.game_hours,
-                total_hours.c.total_hours
+                Bonus.user_id
+            ).subquery()
+
+            # Combine session credits and bonus credits
+            results = db_session.query(
+                session_credits.c.user_id,
+                (func.coalesce(session_credits.c.session_credits, 0) + func.coalesce(bonus_credits.c.bonus_credits, 0)).label('total_credits'),
+                session_credits.c.games_played,
+                session_credits.c.total_hours
+            ).outerjoin(
+                bonus_credits,
+                session_credits.c.user_id == bonus_credits.c.user_id
             ).order_by(
-                func.sum(GamingSession.credits_earned).desc()
+                (func.coalesce(session_credits.c.session_credits, 0) + func.coalesce(bonus_credits.c.bonus_credits, 0)).desc()
             ).all()
+
+            # Get most played game for each user
+            most_played_games = {}
+            for user_id, _, _, _ in results:
+                most_played = db_session.query(
+                    Game.name,
+                    func.sum(GamingSession.hours).label('game_hours')
+                ).join(
+                    GamingSession, Game.id == GamingSession.game_id
+                ).filter(
+                    GamingSession.user_id == user_id
+                ).group_by(
+                    Game.name
+                ).order_by(
+                    func.sum(GamingSession.hours).desc()
+                ).first()
+
+                if most_played:
+                    most_played_games[user_id] = (most_played.name, float(most_played.game_hours))
+                else:
+                    most_played_games[user_id] = ('No games', 0.0)
 
             # Format the results
             leaderboard = []
-            for user_id, credits, games_played, most_played_game, most_played_hours, total_hours in results:
-                leaderboard.append((user_id, credits, games_played, most_played_game, most_played_hours, total_hours))
+            for user_id, total_credits, games_played, total_hours in results:
+                most_played_game, most_played_hours = most_played_games.get(user_id, ('No games', 0.0))
+                leaderboard.append((
+                    user_id,
+                    float(total_credits or 0),
+                    int(games_played or 0),
+                    most_played_game,
+                    float(most_played_hours or 0),
+                    float(total_hours or 0)
+                ))
 
             return leaderboard
 

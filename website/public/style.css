@@ -3365,3 +3365,35 @@ a:hover .game-cover-carousel, .activity-card:hover .game-cover-carousel {
 .toast-close:hover {
   opacity: 1;
 }
+
+/* Add this new class for the flex row between game name and hours */
+.popular-game-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+}
+
+/* Make sure the hours are right-aligned and don't wrap */
+.popular-game-row .hours {
+  margin-left: 1em;
+  white-space: nowrap;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+/* Update the li to use column layout for rank/cover and the row for name/hours */
+.popular-games-list li {
+  display: flex;
+  align-items: center;
+  gap: 1em;
+  margin-bottom: 1.1em;
+  font-size: 1.1rem;
+  background: #23232b;
+  border-radius: 10px;
+  padding: 0.7em 1em;
+  box-shadow: 0 1px 4px rgba(255,111,174,0.04);
+  width: 100%;
+  box-sizing: border-box;
+  height: 80px;
+}

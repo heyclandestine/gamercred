@@ -384,8 +384,10 @@
 
                 listItem.innerHTML = `
                   <span class="rank">${index + 1}</span>
-                  <a class="game-link" href="game.html?game=${encodeURIComponent(game.name)}">${game.name}</a>
-                  <span class="hours">${formatNumberWithCommas(game.total_hours || 0)} hrs</span>
+                  <div class="popular-game-row">
+                    <a class="game-link" href="game.html?game=${encodeURIComponent(game.name)}">${game.name}</a>
+                    <span class="hours">${formatNumberWithCommas(game.total_hours || 0)} hrs</span>
+                  </div>
                 `;
                 
                 listItem.insertBefore(mediaElement, listItem.firstChild);
@@ -431,8 +433,10 @@
 
                 listItem.innerHTML = `
                   <span class="rank">${index + 1}</span>
-                  <a class="game-link" href="game.html?game=${encodeURIComponent(game.name)}">${game.name}</a>
-                  <span class="hours">${formatNumberWithCommas(game.total_hours || 0)} hrs</span>
+                  <div class="popular-game-row">
+                    <a class="game-link" href="game.html?game=${encodeURIComponent(game.name)}">${game.name}</a>
+                    <span class="hours">${formatNumberWithCommas(game.total_hours || 0)} hrs</span>
+                  </div>
                 `;
                 
                 listItem.insertBefore(mediaElement, listItem.firstChild);
@@ -655,8 +659,10 @@
 
               listItem.innerHTML = `
                 <span class="rank">${index + 1}</span>
-                <a class="game-link" href="game.html?game=${encodeURIComponent(game.name)}">${game.name}</a>
-                <span class="hours">${formatNumberWithCommas(game.total_hours || 0)} hrs</span>
+                <div class="popular-game-row">
+                  <a class="game-link" href="game.html?game=${encodeURIComponent(game.name)}">${game.name}</a>
+                  <span class="hours">${formatNumberWithCommas(game.total_hours || 0)} hrs</span>
+                </div>
               `;
               
               listItem.insertBefore(mediaElement, listItem.firstChild);
@@ -702,8 +708,10 @@
 
               listItem.innerHTML = `
                 <span class="rank">${index + 1}</span>
-                <a class="game-link" href="game.html?game=${encodeURIComponent(game.name)}">${game.name}</a>
-                <span class="hours">${formatNumberWithCommas(game.total_hours || 0)} hrs</span>
+                <div class="popular-game-row">
+                  <a class="game-link" href="game.html?game=${encodeURIComponent(game.name)}">${game.name}</a>
+                  <span class="hours">${formatNumberWithCommas(game.total_hours || 0)} hrs</span>
+                </div>
               `;
               
               listItem.insertBefore(mediaElement, listItem.firstChild);
