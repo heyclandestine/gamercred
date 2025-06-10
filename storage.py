@@ -505,14 +505,14 @@ class GameStorage:
         """Get a game by name or create it if it doesn't exist, and fetch/update RAWG data."""
         session = self.Session()
         try:
+            # Normalize the game name by capitalizing each word
+            formatted_name = ' '.join(word.capitalize() for word in game_name.strip().split())
+            
             # Case-insensitive search for existing game
-            game = session.query(Game).filter(func.lower(Game.name) == func.lower(game_name)).first()
+            game = session.query(Game).filter(func.lower(Game.name) == func.lower(formatted_name)).first()
             created = False
 
             if not game:
-                # Capitalize the first letter for consistency
-                formatted_name = game_name.strip().capitalize()
-                
                 # Create the Backloggd URL by replacing spaces with hyphens and converting to lowercase
                 # Also handle special characters and apostrophes
                 url_name = formatted_name.lower()
@@ -543,6 +543,7 @@ class GameStorage:
                     game.rawg_id = rawg_details.get('rawg_id')  # Use get() to safely access the key
                     game.box_art_url = rawg_details.get('box_art_url')
                     game.release_date = rawg_details.get('release_date')
+                    # Don't update the game name with RAWG's display name
                     print(f"Updated game with RAWG ID: {game.rawg_id}")  # Debug print
                     session.add(game)
                     session.commit()  # Make sure to commit the changes
@@ -565,11 +566,11 @@ class GameStorage:
 
         session = self.Session()
         try:
-            # Normalize the game name
-            normalized_name = ' '.join(game_name.lower().split())
+            # Normalize the game name by capitalizing each word
+            formatted_name = ' '.join(word.capitalize() for word in game_name.strip().split())
             
             # Get the game
-            game = session.query(Game).filter(func.lower(Game.name) == normalized_name).first()
+            game = session.query(Game).filter(func.lower(Game.name) == func.lower(formatted_name)).first()
             
             if game:
                 # Update existing game
@@ -582,9 +583,10 @@ class GameStorage:
                     rawg_data = await self.fetch_game_details_from_rawg(game.name)
                     if rawg_data:
                         # Force update all RAWG-related fields
-                        game.rawg_id = rawg_data.get('rawg_id')
+                        game.rawg_id = rawg_data.get('rawg_id')  # Changed from 'id' to 'rawg_id'
                         game.box_art_url = rawg_data.get('box_art_url')
                         game.release_date = rawg_data.get('release_date')
+                        # Don't update the game name with RAWG's display name
                         print(f"Successfully force updated RAWG data for existing game: {game.name}")
                         print(f"- RAWG ID: {game.rawg_id}")
                         print(f"- Box art URL: {game.box_art_url}")
@@ -602,9 +604,6 @@ class GameStorage:
                     # Recalculate credits based on hours and new CPH
                     gaming_session.credits_earned = gaming_session.hours * credits
             else:
-                # Create new game
-                formatted_name = game_name.strip()
-                
                 # Create the Backloggd URL
                 url_name = formatted_name.lower()
                 url_name = url_name.replace("'", "").replace('"', "")
@@ -620,7 +619,7 @@ class GameStorage:
                     rawg_data = await self.fetch_game_details_from_rawg(formatted_name)
                     if rawg_data:
                         print(f"Successfully fetched RAWG data for new game: {formatted_name}")
-                        print(f"- RAWG ID: {rawg_data.get('rawg_id')}")
+                        print(f"- RAWG ID: {rawg_data.get('rawg_id')}")  # Changed from 'id' to 'rawg_id'
                         print(f"- Box art URL: {rawg_data.get('box_art_url')}")
                         print(f"- Release date: {rawg_data.get('release_date')}")
                     else:
@@ -636,7 +635,7 @@ class GameStorage:
                     credits_per_hour=credits, 
                     added_by=user_id,
                     backloggd_url=backloggd_url,
-                    rawg_id=rawg_data.get('rawg_id') if rawg_data else None,
+                    rawg_id=rawg_data.get('rawg_id') if rawg_data else None,  # Changed from 'id' to 'rawg_id'
                     box_art_url=rawg_data.get('box_art_url') if rawg_data else None,
                     release_date=rawg_data.get('release_date') if rawg_data else None
                 )
