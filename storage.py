@@ -3,7 +3,8 @@ from datetime import datetime, timedelta, timezone
 from typing import Dict, List, Tuple, Optional, Any
 from sqlalchemy import create_engine, func, DateTime as sqlalchemy_DateTime, and_, Integer, String, BigInteger, text, distinct
 from sqlalchemy.orm import sessionmaker, scoped_session
-from models import Base, Game, UserStats, GamingSession, LeaderboardHistory, LeaderboardType, LeaderboardPeriod, Bonus # Removed User import
+from sqlalchemy.pool import QueuePool
+from models import Base, Game, UserStats, GamingSession, LeaderboardHistory, LeaderboardType, LeaderboardPeriod, Bonus
 import pytz
 import discord
 from dotenv import load_dotenv
@@ -12,6 +13,8 @@ import asyncio
 from collections import defaultdict
 from sqlalchemy.sql import select
 import traceback
+import time
+import sys
 
 # Load environment variables
 load_dotenv()
@@ -21,15 +24,6 @@ DATABASE_URL = os.getenv('DATABASE_URL')
 if not DATABASE_URL:
     raise ValueError("DATABASE_URL environment variable is not set")
 
-# Helper function to run async functions
-def run_async(coro):
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
-    try:
-        return loop.run_until_complete(coro)
-    finally:
-        loop.close()
-
 class GameStorage:
     def __init__(self):
         """Initialize the storage with database connection"""
@@ -38,15 +32,50 @@ class GameStorage:
             raise ValueError("DATABASE_URL environment variable is not set")
         
         print(f"Initializing database with URL: {self.database_url}")
-        self.engine = create_engine(self.database_url)
+        
+        # Configure the engine with connection pooling
+        self.engine = create_engine(
+            self.database_url,
+            poolclass=QueuePool,
+            pool_size=5,  # Maximum number of connections to keep
+            max_overflow=10,  # Maximum number of connections that can be created beyond pool_size
+            pool_timeout=30,  # Seconds to wait before giving up on getting a connection from the pool
+            pool_recycle=1800,  # Recycle connections after 30 minutes
+            pool_pre_ping=True  # Enable connection health checks
+        )
+        
+        # Create tables if they don't exist
         Base.metadata.create_all(self.engine)
-        self.Session = sessionmaker(bind=self.engine)
+        
+        # Create session factory
+        self.Session = scoped_session(
+            sessionmaker(
+                bind=self.engine,
+                expire_on_commit=False
+            )
+        )
         
         # Update capitalization of existing games
         self.update_game_capitalization()
         
         self.cst = pytz.timezone('America/Chicago')
         print('Storage initialized successfully!')
+
+    def get_session(self):
+        """Get a database session with retry logic"""
+        max_retries = 3
+        retry_delay = 1  # seconds
+        
+        for attempt in range(max_retries):
+            try:
+                return self.Session()
+            except Exception as e:
+                if attempt == max_retries - 1:  # Last attempt
+                    print(f"Failed to get database session after {max_retries} attempts: {str(e)}")
+                    raise
+                print(f"Database connection attempt {attempt + 1} failed: {str(e)}")
+                time.sleep(retry_delay)
+                retry_delay *= 2  # Exponential backoff
 
     def Session(self):
         return sessionmaker(bind=self.engine)()
@@ -835,42 +864,52 @@ class GameStorage:
             session.close()
 
     async def add_gaming_hours(self, user_id: int, hours: float, game_name: str) -> float:
-        """Add gaming hours for a user"""
-        session = self.Session()
+        """Add gaming hours for a user and return the credits earned"""
+        session = None
         try:
-            # Normalize the game name (lowercase and strip extra spaces)
-            normalized_name = ' '.join(game_name.lower().split())
+            session = self.get_session()
             
-            # Get the game using case-insensitive comparison
-            game = session.query(Game).filter(func.lower(Game.name) == normalized_name).first()
-            if not game:
-                raise Exception("Game does not exist in the database, please set the rate using !setrate")
-
-            # Calculate credits earned
-            credits_earned = hours * game.credits_per_hour
-
-            # Create timestamp in CST
-            utc_now = datetime.now(pytz.UTC)
-            cst_time = utc_now.astimezone(self.cst)
-
-            # Create the gaming session
+            # Get or create the game
+            game, is_new = await self.get_or_create_game(game_name, user_id)
+            
+            # Create or update gaming session
             gaming_session = GamingSession(
                 user_id=user_id,
                 game_id=game.id,
                 hours=hours,
-                credits_earned=credits_earned,
-                timestamp=cst_time
+                timestamp=datetime.now(timezone.utc)
             )
             session.add(gaming_session)
+            
+            # Update user stats
+            user_stats = session.query(UserStats).filter(UserStats.user_id == user_id).first()
+            if not user_stats:
+                user_stats = UserStats(user_id=user_id)
+                session.add(user_stats)
+            
+            # Calculate credits earned
+            credits_earned = hours * game.credits_per_hour
+            user_stats.total_credits += credits_earned
+            user_stats.total_hours += hours
+            
+            # Commit changes
             session.commit()
-
+            
+            # Log the session
+            self.log_game_session(user_id, game_name, hours)
+            
             return credits_earned
-
+            
         except Exception as e:
-            session.rollback()
-            raise Exception(str(e))
+            if session:
+                session.rollback()
+            print(f"Error adding gaming hours: {str(e)}")
+            print("Full error details:", file=sys.stderr)
+            traceback.print_exc()
+            raise
         finally:
-            session.close()
+            if session:
+                session.close()
 
     def get_user_credits(self, user_id: int) -> float:
         """Get user's total credits by summing all gaming sessions and bonuses"""
