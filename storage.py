@@ -1249,64 +1249,89 @@ class GameStorage:
             print("RAWG_API_KEY not set. Cannot fetch game details from RAWG.")
             return None
 
-        try:
-            print(f"Fetching RAWG data for game: {game_name}")
-            
-            # Step 1: Search for the game by name
-            search_url = f'{rawg_api_url}/games'
-            search_params = {'key': rawg_api_key, 'search': game_name, 'page_size': 1}
-            
-            async with aiohttp.ClientSession() as session:
-                async with session.get(search_url, params=search_params) as response:
-                    if response.status != 200:
-                        print(f"RAWG search API error for '{game_name}': {response.status}")
-                        print(f"Response text: {await response.text()}")
-                        return None
-                    search_data = await response.json()
+        max_retries = 3
+        retry_delay = 2  # seconds
 
-            if not search_data or not search_data['results']:
-                print(f"No RAWG search results found for '{game_name}'.")
+        for attempt in range(max_retries):
+            try:
+                print(f"Fetching RAWG data for game: {game_name} (Attempt {attempt + 1}/{max_retries})")
+                
+                # Step 1: Search for the game by name
+                search_url = f'{rawg_api_url}/games'
+                search_params = {'key': rawg_api_key, 'search': game_name, 'page_size': 1}
+                
+                async with aiohttp.ClientSession() as session:
+                    async with session.get(search_url, params=search_params) as response:
+                        if response.status == 502:
+                            print(f"RAWG API returned 502 Bad Gateway. Retrying in {retry_delay} seconds...")
+                            await asyncio.sleep(retry_delay)
+                            continue
+                        elif response.status != 200:
+                            print(f"RAWG search API error for '{game_name}': {response.status}")
+                            print(f"Response text: {await response.text()}")
+                            if attempt < max_retries - 1:
+                                await asyncio.sleep(retry_delay)
+                                continue
+                            return None
+                        search_data = await response.json()
+
+                if not search_data or not search_data['results']:
+                    print(f"No RAWG search results found for '{game_name}'.")
+                    return None
+
+                # Get the ID of the first result
+                game_id = search_data['results'][0]['id']
+                rawg_display_name = search_data['results'][0].get('name', game_name)
+                print(f"Found RAWG game ID {game_id} for '{game_name}' (display name: {rawg_display_name})")
+
+                # Step 2: Get full game details by ID
+                details_url = f'{rawg_api_url}/games/{game_id}'
+                details_params = {'key': rawg_api_key}
+                
+                async with aiohttp.ClientSession() as session:
+                    async with session.get(details_url, params=details_params) as response:
+                        if response.status == 502:
+                            print(f"RAWG API returned 502 Bad Gateway. Retrying in {retry_delay} seconds...")
+                            await asyncio.sleep(retry_delay)
+                            continue
+                        elif response.status != 200:
+                            print(f"RAWG details API error for ID {game_id}: {response.status}")
+                            print(f"Response text: {await response.text()}")
+                            if attempt < max_retries - 1:
+                                await asyncio.sleep(retry_delay)
+                                continue
+                            return None
+                        details_data = await response.json()
+
+                # Get box art URL, description, and release date
+                box_art_url = details_data.get('background_image')
+                description = details_data.get('description_raw', 'No description available.')
+                release_date = details_data.get('released')  # Get the release date
+
+                print(f"Successfully fetched RAWG details for '{game_name}':")
+                print(f"- Box art URL: {box_art_url}")
+                print(f"- Release date: {release_date}")
+
+                return {
+                    'rawg_id': game_id,  # Changed from 'id' to 'rawg_id' to match the expected key
+                    'display_name': rawg_display_name,
+                    'box_art_url': box_art_url,
+                    'description': description,
+                    'release_date': release_date  # Include release date in the response
+                }
+
+            except Exception as e:
+                print(f"Error fetching game details from RAWG for '{game_name}' (Attempt {attempt + 1}/{max_retries}): {e}")
+                print("Full traceback:")
+                traceback.print_exc()
+                if attempt < max_retries - 1:
+                    print(f"Retrying in {retry_delay} seconds...")
+                    await asyncio.sleep(retry_delay)
+                    continue
                 return None
 
-            # Get the ID of the first result
-            game_id = search_data['results'][0]['id']
-            rawg_display_name = search_data['results'][0].get('name', game_name)
-            print(f"Found RAWG game ID {game_id} for '{game_name}' (display name: {rawg_display_name})")
-
-            # Step 2: Get full game details by ID
-            details_url = f'{rawg_api_url}/games/{game_id}'
-            details_params = {'key': rawg_api_key}
-            
-            async with aiohttp.ClientSession() as session:
-                async with session.get(details_url, params=details_params) as response:
-                    if response.status != 200:
-                        print(f"RAWG details API error for ID {game_id}: {response.status}")
-                        print(f"Response text: {await response.text()}")
-                        return None
-                    details_data = await response.json()
-
-            # Get box art URL, description, and release date
-            box_art_url = details_data.get('background_image')
-            description = details_data.get('description_raw', 'No description available.')
-            release_date = details_data.get('released')  # Get the release date
-
-            print(f"Successfully fetched RAWG details for '{game_name}':")
-            print(f"- Box art URL: {box_art_url}")
-            print(f"- Release date: {release_date}")
-
-            return {
-                'rawg_id': game_id,  # Changed from 'id' to 'rawg_id' to match the expected key
-                'display_name': rawg_display_name,
-                'box_art_url': box_art_url,
-                'description': description,
-                'release_date': release_date  # Include release date in the response
-            }
-
-        except Exception as e:
-            print(f"Error fetching game details from RAWG for '{game_name}': {e}")
-            print("Full traceback:")
-            traceback.print_exc()
-            return None
+        print(f"Failed to fetch RAWG data after {max_retries} attempts")
+        return None
 
     async def get_recent_gaming_sessions(self, limit: int = 20) -> List[Dict[str, Any]]:
         """Get the most recent gaming sessions with game details."""
