@@ -585,7 +585,6 @@ class GameStorage:
                     backloggd_url=backloggd_url
                 )
                 session.add(game)
-                session.commit() # Commit to get the game ID for relationships
                 created = True
 
             # Fetch and update RAWG data if missing
@@ -599,8 +598,7 @@ class GameStorage:
                     # Don't update the game name with RAWG's display name
                     print(f"Updated game with RAWG ID: {game.rawg_id}")  # Debug print
                     session.add(game)
-                    session.commit()  # Make sure to commit the changes
-                    print(f"Committed changes to database. RAWG ID: {game.rawg_id}")  # Debug print
+                    print(f"Added game to session. RAWG ID: {game.rawg_id}")  # Debug print
 
             return game, created
         except Exception as e:
