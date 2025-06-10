@@ -539,16 +539,21 @@ class GameStorage:
             if game and (game.rawg_id is None or game.box_art_url is None):
                 rawg_details = await self.fetch_game_details_from_rawg(game.name)
                 if rawg_details:
-                    game.rawg_id = rawg_details['rawg_id']
-                    game.box_art_url = rawg_details['box_art_url']
-                    # Optionally update game name with RAWG display name if preferred
-                    # game.name = rawg_details['display_name']
-                session.add(game)
-                session.commit()
+                    print(f"Updating game with RAWG details: {rawg_details}")  # Debug print
+                    game.rawg_id = rawg_details.get('rawg_id')  # Use get() to safely access the key
+                    game.box_art_url = rawg_details.get('box_art_url')
+                    game.release_date = rawg_details.get('release_date')
+                    print(f"Updated game with RAWG ID: {game.rawg_id}")  # Debug print
+                    session.add(game)
+                    session.commit()  # Make sure to commit the changes
+                    print(f"Committed changes to database. RAWG ID: {game.rawg_id}")  # Debug print
 
             return game, created
         except Exception as e:
             session.rollback()
+            print(f"Error in get_or_create_game: {str(e)}")  # Debug print
+            print("Full traceback:")
+            traceback.print_exc()
             return None
         finally:
             session.close()
@@ -577,7 +582,7 @@ class GameStorage:
                     rawg_data = await self.fetch_game_details_from_rawg(game.name)
                     if rawg_data:
                         # Force update all RAWG-related fields
-                        game.rawg_id = rawg_data.get('id')
+                        game.rawg_id = rawg_data.get('rawg_id')
                         game.box_art_url = rawg_data.get('box_art_url')
                         game.release_date = rawg_data.get('release_date')
                         print(f"Successfully force updated RAWG data for existing game: {game.name}")
@@ -615,7 +620,7 @@ class GameStorage:
                     rawg_data = await self.fetch_game_details_from_rawg(formatted_name)
                     if rawg_data:
                         print(f"Successfully fetched RAWG data for new game: {formatted_name}")
-                        print(f"- RAWG ID: {rawg_data.get('id')}")
+                        print(f"- RAWG ID: {rawg_data.get('rawg_id')}")
                         print(f"- Box art URL: {rawg_data.get('box_art_url')}")
                         print(f"- Release date: {rawg_data.get('release_date')}")
                     else:
@@ -631,7 +636,7 @@ class GameStorage:
                     credits_per_hour=credits, 
                     added_by=user_id,
                     backloggd_url=backloggd_url,
-                    rawg_id=rawg_data.get('id') if rawg_data else None,
+                    rawg_id=rawg_data.get('rawg_id') if rawg_data else None,
                     box_art_url=rawg_data.get('box_art_url') if rawg_data else None,
                     release_date=rawg_data.get('release_date') if rawg_data else None
                 )
@@ -1290,7 +1295,7 @@ class GameStorage:
             print(f"- Release date: {release_date}")
 
             return {
-                'id': game_id,  # Changed from 'rawg_id' to 'id' to match the get() call in set_game_credits_per_hour
+                'rawg_id': game_id,  # Changed from 'id' to 'rawg_id' to match the expected key
                 'display_name': rawg_display_name,
                 'box_art_url': box_art_url,
                 'description': description,
