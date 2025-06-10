@@ -20,6 +20,7 @@ from sqlalchemy import text
 from sqlalchemy.ext.declarative import declarative_base
 from models import Base # Import Base for table creation
 import logging
+from sqlalchemy.sql import func
 
 # Set up basic logging
 logging.basicConfig(level=logging.INFO)
@@ -311,9 +312,28 @@ def get_game():
         backloggd_url = game_db_info.get('backloggd_url')
         description = 'No description available.'
 
-        # Fetch description from RAWG if rawg_id exists
+        # Fetch and update RAWG data if missing
         rawg_id = game_db_info.get('rawg_id')
-        if rawg_id:
+        if not rawg_id:
+            rawg_details = run_async(storage.fetch_game_details_from_rawg(correct_game_name))
+            if rawg_details:
+                # Update the game in the database with RAWG data
+                session = storage.Session()
+                try:
+                    game = session.query(Game).filter(func.lower(Game.name) == func.lower(correct_game_name)).first()
+                    if game:
+                        game.rawg_id = rawg_details.get('id')
+                        game.box_art_url = rawg_details.get('box_art_url')
+                        game.release_date = rawg_details.get('release_date')
+                        session.add(game)
+                        session.commit()
+                        # Update our local variables with the new data
+                        rawg_id = game.rawg_id
+                        box_art_url = game.box_art_url
+                finally:
+                    session.close()
+        else:
+            # Just fetch description if we already have RAWG ID
             rawg_details = run_async(storage.fetch_game_details_from_rawg(correct_game_name))
             if rawg_details:
                 description = rawg_details.get('description', description)
@@ -338,6 +358,9 @@ def get_game():
         return jsonify(final_game_data)
 
     except Exception as e:
+        print(f"Error in /api/game: {str(e)}")
+        print("Full traceback:")
+        traceback.print_exc()
         return jsonify({'error': 'Internal server error'}), 500
 
 @app.route('/api/game/players')
