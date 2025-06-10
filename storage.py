@@ -872,11 +872,15 @@ class GameStorage:
             # Get or create the game
             game, is_new = await self.get_or_create_game(game_name, user_id)
             
+            # Calculate credits earned
+            credits_earned = hours * game.credits_per_hour
+            
             # Create or update gaming session
             gaming_session = GamingSession(
                 user_id=user_id,
                 game_id=game.id,
                 hours=hours,
+                credits_earned=credits_earned,
                 timestamp=datetime.now(timezone.utc)
             )
             session.add(gaming_session)
@@ -887,10 +891,7 @@ class GameStorage:
                 user_stats = UserStats(user_id=user_id)
                 session.add(user_stats)
             
-            # Calculate credits earned
-            credits_earned = hours * game.credits_per_hour
             user_stats.total_credits += credits_earned
-            user_stats.total_hours += hours
             
             # Commit changes
             session.commit()
