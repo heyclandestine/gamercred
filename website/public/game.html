@@ -130,13 +130,16 @@
           `;
         });
 
+      // Get game name from URL
       const urlParams = new URLSearchParams(window.location.search);
       const gameName = urlParams.get('game');
-
       if (!gameName) {
         showError('No game specified');
         return;
       }
+
+      // Update page title
+      document.title = `${gameName} - Gamer Cred`;
 
       // Fetch game data
       fetch(`/api/game?name=${encodeURIComponent(gameName)}`)
@@ -222,93 +225,53 @@
         });
     });
 
-    function updateGameInfo(data) {
-      console.log('Updating game info with:', data);
-      
-      // Set basic game info
-      document.title = `${data.name} - Gamer Cred`;
-      
-      // Handle cover image with fallback
-      const coverImg = document.querySelector('.game-cover');
-      if (data.box_art_url) {
-        if (data.box_art_url.endsWith('.webm')) {
-          // Create video element for webm files
-          const video = document.createElement('video');
-          video.src = data.box_art_url;
-          video.autoplay = true;
-          video.loop = true;
-          video.muted = true;
-          video.playsInline = true;
-          video.className = 'game-cover';
-          video.alt = data.name;
-          coverImg.parentNode.replaceChild(video, coverImg);
-        } else {
-          // Use image for non-webm files
-          coverImg.src = data.box_art_url;
-          coverImg.onerror = function() {
-            this.src = 'https://static-cdn.jtvnw.net/ttv-boxart/loading_boxart.png';
-          };
-        }
-      } else {
-        coverImg.src = 'https://static-cdn.jtvnw.net/ttv-boxart/loading_boxart.png';
-      }
-      coverImg.alt = data.name;
-      
-      document.querySelector('.game-info-and-description-container h1').textContent = capitalizeWords(data.name);
+    function updateGameInfo(game) {
+      // Update page title with game name
+      document.title = `${game.name} - Gamer Cred`;
 
-      // Update stats
-      document.querySelector('.stat:nth-child(1) .stat-value').textContent = formatNumber(data.unique_players || 0);
-      document.querySelector('.stat:nth-child(2) .stat-value').textContent = formatHours(data.total_hours || 0);
-      document.querySelector('.stat:nth-child(3) .stat-value').textContent = (data.credits_per_hour || 0).toFixed(1);
+      // Update game title
+      document.getElementById('gameTitle').textContent = game.name;
 
-      // Update backloggd link
-      const backloggdLinkBelowCover = document.querySelector('.backloggd-link-below-cover');
-      if (data.backloggd_url) {
-        backloggdLinkBelowCover.href = data.backloggd_url;
-        backloggdLinkBelowCover.style.display = 'block';
+      // Update game description
+      const descriptionElement = document.getElementById('gameDescription');
+      if (game.description) {
+        descriptionElement.textContent = game.description;
       } else {
-        backloggdLinkBelowCover.style.display = 'none';
+        descriptionElement.textContent = 'No description available.';
       }
 
-      // Update description
-      const gameDetailsExtra = document.querySelector('.game-details-extra');
-      const gameDescElement = gameDetailsExtra.querySelector('.game-desc');
-      const moreButton = gameDetailsExtra.querySelector('.more-button');
-      const lessButton = gameDetailsExtra.querySelector('.less-button');
+      // Update game stats
+      document.getElementById('totalHours').textContent = formatNumber(game.total_hours || 0);
+      document.getElementById('uniquePlayers').textContent = formatNumber(game.unique_players || 0);
+      document.getElementById('creditsPerHour').textContent = formatNumber(game.credits_per_hour || 0);
+      document.getElementById('avgHours').textContent = formatNumber(game.avg_hours || 0);
 
-      if (data.description && data.description !== 'No description available.') {
-        gameDescElement.textContent = data.description;
-        gameDetailsExtra.style.display = 'block';
-        
-        // Check if description needs truncation
-        setTimeout(() => {
-          if (gameDescElement.scrollHeight > gameDescElement.clientHeight) {
-            moreButton.style.display = 'block';
-            lessButton.style.display = 'none';
-          } else {
-            moreButton.style.display = 'none';
-            lessButton.style.display = 'none';
-          }
-        }, 0);
-
-        // Add event listeners for truncation
-        moreButton.onclick = () => {
-          gameDescElement.style.maxHeight = 'none';
-          moreButton.style.display = 'none';
-          lessButton.style.display = 'block';
-        };
-
-        lessButton.onclick = () => {
-          gameDescElement.style.maxHeight = '200px';
-          moreButton.style.display = 'block';
-          lessButton.style.display = 'none';
+      // Update game cover
+      const coverElement = document.getElementById('gameCover');
+      if (game.box_art_url) {
+        coverElement.src = game.box_art_url;
+        coverElement.onerror = function() {
+          this.src = 'https://static-cdn.jtvnw.net/ttv-boxart/loading_boxart.png';
         };
       } else {
-        gameDescElement.textContent = 'No description available.';
-        gameDetailsExtra.style.display = 'block';
-        moreButton.style.display = 'none';
-        lessButton.style.display = 'none';
+        coverElement.src = 'https://static-cdn.jtvnw.net/ttv-boxart/loading_boxart.png';
       }
+      coverElement.alt = game.name;
+
+      // Update Backloggd link
+      const backloggdLink = document.getElementById('backloggdLink');
+      if (game.backloggd_url) {
+        backloggdLink.href = game.backloggd_url;
+        backloggdLink.style.display = 'inline-block';
+      } else {
+        backloggdLink.style.display = 'none';
+      }
+
+      // Load recent players
+      loadRecentPlayers(game.name);
+
+      // Load recent activity
+      loadRecentActivity(game.name);
     }
 
     function formatNumber(num) {
@@ -335,12 +298,6 @@
       } else {
         return `${days}d ago`;
       }
-    }
-
-    function capitalizeWords(str) {
-      return str.split(' ')
-        .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-        .join(' ');
     }
 
     function showError(message) {

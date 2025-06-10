@@ -33,8 +33,18 @@ def run_async(coro):
 class GameStorage:
     def __init__(self):
         """Initialize the storage with database connection"""
-        self.engine = create_engine(DATABASE_URL)
+        self.database_url = os.getenv('DATABASE_URL')
+        if not self.database_url:
+            raise ValueError("DATABASE_URL environment variable is not set")
+        
+        print(f"Initializing database with URL: {self.database_url}")
+        self.engine = create_engine(self.database_url)
+        Base.metadata.create_all(self.engine)
         self.Session = sessionmaker(bind=self.engine)
+        
+        # Update capitalization of existing games
+        self.update_game_capitalization()
+        
         self.cst = pytz.timezone('America/Chicago')
         print('Storage initialized successfully!')
 
@@ -505,8 +515,22 @@ class GameStorage:
         """Get a game by name or create it if it doesn't exist, and fetch/update RAWG data."""
         session = self.Session()
         try:
-            # Normalize the game name by capitalizing each word
-            formatted_name = ' '.join(word.capitalize() for word in game_name.strip().split())
+            # First, capitalize the first letter of the entire string
+            game_name = game_name.strip()
+            if game_name:
+                game_name = game_name[0].upper() + game_name[1:]
+            
+            # Then capitalize each word, preserving Roman numerals
+            words = game_name.split()
+            formatted_words = []
+            for word in words:
+                # Check if the word is a Roman numeral (case-insensitive)
+                if word.upper() in ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII', 'XIII', 'XIV', 'XV']:
+                    formatted_words.append(word.upper())
+                else:
+                    formatted_words.append(word.capitalize())
+            
+            formatted_name = ' '.join(formatted_words)
             
             # Case-insensitive search for existing game
             game = session.query(Game).filter(func.lower(Game.name) == func.lower(formatted_name)).first()
@@ -566,8 +590,22 @@ class GameStorage:
 
         session = self.Session()
         try:
-            # Normalize the game name by capitalizing each word
-            formatted_name = ' '.join(word.capitalize() for word in game_name.strip().split())
+            # First, capitalize the first letter of the entire string
+            game_name = game_name.strip()
+            if game_name:
+                game_name = game_name[0].upper() + game_name[1:]
+            
+            # Then capitalize each word, preserving Roman numerals
+            words = game_name.split()
+            formatted_words = []
+            for word in words:
+                # Check if the word is a Roman numeral (case-insensitive)
+                if word.upper() in ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII', 'XIII', 'XIV', 'XV']:
+                    formatted_words.append(word.upper())
+                else:
+                    formatted_words.append(word.capitalize())
+            
+            formatted_name = ' '.join(formatted_words)
             
             # Get the game
             game = session.query(Game).filter(func.lower(Game.name) == func.lower(formatted_name)).first()
@@ -1764,9 +1802,28 @@ class GameStorage:
             # Format the results
             games_data = []
             for row in rows:
+                # Format the game name with proper capitalization
+                name = row.name.strip()
+                if name:
+                    # First, capitalize the first letter of the entire string
+                    name = name[0].upper() + name[1:]
+                    
+                    # Then capitalize each word, preserving Roman numerals
+                    words = name.split()
+                    formatted_words = []
+                    for word in words:
+                        # Check if the word is a Roman numeral (case-insensitive)
+                        roman_numerals = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII', 'XIII', 'XIV', 'XV']
+                        if word.upper() in roman_numerals:
+                            formatted_words.append(word.upper())
+                        else:
+                            formatted_words.append(word.capitalize())
+                    
+                    name = ' '.join(formatted_words)
+
                 games_data.append({
                     'id': row.id,
-                    'name': row.name,
+                    'name': name,
                     'box_art_url': row.box_art_url,
                     'credits_per_hour': float(row.credits_per_hour),
                     'backloggd_url': row.backloggd_url,
@@ -1884,5 +1941,43 @@ class GameStorage:
         except Exception as e:
             print(f"Error getting user stats: {str(e)}")
             return None
+        finally:
+            session.close()
+
+    def update_game_capitalization(self):
+        """Update the capitalization of all existing games."""
+        session = self.Session()
+        try:
+            games = session.query(Game).all()
+            for game in games:
+                # First, capitalize the first letter of the entire string
+                game_name = game.name.strip()
+                if game_name:
+                    game_name = game_name[0].upper() + game_name[1:]
+                
+                # Then capitalize each word, preserving Roman numerals
+                words = game_name.split()
+                formatted_words = []
+                for word in words:
+                    # Check if the word is a Roman numeral (case-insensitive)
+                    if word.upper() in ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII', 'XIII', 'XIV', 'XV']:
+                        formatted_words.append(word.upper())
+                    else:
+                        formatted_words.append(word.capitalize())
+                
+                formatted_name = ' '.join(formatted_words)
+                
+                if formatted_name != game.name:
+                    print(f"Updating game name from '{game.name}' to '{formatted_name}'")
+                    game.name = formatted_name
+                    session.add(game)
+            
+            session.commit()
+            print("Finished updating game capitalization")
+        except Exception as e:
+            session.rollback()
+            print(f"Error updating game capitalization: {str(e)}")
+            print("Full traceback:")
+            traceback.print_exc()
         finally:
             session.close()

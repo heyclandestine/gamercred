@@ -299,36 +299,30 @@ def get_game():
         if not game_name:
             return jsonify({'error': 'Game name parameter missing'}), 400
 
-        # Get game info from the database
+        # Get game info from database
         game_db_info = storage.get_game_stats(game_name)
-
         if not game_db_info:
-            return jsonify({'error': 'Game not found in database'}), 404
+            return jsonify({'error': 'Game not found'}), 404
 
-        # Use the correct game name from the database for the API call
-        correct_game_name = game_db_info.get('name', game_name)
-        box_art_url = game_db_info.get('box_art_url')
-        backloggd_url = game_db_info.get('backloggd_url')
-        description = 'No description available.'
+        # Get additional info from RAWG
+        rawg_data = run_async(storage.fetch_game_details_from_rawg(game_name))
+        if rawg_data:
+            description = rawg_data.get('description', '')
+            box_art_url = rawg_data.get('box_art_url', '')
+            backloggd_url = rawg_data.get('backloggd_url', '')
+        else:
+            description = ''
+            box_art_url = ''
+            backloggd_url = ''
 
-        # Fetch description from RAWG if rawg_id exists
-        rawg_id = game_db_info.get('rawg_id')
-        if rawg_id:
-            rawg_details = run_async(storage.fetch_game_details_from_rawg(correct_game_name))
-            if rawg_details:
-                description = rawg_details.get('description', description)
-                # Only use RAWG box art URL if we don't have one in the database
-                if not box_art_url and rawg_details.get('box_art_url'):
-                    box_art_url = rawg_details.get('box_art_url')
-
-        print(f"DEBUG: Description after RAWG fetch: {description}") # Debug print
+        print(f"DEBUG: Description after RAWG fetch: {description}")
 
         # Combine database info with API info
         final_game_data = {
-            'name': correct_game_name,
-            'box_art_url': box_art_url,
+            'name': game_db_info['name'],  # Use the name from the database
+            'box_art_url': box_art_url or game_db_info.get('box_art_url', ''),
             'description': description,
-            'backloggd_url': backloggd_url,
+            'backloggd_url': backloggd_url or game_db_info.get('backloggd_url', ''),
             'unique_players': game_db_info.get('unique_players', 0),
             'total_hours': game_db_info.get('total_hours', 0.0),
             'credits_per_hour': game_db_info.get('credits_per_hour', 1.0),
@@ -336,9 +330,9 @@ def get_game():
         }
 
         return jsonify(final_game_data)
-
     except Exception as e:
-        return jsonify({'error': 'Internal server error'}), 500
+        print(f"Error getting game info: {str(e)}")
+        return jsonify({'error': 'Failed to get game information'}), 500
 
 @app.route('/api/game/players')
 def get_game_players():
@@ -561,8 +555,27 @@ def get_popular_games():
                 return jsonify([])
             formatted_data = []
             for game_name, total_hours, box_art_url in popular_games_data:
+                # Format the game name with proper capitalization
+                name = game_name.strip()
+                if name:
+                    # First, capitalize the first letter of the entire string
+                    name = name[0].upper() + name[1:]
+                    
+                    # Then capitalize each word, preserving Roman numerals
+                    words = name.split()
+                    formatted_words = []
+                    for word in words:
+                        # Check if the word is a Roman numeral (case-insensitive)
+                        roman_numerals = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII', 'XIII', 'XIV', 'XV']
+                        if word.upper() in roman_numerals:
+                            formatted_words.append(word.upper())
+                        else:
+                            formatted_words.append(word.capitalize())
+                    
+                    name = ' '.join(formatted_words)
+
                 formatted_data.append({
-                    'name': game_name or 'Unknown',
+                    'name': name or 'Unknown',
                     'total_hours': float(total_hours or 0),
                     'box_art_url': box_art_url or ''
                 })
@@ -575,8 +588,27 @@ def get_popular_games():
                 return jsonify([])
             formatted_data = []
             for game_name, total_hours, box_art_url in popular_games_data:
+                # Format the game name with proper capitalization
+                name = game_name.strip()
+                if name:
+                    # First, capitalize the first letter of the entire string
+                    name = name[0].upper() + name[1:]
+                    
+                    # Then capitalize each word, preserving Roman numerals
+                    words = name.split()
+                    formatted_words = []
+                    for word in words:
+                        # Check if the word is a Roman numeral (case-insensitive)
+                        roman_numerals = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII', 'XIII', 'XIV', 'XV']
+                        if word.upper() in roman_numerals:
+                            formatted_words.append(word.upper())
+                        else:
+                            formatted_words.append(word.capitalize())
+                    
+                    name = ' '.join(formatted_words)
+
                 formatted_data.append({
-                    'name': game_name or 'Unknown',
+                    'name': name or 'Unknown',
                     'total_hours': float(total_hours or 0),
                     'box_art_url': box_art_url or ''
                 })

@@ -234,9 +234,21 @@
 
         // Format game title to title case
         function toTitleCase(str) {
-            return str.replace(/\w\S*/g, function(txt) {
-                return txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase();
-            });
+            if (!str) return '';
+            
+            // First, capitalize the first letter of the entire string
+            let name = str[0].toUpperCase() + str.slice(1);
+            
+            // Then capitalize each word, preserving Roman numerals
+            const words = name.split(' ');
+            const romanNumerals = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII', 'XIII', 'XIV', 'XV'];
+            
+            return words.map(word => {
+                if (romanNumerals.includes(word.toUpperCase())) {
+                    return word.toUpperCase();
+                }
+                return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+            }).join(' ');
         }
 
         // Format date to readable format
@@ -290,14 +302,14 @@
                     };
                 }
                 mediaElement.className = 'game-card-image';
-                mediaElement.alt = toTitleCase(game.name);
+                mediaElement.alt = game.name;
 
                 const cphValue = Math.round(game.credits_per_hour || 0);
                 gameCard.innerHTML = `
                     <a href="game.html?game=${encodeURIComponent(game.name)}" class="game-card-link">
                     </a>
                     <div class="game-card-info">
-                        <h3 class="game-card-title">${toTitleCase(game.name)}</h3>
+                        <h3 class="game-card-title">${game.name}</h3>
                         <div class="game-card-stats">
                             <div class="stat">
                                 <span class="stat-label">CPH</span>
