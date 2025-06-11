@@ -307,10 +307,31 @@
       // Update game cover
       const coverElement = document.getElementById('gameCover');
       if (game.box_art_url) {
-        coverElement.src = game.box_art_url;
-        coverElement.onerror = function() {
-          this.src = 'https://static-cdn.jtvnw.net/ttv-boxart/loading_boxart.png';
-        };
+        if (game.box_art_url.endsWith('.webm')) {
+          // Create video element for webm files
+          const video = document.createElement('video');
+          video.src = game.box_art_url;
+          video.autoplay = true;
+          video.loop = true;
+          video.muted = true;
+          video.playsInline = true;
+          video.className = 'game-cover';
+          video.alt = game.name;
+          coverElement.parentNode.replaceChild(video, coverElement);
+        } else {
+          // Use image for non-webm files
+          if (coverElement.tagName === 'VIDEO') {
+            const img = document.createElement('img');
+            img.id = 'gameCover';
+            img.className = 'game-cover';
+            img.alt = game.name;
+            coverElement.parentNode.replaceChild(img, coverElement);
+          }
+          coverElement.src = game.box_art_url;
+          coverElement.onerror = function() {
+            this.src = 'https://static-cdn.jtvnw.net/ttv-boxart/loading_boxart.png';
+          };
+        }
       } else {
         coverElement.src = 'https://static-cdn.jtvnw.net/ttv-boxart/loading_boxart.png';
       }
