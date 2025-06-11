@@ -1377,6 +1377,8 @@ class GameStorage:
 
                 # Get box art URL, description, and release date
                 box_art_url = details_data.get('background_image')
+                if box_art_url and box_art_url.startswith('http://'):
+                    box_art_url = box_art_url.replace('http://', 'https://')
                 description = details_data.get('description_raw', 'No description available.')
                 release_date = details_data.get('released')  # Get the release date
 
@@ -1976,39 +1978,30 @@ class GameStorage:
             session.close()
 
     def update_game_capitalization(self):
-        """Update the capitalization of all existing games."""
+        """Update game names to use proper capitalization"""
         session = self.Session()
         try:
             games = session.query(Game).all()
             for game in games:
-                # First, capitalize the first letter of the entire string
-                game_name = game.name.strip()
-                if game_name:
-                    game_name = game_name[0].upper() + game_name[1:]
-                
-                # Then capitalize each word, preserving Roman numerals
-                words = game_name.split()
-                formatted_words = []
-                for word in words:
-                    # Check if the word is a Roman numeral (case-insensitive)
-                    if word.upper() in ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII', 'XIII', 'XIV', 'XV']:
-                        formatted_words.append(word.upper())
-                    else:
-                        formatted_words.append(word.capitalize())
-                
-                formatted_name = ' '.join(formatted_words)
-                
-                if formatted_name != game.name:
-                    print(f"Updating game name from '{game.name}' to '{formatted_name}'")
-                    game.name = formatted_name
-                    session.add(game)
-            
+                # Capitalize first letter of each word
+                words = game.name.split()
+                capitalized_words = [word.capitalize() for word in words]
+                new_name = ' '.join(capitalized_words)
+                if new_name != game.name:
+                    game.name = new_name
             session.commit()
-            print("Finished updating game capitalization")
-        except Exception as e:
-            session.rollback()
-            print(f"Error updating game capitalization: {str(e)}")
-            print("Full traceback:")
-            traceback.print_exc()
+        finally:
+            session.close()
+
+    def update_box_art_urls_to_https(self):
+        """Update all box_art_urls in the database to use HTTPS"""
+        session = self.Session()
+        try:
+            games = session.query(Game).filter(Game.box_art_url.like('http://%')).all()
+            for game in games:
+                if game.box_art_url:
+                    game.box_art_url = game.box_art_url.replace('http://', 'https://')
+            session.commit()
+            return len(games)
         finally:
             session.close()

@@ -306,43 +306,41 @@
 
       // Update game cover
       const coverContainer = document.querySelector('.game-cover-container');
-      const oldCover = document.getElementById('gameCover');
-      let newCover;
+      const existingCover = document.getElementById('gameCover');
+      if (existingCover) {
+        existingCover.remove();
+      }
 
       if (game.box_art_url) {
+        let mediaElement;
         if (game.box_art_url.endsWith('.webm') || game.box_art_url.endsWith('.mp4')) {
           // Create video element for video files
-          newCover = document.createElement('video');
-          newCover.src = game.box_art_url;
-          newCover.autoplay = true;
-          newCover.loop = true;
-          newCover.muted = true;
-          newCover.playsInline = true;
+          mediaElement = document.createElement('video');
+          mediaElement.src = game.box_art_url;
+          mediaElement.autoplay = true;
+          mediaElement.loop = true;
+          mediaElement.muted = true;
+          mediaElement.playsInline = true;
         } else {
           // Create image element for static images and GIFs
-          newCover = document.createElement('img');
-          newCover.src = game.box_art_url;
-          newCover.onerror = function() {
+          mediaElement = document.createElement('img');
+          mediaElement.src = game.box_art_url;
+          mediaElement.onerror = function() {
             this.src = 'https://static-cdn.jtvnw.net/ttv-boxart/loading_boxart.png';
           };
         }
-        newCover.id = 'gameCover';
-        newCover.className = 'game-cover';
-        newCover.alt = game.name;
+        mediaElement.id = 'gameCover';
+        mediaElement.className = 'game-cover';
+        mediaElement.alt = game.name;
+        coverContainer.insertBefore(mediaElement, coverContainer.firstChild);
       } else {
-        // Create default image if no box art URL
-        newCover = document.createElement('img');
-        newCover.id = 'gameCover';
-        newCover.className = 'game-cover';
-        newCover.src = 'https://static-cdn.jtvnw.net/ttv-boxart/loading_boxart.png';
-        newCover.alt = game.name;
-      }
-
-      // Replace old cover with new one
-      if (oldCover) {
-        coverContainer.replaceChild(newCover, oldCover);
-      } else {
-        coverContainer.appendChild(newCover);
+        // Create fallback image
+        const fallbackImage = document.createElement('img');
+        fallbackImage.id = 'gameCover';
+        fallbackImage.className = 'game-cover';
+        fallbackImage.src = 'https://static-cdn.jtvnw.net/ttv-boxart/loading_boxart.png';
+        fallbackImage.alt = game.name;
+        coverContainer.insertBefore(fallbackImage, coverContainer.firstChild);
       }
 
       // Update Backloggd link
