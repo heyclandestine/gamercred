@@ -320,7 +320,7 @@ def get_game():
         # Combine database info with API info
         final_game_data = {
             'name': game_db_info['name'],  # Use the name from the database
-            'box_art_url': box_art_url or game_db_info.get('box_art_url', ''),
+            'box_art_url': game_db_info.get('box_art_url', '') or box_art_url,  # Prioritize database box art
             'description': description,
             'backloggd_url': backloggd_url or game_db_info.get('backloggd_url', ''),
             'unique_players': game_db_info.get('unique_players', 0),
