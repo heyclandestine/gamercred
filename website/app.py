@@ -320,7 +320,7 @@ def get_game():
         # Combine database info with API info
         final_game_data = {
             'name': game_db_info['name'],  # Use the name from the database
-            'box_art_url': game_db_info.get('box_art_url', '') or box_art_url,  # Prioritize database box_art_url
+            'box_art_url': box_art_url or game_db_info.get('box_art_url', ''),
             'description': description,
             'backloggd_url': backloggd_url or game_db_info.get('backloggd_url', ''),
             'unique_players': game_db_info.get('unique_players', 0),
@@ -1029,16 +1029,6 @@ def get_user_game_stats_endpoint(user_identifier):
     except Exception as e:
         print(f"Error getting user game stats: {str(e)}")
         return jsonify({'error': 'Failed to get user game stats'}), 500
-
-@app.route('/api/update-box-art-urls', methods=['POST'])
-def update_box_art_urls():
-    """Update all box art URLs to use HTTPS"""
-    try:
-        updated_count = storage.update_box_art_urls_to_https()
-        return jsonify({'success': True, 'updated_count': updated_count})
-    except Exception as e:
-        print(f"Error updating box art URLs: {str(e)}")
-        return jsonify({'success': False, 'error': str(e)}), 500
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True) 

@@ -305,43 +305,16 @@
       document.getElementById('creditsPerHour').textContent = formatNumber(game.credits_per_hour || 0);
 
       // Update game cover
-      const coverContainer = document.querySelector('.game-cover-container');
-      const existingCover = document.getElementById('gameCover');
-      if (existingCover) {
-        existingCover.remove();
-      }
-
+      const coverElement = document.getElementById('gameCover');
       if (game.box_art_url) {
-        let mediaElement;
-        if (game.box_art_url.endsWith('.webm') || game.box_art_url.endsWith('.mp4')) {
-          // Create video element for video files
-          mediaElement = document.createElement('video');
-          mediaElement.src = game.box_art_url;
-          mediaElement.autoplay = true;
-          mediaElement.loop = true;
-          mediaElement.muted = true;
-          mediaElement.playsInline = true;
-        } else {
-          // Create image element for static images and GIFs
-          mediaElement = document.createElement('img');
-          mediaElement.src = game.box_art_url;
-          mediaElement.onerror = function() {
-            this.src = 'https://static-cdn.jtvnw.net/ttv-boxart/loading_boxart.png';
-          };
-        }
-        mediaElement.id = 'gameCover';
-        mediaElement.className = 'game-cover';
-        mediaElement.alt = game.name;
-        coverContainer.insertBefore(mediaElement, coverContainer.firstChild);
+        coverElement.src = game.box_art_url;
+        coverElement.onerror = function() {
+          this.src = 'https://static-cdn.jtvnw.net/ttv-boxart/loading_boxart.png';
+        };
       } else {
-        // Create fallback image
-        const fallbackImage = document.createElement('img');
-        fallbackImage.id = 'gameCover';
-        fallbackImage.className = 'game-cover';
-        fallbackImage.src = 'https://static-cdn.jtvnw.net/ttv-boxart/loading_boxart.png';
-        fallbackImage.alt = game.name;
-        coverContainer.insertBefore(fallbackImage, coverContainer.firstChild);
+        coverElement.src = 'https://static-cdn.jtvnw.net/ttv-boxart/loading_boxart.png';
       }
+      coverElement.alt = game.name;
 
       // Update Backloggd link
       const backloggdLink = document.getElementById('backloggdLink');
