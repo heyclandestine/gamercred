@@ -305,16 +305,45 @@
       document.getElementById('creditsPerHour').textContent = formatNumber(game.credits_per_hour || 0);
 
       // Update game cover
-      const coverElement = document.getElementById('gameCover');
+      const coverContainer = document.querySelector('.game-cover-container');
+      const oldCover = document.getElementById('gameCover');
+      let newCover;
+
       if (game.box_art_url) {
-        coverElement.src = game.box_art_url;
-        coverElement.onerror = function() {
-          this.src = 'https://static-cdn.jtvnw.net/ttv-boxart/loading_boxart.png';
-        };
+        if (game.box_art_url.endsWith('.webm') || game.box_art_url.endsWith('.mp4')) {
+          // Create video element for video files
+          newCover = document.createElement('video');
+          newCover.src = game.box_art_url;
+          newCover.autoplay = true;
+          newCover.loop = true;
+          newCover.muted = true;
+          newCover.playsInline = true;
+        } else {
+          // Create image element for static images and GIFs
+          newCover = document.createElement('img');
+          newCover.src = game.box_art_url;
+          newCover.onerror = function() {
+            this.src = 'https://static-cdn.jtvnw.net/ttv-boxart/loading_boxart.png';
+          };
+        }
+        newCover.id = 'gameCover';
+        newCover.className = 'game-cover';
+        newCover.alt = game.name;
       } else {
-        coverElement.src = 'https://static-cdn.jtvnw.net/ttv-boxart/loading_boxart.png';
+        // Create default image if no box art URL
+        newCover = document.createElement('img');
+        newCover.id = 'gameCover';
+        newCover.className = 'game-cover';
+        newCover.src = 'https://static-cdn.jtvnw.net/ttv-boxart/loading_boxart.png';
+        newCover.alt = game.name;
       }
-      coverElement.alt = game.name;
+
+      // Replace old cover with new one
+      if (oldCover) {
+        coverContainer.replaceChild(newCover, oldCover);
+      } else {
+        coverContainer.appendChild(newCover);
+      }
 
       // Update Backloggd link
       const backloggdLink = document.getElementById('backloggdLink');

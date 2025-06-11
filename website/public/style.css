@@ -596,6 +596,24 @@ footer {
   border-radius: 12px;
   box-shadow: 0 4px 24px rgba(0, 0, 0, 0.2);
   flex-shrink: 0;
+  background: #000; /* Black background while loading */
+}
+
+/* Add styles for video elements that replace game covers */
+video.game-cover {
+  width: 320px;
+  height: 480px;
+  object-fit: cover;
+  border-radius: 12px;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.2);
+  flex-shrink: 0;
+  background: #000; /* Black background while video loads */
+}
+
+/* Ensure GIFs maintain aspect ratio */
+img.game-cover {
+  object-fit: contain;
+  background: #000; /* Black background for transparent GIFs */
 }
 
 .game-info-and-description-container {
