@@ -77,7 +77,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const li = document.createElement('li');
         li.innerHTML = `
           <img class="avatar-sm" src="${bonus.avatar_url || `https://cdn.discordapp.com/embed/avatars/${parseInt(bonus.user_id.slice(-1)) % 6}.png`}" alt="${bonus.username}">
-          <a class="user-link" href="user.html?user=${bonus.user_id}">${bonus.username}</a> earned 
+          <a class="user-link" href="user.html?user=${String(bonus.user_id)}">${bonus.username}</a> earned 
           <span class="bonus"><i class="fas fa-bolt"></i> "${bonus.reason}"</span>
         `;
         ul.appendChild(li);
