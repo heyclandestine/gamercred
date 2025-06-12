@@ -1471,13 +1471,13 @@ class GameStorage:
             # Format the results as a list of dictionaries
             recent_bonuses = []
             for row in rows:
-                # Convert row to dictionary
+                # Convert row to dictionary, ensuring user IDs are strings
                 bonus_data = {
                     'id': row.id,
-                    'user_id': row.user_id,
+                    'user_id': str(row.user_id),  # Convert to string to preserve precision
                     'credits': row.credits,
                     'reason': row.reason,
-                    'granted_by': row.granted_by,
+                    'granted_by': str(row.granted_by),  # Convert to string to preserve precision
                     'timestamp': row.timestamp
                 }
                 recent_bonuses.append(bonus_data)

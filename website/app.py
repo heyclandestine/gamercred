@@ -520,7 +520,8 @@ def get_recent_bonuses():
 
         formatted_bonuses = []
         for bonus_data in recent_bonuses_data:
-            user_id = bonus_data['user_id']
+            # Ensure user_id is a string
+            user_id = str(bonus_data['user_id'])
             discord_info = get_cached_discord_user_info(user_id)
             username = discord_info['username'] if discord_info else f'User{user_id}'
             avatar_url = discord_info['avatar_url'] if discord_info else f'https://randomuser.me/api/portraits/men/{user_id}.jpg'
@@ -530,12 +531,12 @@ def get_recent_bonuses():
 
             formatted_bonuses.append({
                 'id': bonus_data['id'],
-                'user_id': user_id,
+                'user_id': user_id,  # Use string version
                 'username': username,
                 'avatar_url': avatar_url,
                 'credits': bonus_data['credits'],
                 'reason': bonus_data['reason'],
-                'granted_by': bonus_data['granted_by'],
+                'granted_by': str(bonus_data['granted_by']),  # Convert granted_by to string
                 'timestamp': timestamp_str
             })
 
