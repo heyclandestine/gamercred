@@ -611,30 +611,13 @@ class GameStorage:
             session.close()
 
     async def set_game_credits_per_hour(self, game_name: str, credits: float, user_id: int) -> bool:
-        """Set the credits per hour for a game and update all existing sessions"""
-        if credits < 0.1:  # Only keep minimum limit
-            return False
-
+        """Set credits per hour for a game"""
         session = self.Session()
         try:
-            # First, capitalize the first letter of the entire string
-            game_name = game_name.strip()
-            if game_name:
-                game_name = game_name[0].upper() + game_name[1:]
+            # Format the game name
+            formatted_name = ' '.join(word.capitalize() for word in game_name.split())
             
-            # Then capitalize each word, preserving Roman numerals
-            words = game_name.split()
-            formatted_words = []
-            for word in words:
-                # Check if the word is a Roman numeral (case-insensitive)
-                if word.upper() in ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII', 'XIII', 'XIV', 'XV']:
-                    formatted_words.append(word.upper())
-                else:
-                    formatted_words.append(word.capitalize())
-            
-            formatted_name = ' '.join(formatted_words)
-            
-            # Get the game
+            # Get existing game
             game = session.query(Game).filter(func.lower(Game.name) == func.lower(formatted_name)).first()
             
             if game:
@@ -648,10 +631,9 @@ class GameStorage:
                     rawg_data = await self.fetch_game_details_from_rawg(game.name)
                     if rawg_data:
                         # Force update all RAWG-related fields
-                        game.rawg_id = rawg_data.get('rawg_id')  # Changed from 'id' to 'rawg_id'
+                        game.rawg_id = rawg_data.get('rawg_id')
                         game.box_art_url = rawg_data.get('box_art_url')
                         game.release_date = rawg_data.get('release_date')
-                        # Don't update the game name with RAWG's display name
                         print(f"Successfully force updated RAWG data for existing game: {game.name}")
                         print(f"- RAWG ID: {game.rawg_id}")
                         print(f"- Box art URL: {game.box_art_url}")
@@ -684,7 +666,7 @@ class GameStorage:
                     rawg_data = await self.fetch_game_details_from_rawg(formatted_name)
                     if rawg_data:
                         print(f"Successfully fetched RAWG data for new game: {formatted_name}")
-                        print(f"- RAWG ID: {rawg_data.get('rawg_id')}")  # Changed from 'id' to 'rawg_id'
+                        print(f"- RAWG ID: {rawg_data.get('rawg_id')}")
                         print(f"- Box art URL: {rawg_data.get('box_art_url')}")
                         print(f"- Release date: {rawg_data.get('release_date')}")
                     else:
@@ -700,7 +682,7 @@ class GameStorage:
                     credits_per_hour=credits, 
                     added_by=user_id,
                     backloggd_url=backloggd_url,
-                    rawg_id=rawg_data.get('rawg_id') if rawg_data else None,  # Changed from 'id' to 'rawg_id'
+                    rawg_id=rawg_data.get('rawg_id') if rawg_data else None,
                     box_art_url=rawg_data.get('box_art_url') if rawg_data else None,
                     release_date=rawg_data.get('release_date') if rawg_data else None
                 )

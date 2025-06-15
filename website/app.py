@@ -304,29 +304,36 @@ def get_game():
         if not game_db_info:
             return jsonify({'error': 'Game not found'}), 404
 
-        # Get additional info from RAWG
-        rawg_data = run_async(storage.fetch_game_details_from_rawg(game_name))
-        if rawg_data:
-            description = rawg_data.get('description', '')
-            box_art_url = rawg_data.get('box_art_url', '')
-            backloggd_url = rawg_data.get('backloggd_url', '')
-        else:
-            description = ''
-            box_art_url = ''
-            backloggd_url = ''
+        # Initialize RAWG data variables
+        description = ''
+        box_art_url = game_db_info.get('box_art_url', '')
+        backloggd_url = game_db_info.get('backloggd_url', '')
 
-        print(f"DEBUG: Description after RAWG fetch: {description}")
+        # Only fetch from RAWG API if we don't have the data in the database
+        if not game_db_info.get('rawg_id') or not game_db_info.get('box_art_url') or not game_db_info.get('release_date'):
+            print(f"Fetching RAWG data for game: {game_name} (missing data in database)")
+            rawg_data = run_async(storage.fetch_game_details_from_rawg(game_name))
+            if rawg_data:
+                # Only use RAWG data if we don't have it in the database
+                if not box_art_url:
+                    box_art_url = rawg_data.get('box_art_url', '')
+                description = rawg_data.get('description', '')
+                if not backloggd_url:
+                    backloggd_url = rawg_data.get('backloggd_url', '')
+
+        print(f"DEBUG: Using box art URL: {box_art_url}")
 
         # Combine database info with API info
         final_game_data = {
             'name': game_db_info['name'],  # Use the name from the database
-            'box_art_url': game_db_info.get('box_art_url', '') or box_art_url,  # Prioritize database box art
+            'box_art_url': box_art_url,
             'description': description,
-            'backloggd_url': backloggd_url or game_db_info.get('backloggd_url', ''),
+            'backloggd_url': backloggd_url,
             'unique_players': game_db_info.get('unique_players', 0),
             'total_hours': game_db_info.get('total_hours', 0.0),
             'credits_per_hour': game_db_info.get('credits_per_hour', 1.0),
             'avg_hours': game_db_info.get('total_hours', 0.0) / game_db_info.get('unique_players', 1) if game_db_info.get('unique_players', 0) > 0 else 0.0,
+            'release_date': game_db_info.get('release_date', '')
         }
 
         return jsonify(final_game_data)
