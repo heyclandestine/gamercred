@@ -287,15 +287,15 @@ def get_game():
 
         # Always fetch description from RAWG API
         print(f"Fetching RAWG data for game: {game_name}")
-            rawg_data = run_async(storage.fetch_game_details_from_rawg(game_name))
+        rawg_data = run_async(storage.fetch_game_details_from_rawg(game_name))
         print(f"RAWG API response: {rawg_data}")  # Debug log
-            if rawg_data:
+        if rawg_data:
             description = rawg_data.get('description', '')
             print(f"Description from RAWG: {description}")  # Debug log
-            # Only use RAWG data for box art and backloggd if we don't have it
-                if not box_art_url:
+            # Only use RAWG data for box art and backloggd if we don't have it in the database
+            if not box_art_url:
                     box_art_url = rawg_data.get('box_art_url', '')
-                if not backloggd_url:
+            if not backloggd_url:
                     backloggd_url = rawg_data.get('backloggd_url', '')
 
         print(f"DEBUG: Using box art URL: {box_art_url}")
@@ -402,10 +402,10 @@ def get_leaderboard():
 
         # Get the leaderboard data using the new timeframe calculation
         leaderboard_data = run_async(storage.get_leaderboard_by_timeframe(leaderboard_type))
-            print(f"Got leaderboard data: {leaderboard_data}")
-            if not leaderboard_data:
-                print("No leaderboard data found")
-                return jsonify([])
+        print(f"Got leaderboard data: {leaderboard_data}")
+        if not leaderboard_data:
+            print("No leaderboard data found")
+            return jsonify([])
 
         # Format the data for the frontend
             formatted_data = []
