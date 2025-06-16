@@ -8,6 +8,7 @@ Base = declarative_base()
 class LeaderboardType(enum.Enum):
     WEEKLY = "weekly"
     MONTHLY = "monthly"
+    ALLTIME = "alltime"
 
 class Game(Base):
     __tablename__ = 'games'

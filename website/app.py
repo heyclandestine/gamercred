@@ -77,10 +77,8 @@ def refresh_cache():
         if current_time - cache['leaderboard']['timestamp'] > 30:
             print("Refreshing leaderboard cache...")
             try:
-                # Get current period and leaderboard data for weekly
-                current_period = run_async(storage.get_or_create_current_period(LeaderboardType.WEEKLY))
-                print(f"Got current period: {current_period}")
-                leaderboard_data = run_async(storage.get_leaderboard_by_timeframe(LeaderboardType.WEEKLY, period=current_period))
+                # Get leaderboard data for weekly
+                leaderboard_data = run_async(storage.get_leaderboard_by_timeframe(LeaderboardType.WEEKLY))
                 print(f"Got leaderboard data: {leaderboard_data}")
                 cache['leaderboard']['data'] = leaderboard_data
                 cache['leaderboard']['timestamp'] = current_time
@@ -89,33 +87,10 @@ def refresh_cache():
                 print(f"Error refreshing leaderboard cache: {str(e)}")
                 print("Full traceback:")
                 traceback.print_exc()
-        
-        if current_time - cache['popular_games']['timestamp'] > 30:
-            print("Refreshing popular games cache...")
-            try:
-                cache['popular_games']['data'] = run_async(storage.get_total_game_hours_by_timeframe('weekly'))
-                cache['popular_games']['timestamp'] = current_time
-                print("Popular games cache refreshed successfully")
-            except Exception as e:
-                print(f"Error refreshing popular games cache: {str(e)}")
-                print("Full traceback:")
-                traceback.print_exc()
-        
-        if current_time - cache['recent_activity']['timestamp'] > 30:
-            print("Refreshing recent activity cache...")
-            try:
-                cache['recent_activity']['data'] = run_async(storage.get_recent_gaming_sessions())
-                cache['recent_activity']['timestamp'] = current_time
-                print("Recent activity cache refreshed successfully")
-            except Exception as e:
-                print(f"Error refreshing recent activity cache: {str(e)}")
-                print("Full traceback:")
-                traceback.print_exc()
     except Exception as e:
         print(f"Error in refresh_cache: {str(e)}")
         print("Full traceback:")
         traceback.print_exc()
-        # Don't raise the exception, just log it and continue
 
 # Cache for Discord user info with 5-minute expiration
 @lru_cache(maxsize=1000)
@@ -411,108 +386,50 @@ def handle_error(error):
 @app.route('/api/leaderboard')
 def get_leaderboard():
     timeframe = request.args.get('timeframe', 'weekly')
+    print(f"Fetching leaderboard for timeframe: {timeframe}")
     try:
-        print(f"Getting leaderboard for timeframe: {timeframe}")
         if timeframe == 'weekly':
-            # For weekly, use the cache
-            print("Using weekly cache")
-            refresh_cache()
-            leaderboard_data = cache['leaderboard']['data']
-            print(f"Got leaderboard data from cache: {leaderboard_data}")
-            if not leaderboard_data:
-                print("No leaderboard data found in cache")
-                return jsonify([])
-            formatted_data = []
-            for user_id, credits, games_played, most_played_game, most_played_hours, total_hours in leaderboard_data:
-                try:
-                    user_id_str = str(user_id)
-                    discord_info = get_cached_discord_user_info(user_id_str)
-                    if discord_info:
-                        user_data = {
-                            'user_id': user_id_str,
-                            'username': discord_info.get('username', 'Unknown'),
-                            'avatar_url': discord_info.get('avatar_url', ''),
-                            'total_credits': float(credits or 0),
-                            'games_played': int(games_played or 0),
-                            'most_played_game': most_played_game or 'Unknown',
-                            'most_played_hours': float(most_played_hours or 0),
-                            'total_hours': float(total_hours or 0)
-                        }
-                        formatted_data.append(user_data)
-                except Exception as e:
-                    print(f"Error formatting user data for user {user_id}: {str(e)}")
-                    print("Full traceback:")
-                    traceback.print_exc()
-            print(f"Returning formatted data: {formatted_data}")
-            return jsonify(formatted_data)
+            leaderboard_type = LeaderboardType.WEEKLY
         elif timeframe == 'monthly':
-            # For monthly, query the database directly
-            print("Getting monthly leaderboard")
             leaderboard_type = LeaderboardType.MONTHLY
-            current_period = run_async(storage.get_or_create_current_period(leaderboard_type))
-            print(f"Got current period: {current_period}")
-            leaderboard_data = run_async(storage.get_leaderboard_by_timeframe(leaderboard_type, period=current_period))
-            print(f"Got leaderboard data: {leaderboard_data}")
-            if not leaderboard_data:
-                print("No leaderboard data found")
-                return jsonify([])
-            formatted_data = []
-            for user_id, credits, games_played, most_played_game, most_played_hours, total_hours in leaderboard_data:
-                try:
-                    user_id_str = str(user_id)
-                    discord_info = get_cached_discord_user_info(user_id_str)
-                    if discord_info:
-                        user_data = {
-                            'user_id': user_id_str,
-                            'username': discord_info.get('username', 'Unknown'),
-                            'avatar_url': discord_info.get('avatar_url', ''),
-                            'total_credits': float(credits or 0),
-                            'games_played': int(games_played or 0),
-                            'most_played_game': most_played_game or 'Unknown',
-                            'most_played_hours': float(most_played_hours or 0),
-                            'total_hours': float(total_hours or 0)
-                        }
-                        formatted_data.append(user_data)
-                except Exception as e:
-                    print(f"Error formatting user data for user {user_id}: {str(e)}")
-                    print("Full traceback:")
-                    traceback.print_exc()
-            print(f"Returning formatted data: {formatted_data}")
-            return jsonify(formatted_data)
         elif timeframe == 'alltime':
-            # Get all-time leaderboard data
-            print("Getting all-time leaderboard")
-            leaderboard_data = storage.get_alltime_leaderboard()
-            print(f"Got leaderboard data: {leaderboard_data}")
-            if not leaderboard_data:
-                print("No leaderboard data found")
-                return jsonify([])
-            formatted_data = []
-            for user_id, credits, games_played, most_played_game, most_played_hours, total_hours in leaderboard_data:
-                try:
-                    user_id_str = str(user_id)
-                    discord_info = get_cached_discord_user_info(user_id_str)
-                    if discord_info:
-                        user_data = {
-                            'user_id': user_id_str,
-                            'username': discord_info.get('username', 'Unknown'),
-                            'avatar_url': discord_info.get('avatar_url', ''),
-                            'total_credits': float(credits or 0),
-                            'games_played': int(games_played or 0),
-                            'most_played_game': most_played_game or 'Unknown',
-                            'most_played_hours': float(most_played_hours or 0),
-                            'total_hours': float(total_hours or 0)
-                        }
-                        formatted_data.append(user_data)
-                except Exception as e:
-                    print(f"Error formatting user data for user {user_id}: {str(e)}")
-                    print("Full traceback:")
-                    traceback.print_exc()
-            print(f"Returning formatted data: {formatted_data}")
-            return jsonify(formatted_data)
+            leaderboard_type = LeaderboardType.ALLTIME
         else:
-            print(f"Invalid timeframe specified: {timeframe}")
             return jsonify({'error': 'Invalid timeframe specified'}), 400
+
+        # Get the leaderboard data using the new timeframe calculation
+        leaderboard_data = run_async(storage.get_leaderboard_by_timeframe(leaderboard_type))
+        print(f"Got leaderboard data: {leaderboard_data}")
+        if not leaderboard_data:
+            print("No leaderboard data found")
+            return jsonify([])
+
+        # Format the data for the frontend
+        formatted_data = []
+        for user_id, credits, games_played, most_played_game, most_played_hours, total_hours in leaderboard_data:
+            try:
+                user_id_str = str(user_id)
+                discord_info = get_cached_discord_user_info(user_id_str)
+                if discord_info:
+                    user_data = {
+                        'user_id': user_id_str,
+                        'username': discord_info.get('username', 'Unknown'),
+                        'avatar_url': discord_info.get('avatar_url', ''),
+                        'total_credits': float(credits or 0),
+                        'games_played': int(games_played or 0),
+                        'most_played_game': most_played_game or 'Unknown',
+                        'most_played_hours': float(most_played_hours or 0),
+                        'total_hours': float(total_hours or 0)
+                    }
+                    formatted_data.append(user_data)
+            except Exception as e:
+                print(f"Error formatting user data for user {user_id}: {str(e)}")
+                print("Full traceback:")
+                traceback.print_exc()
+
+        print(f"Returning formatted data: {formatted_data}")
+        return jsonify(formatted_data)
+
     except Exception as e:
         print(f"Error getting leaderboard data: {str(e)}")
         print("Full traceback:")
@@ -555,75 +472,34 @@ def get_recent_bonuses():
 @app.route('/api/popular-games')
 def get_popular_games():
     timeframe = request.args.get('timeframe', 'weekly')
+    print(f"Fetching popular games for timeframe: {timeframe}")
     try:
-        if timeframe == 'weekly':
-            refresh_cache()
-            popular_games_data = cache['popular_games']['data']
-            if not popular_games_data:
-                return jsonify([])
-            formatted_data = []
-            for game_name, total_hours, box_art_url in popular_games_data:
-                # Format the game name with proper capitalization
-                name = game_name.strip()
-                if name:
-                    # First, capitalize the first letter of the entire string
-                    name = name[0].upper() + name[1:]
-                    
-                    # Then capitalize each word, preserving Roman numerals
-                    words = name.split()
-                    formatted_words = []
-                    for word in words:
-                        # Check if the word is a Roman numeral (case-insensitive)
-                        roman_numerals = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII', 'XIII', 'XIV', 'XV']
-                        if word.upper() in roman_numerals:
-                            formatted_words.append(word.upper())
-                        else:
-                            formatted_words.append(word.capitalize())
-                    
-                    name = ' '.join(formatted_words)
+        # Use the new function to get aggregated game hours and box art URL
+        # The storage function now returns (game_name, total_hours, box_art_url)
+        game_data_from_storage = run_async(storage.get_total_game_hours_by_timeframe(timeframe))
+        print(f"Backend popular games data from storage for {timeframe}: {game_data_from_storage}")
 
+        # Format the data for the frontend
+        formatted_data = []
+        for game_name, total_hours, box_art_url in game_data_from_storage:
+            if game_name and total_hours:
                 formatted_data.append({
-                    'name': name or 'Unknown',
-                    'total_hours': float(total_hours or 0),
-                    'box_art_url': box_art_url or ''
+                    'name': game_name,
+                    'total_hours': total_hours,
+                    'box_art_url': box_art_url if box_art_url else f"https://static-cdn.jtvnw.net/ttv-boxart/{game_name}-144x192.jpg"
                 })
-            final_popular_games = formatted_data[:5]
-            return jsonify(final_popular_games)
-        else:
-            # For other timeframes, query the database directly
-            popular_games_data = run_async(storage.get_total_game_hours_by_timeframe(timeframe))
-            if not popular_games_data:
-                return jsonify([])
-            formatted_data = []
-            for game_name, total_hours, box_art_url in popular_games_data:
-                # Format the game name with proper capitalization
-                name = game_name.strip()
-                if name:
-                    # First, capitalize the first letter of the entire string
-                    name = name[0].upper() + name[1:]
-                    
-                    # Then capitalize each word, preserving Roman numerals
-                    words = name.split()
-                    formatted_words = []
-                    for word in words:
-                        # Check if the word is a Roman numeral (case-insensitive)
-                        roman_numerals = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII', 'XIII', 'XIV', 'XV']
-                        if word.upper() in roman_numerals:
-                            formatted_words.append(word.upper())
-                        else:
-                            formatted_words.append(word.capitalize())
-                    
-                    name = ' '.join(formatted_words)
 
-                formatted_data.append({
-                    'name': name or 'Unknown',
-                    'total_hours': float(total_hours or 0),
-                    'box_art_url': box_art_url or ''
-                })
-            final_popular_games = formatted_data[:5]
-            return jsonify(final_popular_games)
+        # Sort by hours played and take top 5
+        formatted_data.sort(key=lambda x: x['total_hours'], reverse=True)
+        formatted_data = formatted_data[:5]  # Take top 5
+
+        print(f"Returning formatted data: {formatted_data}")
+        return jsonify(formatted_data)
     except Exception as e:
-        return jsonify({'error': 'Failed to get popular games'}), 500
+        print(f"Error getting popular games data: {str(e)}")
+        print("Full traceback:")
+        traceback.print_exc()
+        return jsonify({'error': 'Failed to get popular games data'}), 500
 
 # Add endpoint to fetch user overall stats
 @app.route('/api/user-stats/<user_identifier>')

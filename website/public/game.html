@@ -56,6 +56,10 @@
                 <span class="stat-label">Total Players</span>
                 <span class="stat-value" id="uniquePlayers">-</span>
               </div>
+              <div class="stat">
+                <span class="stat-label">Release Date</span>
+                <span class="stat-value" id="releaseDate">-</span>
+              </div>
             </div>
             <div id="userGameStats" class="user-game-stats" style="display: none;">
               <div class="user-stats-header" style="color: #8be9fd;display: none; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
@@ -303,6 +307,7 @@
       document.getElementById('totalHours').textContent = formatNumber(game.total_hours || 0);
       document.getElementById('uniquePlayers').textContent = formatNumber(game.unique_players || 0);
       document.getElementById('creditsPerHour').textContent = formatNumber(game.credits_per_hour || 0);
+      document.getElementById('releaseDate').textContent = game.release_date ? new Date(game.release_date).toLocaleDateString() : 'N/A';
 
       // Update game cover
       const coverElement = document.getElementById('gameCover');

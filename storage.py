@@ -206,30 +206,24 @@ class GameStorage:
                 # Use enum name (uppercase) for PostgreSQL enum
                 timeframe_str = timeframe.name
                 
-                # Get current period
-                period = session.query(LeaderboardPeriod).filter(
-                    LeaderboardPeriod.leaderboard_type == timeframe_str,
-                    LeaderboardPeriod.is_active == True
-            ).first()
-
-                if not period:
-                    # Calculate start and end times based on timeframe
-                    now = datetime.now(timezone.utc)
-                    if timeframe == LeaderboardType.WEEKLY:
-                        # Start from Monday 00:00 CST
-                        start = now.replace(hour=0, minute=0, second=0, microsecond=0)
-                        days_since_monday = start.weekday()
-                        start = start - timedelta(days=days_since_monday)
-                        end = start + timedelta(days=7)
-                    elif timeframe == LeaderboardType.MONTHLY:
-                        start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-                        if now.month == 12:
-                            end = now.replace(year=now.year + 1, month=1, day=1)
-                        else:
-                            end = now.replace(month=now.month + 1, day=1)
-                    else:  # ALLTIME
-                        start = datetime(2020, 1, 1, tzinfo=timezone.utc)
-                        end = datetime(2100, 1, 1, tzinfo=timezone.utc)
+                # Calculate start and end times based on timeframe in CST
+                cst = pytz.timezone('America/Chicago')
+                now = datetime.now(cst)
+                if timeframe == LeaderboardType.WEEKLY:
+                    # Start from Monday 00:00 CST
+                    days_since_monday = now.weekday()
+                    start = now - timedelta(days=days_since_monday)
+                    start = start.replace(hour=0, minute=0, second=0, microsecond=0)
+                    end = start + timedelta(days=7)
+                elif timeframe == LeaderboardType.MONTHLY:
+                    start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+                    if now.month == 12:
+                        end = now.replace(year=now.year + 1, month=1, day=1)
+                    else:
+                        end = now.replace(month=now.month + 1, day=1)
+                else:  # ALLTIME
+                    start = datetime(2020, 1, 1, tzinfo=cst)
+                    end = datetime(2100, 1, 1, tzinfo=cst)
 
             # Create new period
                     period = LeaderboardPeriod(
@@ -239,19 +233,99 @@ class GameStorage:
                     is_active=True
                 )
                     session.add(period)
+                    print(f"Creating new period: {start} to {end} CST")
             session.commit()
 
             return period
         except Exception as e:
             raise Exception(str(e))
 
+    async def get_total_game_hours_by_timeframe(self, timeframe: str) -> List[Tuple[str, float, str]]:
+        """Get the total hours played for each game within a given timeframe."""
+        session = self.Session()
+        try:
+            # Get current time in CST
+            current_time = datetime.now(self.cst)
+            start_time = None
+            end_time = None
+
+            if timeframe == 'weekly':
+                # Start from last Monday 00:00 CST
+                days_since_monday = current_time.weekday()
+                start_time = (current_time - timedelta(days=days_since_monday)).replace(
+                    hour=0, minute=0, second=0, microsecond=0
+                )
+                end_time = start_time + timedelta(days=7)
+            elif timeframe == 'monthly':
+                # Start from 1st of current month CST
+                start_time = current_time.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+                if current_time.month == 12:
+                    end_time = current_time.replace(year=current_time.year + 1, month=1, day=1)
+                else:
+                    end_time = current_time.replace(month=current_time.month + 1, day=1)
+            elif timeframe == 'alltime':
+                start_time = None
+                end_time = None
+            else:
+                print(f"DEBUG: Invalid timeframe specified: {timeframe}")
+                return []
+
+            query = session.query(
+                Game.name,
+                func.sum(GamingSession.hours).label('total_hours'),
+                Game.box_art_url
+            ).join(Game, GamingSession.game_id == Game.id)
+
+            if start_time:
+                query = query.filter(GamingSession.timestamp >= start_time)
+            if end_time:
+                query = query.filter(GamingSession.timestamp < end_time)
+
+            # Group by both game name and box_art_url
+            query = query.group_by(Game.name, Game.box_art_url)
+            query = query.order_by(text('total_hours DESC'))
+
+            results = query.all()
+            
+            # Format results as list of tuples (game_name, total_hours, box_art_url)
+            formatted_results = [(r.name, float(r.total_hours), r.box_art_url) for r in results]
+            return formatted_results
+
+        except Exception as e:
+            print(f"ERROR: Error getting total game hours for timeframe {timeframe}: {str(e)}")
+            print("Full traceback:")
+            import traceback
+            traceback.print_exc()
+            return []
+        finally:
+            session.close()
+
     async def get_leaderboard_by_timeframe(self, timeframe: LeaderboardType, bot=None, period=None) -> List[Tuple[int, float, int, str, float, float]]:
         """Get leaderboard data for a specific timeframe."""
         db_session = self.Session()
         try:
-            # Get the current period if not provided
-            if not period:
-                period = await self.get_or_create_current_period(timeframe)
+            # Calculate timeframe based on current time in CST
+            current_time = datetime.now(self.cst)
+            start_time = None
+            end_time = None
+
+            if timeframe == LeaderboardType.WEEKLY:
+                # Start from last Monday 00:00 CST
+                days_since_monday = current_time.weekday()
+                start_time = (current_time - timedelta(days=days_since_monday)).replace(
+                    hour=0, minute=0, second=0, microsecond=0
+                )
+                end_time = start_time + timedelta(days=7)
+            elif timeframe == LeaderboardType.MONTHLY:
+                # Start from 1st of current month CST
+                start_time = current_time.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+                if current_time.month == 12:
+                    end_time = current_time.replace(year=current_time.year + 1, month=1, day=1)
+                else:
+                    end_time = current_time.replace(month=current_time.month + 1, day=1)
+            else:  # ALLTIME
+                start_time = None
+                end_time = None
 
             # First, get the most played game for each user
             user_most_played = db_session.query(
@@ -260,91 +334,119 @@ class GameStorage:
                 func.sum(GamingSession.hours).label('game_hours')
             ).join(
                 Game, GamingSession.game_id == Game.id
-            ).filter(
-                and_(
-                    GamingSession.timestamp >= period.start_time,
-                    GamingSession.timestamp < period.end_time
-                )
-            ).group_by(
+            )
+
+            if start_time:
+                user_most_played = user_most_played.filter(GamingSession.timestamp >= start_time)
+            if end_time:
+                user_most_played = user_most_played.filter(GamingSession.timestamp < end_time)
+
+            user_most_played = user_most_played.group_by(
                 GamingSession.user_id,
                 Game.name
             ).subquery()
 
-            # Then get the max hours for each user's most played game
-            max_hours = db_session.query(
-                user_most_played.c.user_id,
-                func.max(user_most_played.c.game_hours).label('max_hours')
-            ).group_by(
-                user_most_played.c.user_id
-            ).subquery()
-
-            # Get the most played game name for each user
+            # Get the most played game for each user
             most_played_games = db_session.query(
                 user_most_played.c.user_id,
                 user_most_played.c.game_name,
                 user_most_played.c.game_hours
-            ).join(
-                max_hours,
-                and_(
-                    user_most_played.c.user_id == max_hours.c.user_id,
-                    user_most_played.c.game_hours == max_hours.c.max_hours
-                )
+            ).distinct(
+                user_most_played.c.user_id
+            ).order_by(
+                user_most_played.c.user_id,
+                user_most_played.c.game_hours.desc()
             ).subquery()
 
             # Get total hours for each user
             total_hours = db_session.query(
                 GamingSession.user_id,
                 func.sum(GamingSession.hours).label('total_hours')
-            ).filter(
-                and_(
-                    GamingSession.timestamp >= period.start_time,
-                    GamingSession.timestamp < period.end_time
-                )
-            ).group_by(
+            )
+
+            if start_time:
+                total_hours = total_hours.filter(GamingSession.timestamp >= start_time)
+            if end_time:
+                total_hours = total_hours.filter(GamingSession.timestamp < end_time)
+
+            total_hours = total_hours.group_by(
                 GamingSession.user_id
             ).subquery()
 
-            # Finally, get all the data we need
+            # Get session credits for each user
+            session_credits = db_session.query(
+                GamingSession.user_id,
+                func.sum(GamingSession.credits_earned).label('session_credits'),
+                func.count(GamingSession.game_id.distinct()).label('games_played')
+            )
+
+            if start_time:
+                session_credits = session_credits.filter(GamingSession.timestamp >= start_time)
+            if end_time:
+                session_credits = session_credits.filter(GamingSession.timestamp < end_time)
+
+            session_credits = session_credits.group_by(
+                GamingSession.user_id
+            ).subquery()
+
+            # Get bonus credits for each user
+            bonus_credits = db_session.query(
+                Bonus.user_id,
+                func.sum(Bonus.credits).label('bonus_credits')
+            )
+
+            if start_time:
+                bonus_credits = bonus_credits.filter(Bonus.timestamp >= start_time)
+            if end_time:
+                bonus_credits = bonus_credits.filter(Bonus.timestamp < end_time)
+
+            bonus_credits = bonus_credits.group_by(
+                Bonus.user_id
+            ).subquery()
+
+            # Combine all the data
             results = db_session.query(
-                GamingSession.user_id,
-                func.sum(GamingSession.credits_earned).label('total_credits'),
-                func.count(GamingSession.game_id.distinct()).label('games_played'),
-                most_played_games.c.game_name.label('most_played_game'),
-                most_played_games.c.game_hours.label('most_played_hours'),
-                total_hours.c.total_hours.label('total_hours')
-            ).join(
-                most_played_games,
-                GamingSession.user_id == most_played_games.c.user_id
-            ).join(
-                total_hours,
-                GamingSession.user_id == total_hours.c.user_id
-            ).filter(
-                and_(
-                    GamingSession.timestamp >= period.start_time,
-                    GamingSession.timestamp < period.end_time
-                )
-            ).group_by(
-                GamingSession.user_id,
+                session_credits.c.user_id,
+                (func.coalesce(session_credits.c.session_credits, 0) + func.coalesce(bonus_credits.c.bonus_credits, 0)).label('total_credits'),
+                session_credits.c.games_played,
                 most_played_games.c.game_name,
                 most_played_games.c.game_hours,
                 total_hours.c.total_hours
+            ).outerjoin(
+                most_played_games,
+                session_credits.c.user_id == most_played_games.c.user_id
+            ).outerjoin(
+                total_hours,
+                session_credits.c.user_id == total_hours.c.user_id
+            ).outerjoin(
+                bonus_credits,
+                session_credits.c.user_id == bonus_credits.c.user_id
             ).order_by(
-                func.sum(GamingSession.credits_earned).desc()
+                (func.coalesce(session_credits.c.session_credits, 0) + func.coalesce(bonus_credits.c.bonus_credits, 0)).desc()
             ).all()
 
             # Format the results
             leaderboard = []
-            for user_id, credits, games_played, most_played_game, most_played_hours, total_hours in results:
-                leaderboard.append((user_id, credits, games_played, most_played_game, most_played_hours, total_hours))
-                print(f"DEBUG: Added user {user_id} to leaderboard with {credits} credits")
+            seen_users = set()  # Track users we've already added
+            for user_id, credits, games, most_played_game, most_played_hours, total_hours in results:
+                if user_id not in seen_users:  # Only add each user once
+                    leaderboard.append((
+                        user_id,
+                        float(credits or 0),
+                        int(games or 0),
+                        most_played_game or 'No games',
+                        float(most_played_hours or 0),
+                        float(total_hours or 0)
+                    ))
+                    seen_users.add(user_id)
 
             return leaderboard
 
         except Exception as e:
-            print(f"ERROR: Failed to get leaderboard: {str(e)}")
+            print(f"ERROR: Failed to get leaderboard data: {str(e)}")
             print("Full traceback:")
             traceback.print_exc()
-            raise
+            return []
         finally:
             db_session.close()
 
@@ -1059,7 +1161,8 @@ class GameStorage:
                 "added_by": game.added_by,
                 "backloggd_url": game.backloggd_url,
                 "box_art_url": game.box_art_url,
-                "rawg_id": game.rawg_id
+                "rawg_id": game.rawg_id,
+                "release_date": game.release_date
             }
         finally:
             session.close()
@@ -1242,150 +1345,6 @@ class GameStorage:
             return False
         finally:
             session.close()
-
-    async def get_total_game_hours_by_timeframe(self, timeframe: str) -> List[Tuple[str, float, str]]:
-        """Get the total hours played for each game within a given timeframe."""
-        session = self.Session()
-        try:
-            query = session.query(
-                Game.name,
-                func.sum(GamingSession.hours).label('total_hours'),
-                Game.box_art_url
-            ).join(Game, GamingSession.game_id == Game.id)
-
-            # Get current time in CST
-            current_time = datetime.now(self.cst)
-            start_time = None
-
-            if timeframe == 'weekly':
-                # Start from last Monday 00:00 CST
-                days_since_monday = current_time.weekday()
-                start_time = (current_time - timedelta(days=days_since_monday)).replace(
-                    hour=0, minute=0, second=0, microsecond=0
-                )
-            elif timeframe == 'monthly':
-                # Start from 1st of current month CST
-                start_time = current_time.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-            elif timeframe == 'alltime':
-                print("DEBUG: No time filter for alltime timeframe")
-            else:
-                print(f"DEBUG: Invalid timeframe specified: {timeframe}")
-                return []
-
-            if start_time:
-                query = query.filter(GamingSession.timestamp >= start_time)
-
-            # Group by both game name and box_art_url
-            query = query.group_by(Game.name, Game.box_art_url)
-            query = query.order_by(text('total_hours DESC'))
-
-            results = query.all()
-            
-            # Format results as list of tuples (game_name, total_hours, box_art_url)
-            formatted_results = [(r.name, float(r.total_hours), r.box_art_url) for r in results]
-            return formatted_results
-
-        except Exception as e:
-            print(f"ERROR: Error getting total game hours for timeframe {timeframe}: {str(e)}")
-            print("Full traceback:")
-            import traceback
-            traceback.print_exc()
-            return []
-        finally:
-            session.close()
-
-    async def fetch_game_details_from_rawg(self, game_name: str) -> Optional[Dict]:
-        """Fetch game details from RAWG API, including box art, description, and release date."""
-        rawg_api_key = os.getenv('RAWG_API_KEY') # Get RAWG API key
-        rawg_api_url = os.getenv('RAWG_API_URL', 'https://api.rawg.io/api') # Get RAWG API URL
-
-        if not rawg_api_key:
-            print("RAWG_API_KEY not set. Cannot fetch game details from RAWG.")
-            return None
-
-        max_retries = 3
-        retry_delay = 2  # seconds
-
-        for attempt in range(max_retries):
-            try:
-                print(f"Fetching RAWG data for game: {game_name} (Attempt {attempt + 1}/{max_retries})")
-                
-                # Step 1: Search for the game by name
-                search_url = f'{rawg_api_url}/games'
-                search_params = {'key': rawg_api_key, 'search': game_name, 'page_size': 1}
-                
-                async with aiohttp.ClientSession() as session:
-                    async with session.get(search_url, params=search_params) as response:
-                        if response.status == 502:
-                            print(f"RAWG API returned 502 Bad Gateway. Retrying in {retry_delay} seconds...")
-                            await asyncio.sleep(retry_delay)
-                            continue
-                        elif response.status != 200:
-                            print(f"RAWG search API error for '{game_name}': {response.status}")
-                            print(f"Response text: {await response.text()}")
-                            if attempt < max_retries - 1:
-                                await asyncio.sleep(retry_delay)
-                                continue
-                            return None
-                        search_data = await response.json()
-
-                if not search_data or not search_data['results']:
-                    print(f"No RAWG search results found for '{game_name}'.")
-                    return None
-
-                # Get the ID of the first result
-                game_id = search_data['results'][0]['id']
-                rawg_display_name = search_data['results'][0].get('name', game_name)
-                print(f"Found RAWG game ID {game_id} for '{game_name}' (display name: {rawg_display_name})")
-
-                # Step 2: Get full game details by ID
-                details_url = f'{rawg_api_url}/games/{game_id}'
-                details_params = {'key': rawg_api_key}
-                
-                async with aiohttp.ClientSession() as session:
-                    async with session.get(details_url, params=details_params) as response:
-                        if response.status == 502:
-                            print(f"RAWG API returned 502 Bad Gateway. Retrying in {retry_delay} seconds...")
-                            await asyncio.sleep(retry_delay)
-                            continue
-                        elif response.status != 200:
-                            print(f"RAWG details API error for ID {game_id}: {response.status}")
-                            print(f"Response text: {await response.text()}")
-                            if attempt < max_retries - 1:
-                                await asyncio.sleep(retry_delay)
-                                continue
-                            return None
-                        details_data = await response.json()
-
-                # Get box art URL, description, and release date
-                box_art_url = details_data.get('background_image')
-                description = details_data.get('description_raw', 'No description available.')
-                release_date = details_data.get('released')  # Get the release date
-
-                print(f"Successfully fetched RAWG details for '{game_name}':")
-                print(f"- Box art URL: {box_art_url}")
-                print(f"- Release date: {release_date}")
-
-                return {
-                    'rawg_id': game_id,  # Changed from 'id' to 'rawg_id' to match the expected key
-                    'display_name': rawg_display_name,
-                    'box_art_url': box_art_url,
-                    'description': description,
-                    'release_date': release_date  # Include release date in the response
-                }
-
-            except Exception as e:
-                print(f"Error fetching game details from RAWG for '{game_name}' (Attempt {attempt + 1}/{max_retries}): {e}")
-                print("Full traceback:")
-                traceback.print_exc()
-                if attempt < max_retries - 1:
-                    print(f"Retrying in {retry_delay} seconds...")
-                    await asyncio.sleep(retry_delay)
-                    continue
-                return None
-
-        print(f"Failed to fetch RAWG data after {max_retries} attempts")
-        return None
 
     async def get_recent_gaming_sessions(self, limit: int = 20) -> List[Dict[str, Any]]:
         """Get the most recent gaming sessions with game details."""

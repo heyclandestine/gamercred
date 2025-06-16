@@ -109,6 +109,9 @@ async def announce_leaderboard_results(bot, storage, period):
             return
         
         print(f"Found {len(placements)} placements to announce")
+        print("Placements found:")
+        for p in placements:
+            print(f"Placement {p.placement}: User {p.user_id} with {p.credits:,.1f} credits")
         
         # Create the announcement embed
         period_type = "Weekly" if period.leaderboard_type == LeaderboardType.WEEKLY else "Monthly"
@@ -125,7 +128,11 @@ async def announce_leaderboard_results(bot, storage, period):
             for guild in bot.guilds:
                 member = guild.get_member(placement.user_id)
                 if member:
+                    print(f"Found member {member.display_name} for user ID {placement.user_id}")
                     break
+            
+            if not member:
+                print(f"WARNING: Could not find member for user ID {placement.user_id}")
             
             username = member.display_name if member else f"User{placement.user_id}"
             
@@ -145,6 +152,7 @@ async def announce_leaderboard_results(bot, storage, period):
             else:
                 suffix = {1: 'st', 2: 'nd', 3: 'rd'}.get(placement.placement % 10, 'th')
             
+            print(f"Adding field for {placement.placement}{suffix} place: {username}")
             embed.add_field(
                 name=f"{medal} {placement.placement}{suffix} Place: {username}",
                 value=(
@@ -157,39 +165,40 @@ async def announce_leaderboard_results(bot, storage, period):
         
         print("Created announcement embed")
         
-        # Send the announcement to all guilds
+        # Send the announcement only to the guild named 'Kendel Fenner's Test server'
         for guild in bot.guilds:
-            print(f"\nProcessing guild: {guild.name}")
-            
-            # Find the general channel
-            general_channel = None
-            for channel in guild.text_channels:
-                if channel.name.lower() == "general":
-                    general_channel = channel
-                    print(f"Found general channel: {channel.name}")
-                    break
-            
-            # If no general channel found, try to find any channel with send permissions
-            if not general_channel:
+            if guild.name == "Kendel Fenner's Test server":
+                print(f"\nProcessing guild: {guild.name}")
+                
+                # Find the general channel
+                general_channel = None
                 for channel in guild.text_channels:
-                    if channel.permissions_for(guild.me).send_messages:
+                    if channel.name.lower() == "general":
                         general_channel = channel
-                        print(f"No general channel found, using: {channel.name}")
+                        print(f"Found general channel: {channel.name}")
                         break
-            
-            if general_channel:
-                try:
-                    print(f"Attempting to send announcement to {general_channel.name} in {guild.name}")
-                    await general_channel.send(embed=embed)
-                    print(f"Successfully sent period end announcement to {general_channel.name} in {guild.name}")
-                except discord.errors.Forbidden:
-                    print(f"Cannot send messages in {general_channel.name} ({guild.name})")
-                except Exception as e:
-                    print(f"Error sending announcement in {guild.name}: {str(e)}")
-                    import traceback
-                    print(traceback.format_exc())
-            else:
-                print(f"No suitable channel found in {guild.name}")
+                
+                # If no general channel found, try to find any channel with send permissions
+                if not general_channel:
+                    for channel in guild.text_channels:
+                        if channel.permissions_for(guild.me).send_messages:
+                            general_channel = channel
+                            print(f"No general channel found, using: {channel.name}")
+                            break
+                
+                if general_channel:
+                    try:
+                        print(f"Attempting to send announcement to {general_channel.name} in {guild.name}")
+                        await general_channel.send(embed=embed)
+                        print(f"Successfully sent period end announcement to {general_channel.name} in {guild.name}")
+                    except discord.errors.Forbidden:
+                        print(f"Cannot send messages in {general_channel.name} ({guild.name})")
+                    except Exception as e:
+                        print(f"Error sending announcement in {guild.name}: {str(e)}")
+                        import traceback
+                        print(traceback.format_exc())
+                else:
+                    print(f"No suitable channel found in {guild.name}")
     except Exception as e:
         print(f"Error in announce_leaderboard_results: {str(e)}")
         import traceback
@@ -248,6 +257,11 @@ async def get_leaderboard_data(storage, period):
     
     session = storage.Session()
     try:
+        # Use American Central Time (CST) for comparison
+        cst = pytz.timezone('America/Chicago')
+        start_cst = period.start_time.astimezone(cst)
+        end_cst = period.end_time.astimezone(cst)
+        
         # Get basic stats for the specific period
         print("Querying basic stats...")
         query = session.query(
@@ -255,8 +269,8 @@ async def get_leaderboard_data(storage, period):
             func.sum(GamingSession.credits_earned).label('total_credits'),
             func.count(GamingSession.game_id.distinct()).label('games_played')
         ).filter(
-            GamingSession.timestamp >= period.start_time,
-            GamingSession.timestamp < period.end_time
+            GamingSession.timestamp >= start_cst,
+            GamingSession.timestamp < end_cst
         )
 
         results = query.group_by(GamingSession.user_id)\
@@ -264,15 +278,19 @@ async def get_leaderboard_data(storage, period):
                      .all()
 
         print(f"Found {len(results)} users with activity in this period")
+        print("\nRaw query results:")
+        for user_id, credits, games in results:
+            print(f"User {user_id}: {credits:,.1f} credits, {games} games")
+        
         if not results:
             print("No activity found in this period")
             return []
 
         # For each user, get their most played game in the period
-        print("Getting most played games for each user...")
+        print("\nGetting most played games for each user...")
         final_results = []
         for user_id, credits, games in results:
-            print(f"Processing user {user_id}...")
+            print(f"\nProcessing user {user_id}...")
             # Query to get the most played game for this user
             most_played_query = session.query(
                 Game.name,
@@ -280,8 +298,8 @@ async def get_leaderboard_data(storage, period):
             ).join(GamingSession)\
              .filter(
                 GamingSession.user_id == user_id,
-                GamingSession.timestamp >= period.start_time,
-                GamingSession.timestamp < period.end_time
+                GamingSession.timestamp >= start_cst,
+                GamingSession.timestamp < end_cst
              )
 
             most_played_game = most_played_query.group_by(Game.name)\
@@ -293,7 +311,7 @@ async def get_leaderboard_data(storage, period):
             final_results.append((user_id, float(credits or 0), games, game_name, game_hours))
             print(f"User {user_id}: {credits:,.1f} credits, {games} games, most played: {game_name} ({game_hours:,.1f}h)")
 
-        print(f"Processed {len(final_results)} users with activity")
+        print(f"\nProcessed {len(final_results)} users with activity")
         return final_results
     except Exception as e:
         print(f"Error getting leaderboard data: {str(e)}")
@@ -309,6 +327,10 @@ async def record_leaderboard_placements(storage, period, placements):
     
     session = storage.Session()
     try:
+        # Check if a transaction is already begun and roll back if necessary
+        if session.in_transaction():
+            session.rollback()
+        
         # Start a transaction
         session.begin()
         
@@ -344,20 +366,20 @@ async def record_leaderboard_placements(storage, period, placements):
                 next_id = session.execute(text("SELECT nextval('leaderboard_history_id_seq')")).scalar()
                 print(f"Using ID {next_id} for placement {position}")
                 
-            history = LeaderboardHistory(
+                history = LeaderboardHistory(
                     id=next_id,  # Explicitly set the ID
-                user_id=user_id,
-                period_id=period.id,
-                leaderboard_type=period.leaderboard_type,
-                placement=position,
-                credits=credits,
-                games_played=games,
-                most_played_game=most_played,
-                most_played_hours=most_played_hours,
-                timestamp=datetime.now(pytz.timezone('America/Chicago'))
-            )
-            session.add(history)
-            print(f"Recording {position}{storage._get_ordinal_suffix(position)} place: User {user_id} with {credits:,.1f} credits")
+                    user_id=user_id,
+                    period_id=period.id,
+                    leaderboard_type=period.leaderboard_type,
+                    placement=position,
+                    credits=credits,
+                    games_played=games,
+                    most_played_game=most_played,
+                    most_played_hours=most_played_hours,
+                    timestamp=datetime.now(pytz.timezone('America/Chicago'))
+                )
+                session.add(history)
+                print(f"Recording {position}{storage._get_ordinal_suffix(position)} place: User {user_id} with {credits:,.1f} credits")
             except Exception as e:
                 print(f"Error recording placement for user {user_id}: {str(e)}")
                 session.rollback()
@@ -452,11 +474,11 @@ async def process_leaderboard_period(bot, storage, leaderboard_type):
             LeaderboardHistory.period_id == current_period.id
         ).count()
         
-        if existing_records == 0:
-            print("No existing records found, recording placements...")
+        if existing_records != len(leaderboard_data):
+            print(f"Existing records ({existing_records}) do not match leaderboard data ({len(leaderboard_data)}), updating records...")
             await record_leaderboard_placements(storage, current_period, leaderboard_data)
         else:
-            print(f"Found {existing_records} existing records for this period")
+            print(f"Found {existing_records} existing records for this period, matches leaderboard data.")
         
         # Announce results
         print("Announcing results...")
