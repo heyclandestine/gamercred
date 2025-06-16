@@ -154,7 +154,7 @@ class GamingCommands(commands.Cog):
             embed = Embed(title="🏆 Gamer Cred Leaderboard", color=0x00ff00)
             embed.set_footer(text="🌐 View on Gamer Cred", icon_url="https://gamercred.onrender.com/favicon.ico")
 
-            for position, (user_id, credits) in enumerate(leaderboard[:10], 1):
+            for position, (user_id, credits) in enumerate(leaderboard, 1):
                 member = ctx.guild.get_member(user_id)
                 username = member.display_name if member else f"User{user_id}"
                 embed.add_field(

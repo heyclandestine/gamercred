@@ -6,7 +6,7 @@ from sqlalchemy.orm import sessionmaker
 import os
 import sys
 
-DATABASE_URL = os.getenv('DATABASE_URL', 'postgresql://gamercred_user:O03x7e1c4ghsHBTUFWt56apJvDYHQp8G@dpg-d10bga6mcj7s73c4m31g-a.virginia-postgres.render.com/gamercred')
+DATABASE_URL = os.getenv('DATABASE_URL')
 engine = create_engine(DATABASE_URL)
 Session = sessionmaker(bind=engine)
 

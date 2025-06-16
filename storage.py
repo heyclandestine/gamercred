@@ -1031,6 +1031,42 @@ class GameStorage:
         """Get sorted list of (user_id, credits) tuples"""
         session = self.Session()
         try:
+            # Get total credits from gaming sessions for each user
+            session_credits = session.query(
+                GamingSession.user_id,
+                func.sum(GamingSession.credits_earned).label('session_credits')
+            ).group_by(
+                GamingSession.user_id
+            ).subquery()
+
+            # Get total bonus credits for each user
+            bonus_credits = session.query(
+                Bonus.user_id,
+                func.sum(Bonus.credits).label('bonus_credits')
+            ).group_by(
+                Bonus.user_id
+            ).subquery()
+
+            # Combine session credits and bonus credits
+            results = session.query(
+                session_credits.c.user_id,
+                (func.coalesce(session_credits.c.session_credits, 0) + func.coalesce(bonus_credits.c.bonus_credits, 0)).label('total_credits')
+            ).outerjoin(
+                bonus_credits,
+                session_credits.c.user_id == bonus_credits.c.user_id
+            ).all()
+
+            # Update user_stats table with new total credits
+            for user_id, total_credits in results:
+                user_stats = session.query(UserStats).filter(UserStats.user_id == user_id).first()
+                if user_stats:
+                    user_stats.total_credits = total_credits
+                else:
+                    user_stats = UserStats(user_id=user_id, total_credits=total_credits)
+                    session.add(user_stats)
+            
+            session.commit()
+
             # Get all users ordered by total credits
             users = session.query(UserStats)\
                 .order_by(UserStats.total_credits.desc())\
