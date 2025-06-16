@@ -1355,10 +1355,21 @@ class GameStorage:
         finally:
             session.close()
 
-    async def get_recent_gaming_sessions(self, limit: int = 20) -> List[Dict[str, Any]]:
-        """Get the most recent gaming sessions with game details."""
+    async def get_recent_gaming_sessions(self, limit: int = 20, timeframe: str = 'alltime') -> List[Dict[str, Any]]:
+        """Get the most recent gaming sessions with game details, filtered by timeframe (weekly, monthly, alltime)."""
         session = self.Session()
         try:
+            # Calculate timeframe boundaries in CST
+            now = datetime.now(self.cst)
+            start_time = None
+            end_time = now
+            if timeframe == 'weekly':
+                days_since_monday = now.weekday()
+                start_time = (now - timedelta(days=days_since_monday)).replace(hour=0, minute=0, second=0, microsecond=0)
+            elif timeframe == 'monthly':
+                start_time = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+            # For alltime, start_time remains None
+
             # Fetch recent gaming sessions with game details
             sessions_query = session.query(
                 GamingSession.id,
@@ -1368,27 +1379,42 @@ class GameStorage:
                 GamingSession.timestamp,
                 Game.name.label('game_name'),
                 Game.box_art_url
-            ).join(Game, GamingSession.game_id == Game.id, isouter=True)\
-             .order_by(GamingSession.timestamp.desc())\
-             .limit(limit)
+            ).join(Game, GamingSession.game_id == Game.id, isouter=True)
+
+            if start_time:
+                sessions_query = sessions_query.filter(GamingSession.timestamp >= start_time)
+            if end_time:
+                sessions_query = sessions_query.filter(GamingSession.timestamp <= end_time)
+
+            sessions_query = sessions_query.order_by(GamingSession.timestamp.desc()).limit(limit)
 
             rows = sessions_query.all()
 
-            # If no real sessions, return empty list (Discord info will be fetched in app.py)
             if not rows:
-                 return []
+                return []
 
-            # Format the results (only include data directly from DB for now)
             sessions_data = []
             for row in rows:
+                box_art_url = row.box_art_url
+                # If no box art URL, try to fetch from RAWG
+                if not box_art_url:
+                    rawg_data = await self.fetch_game_details_from_rawg(row.game_name)
+                    if rawg_data and rawg_data.get('box_art_url'):
+                        box_art_url = rawg_data['box_art_url']
+                        # Update the game in the database with the RAWG box art URL
+                        game = session.query(Game).filter(Game.id == row.game_id).first()
+                        if game:
+                            game.box_art_url = box_art_url
+                            session.commit()
+
                 sessions_data.append({
                     'id': row.id,
-                    'user_id': str(row.user_id),  # Convert user_id to string to preserve precision
+                    'user_id': str(row.user_id),
                     'game_id': row.game_id,
                     'hours': row.hours,
                     'timestamp': row.timestamp,
-                    'game_name': row.game_name or f'Game{row.game_id}', # Fallback
-                    'box_art_url': row.box_art_url # Can be None
+                    'game_name': row.game_name or f'Game{row.game_id}',
+                    'box_art_url': box_art_url
                 })
 
             return sessions_data
@@ -1962,6 +1988,61 @@ class GameStorage:
             traceback.print_exc()
         finally:
             session.close()
+
+    async def fetch_game_details_from_rawg(self, game_name: str) -> Optional[Dict[str, Any]]:
+        """Fetch game details from RAWG API."""
+        try:
+            # Get RAWG API key from environment variable
+            rawg_api_key = os.getenv('RAWG_API_KEY')
+            rawg_api_url = os.getenv('RAWG_API_URL', 'https://api.rawg.io/api')
+
+            if not rawg_api_key:
+                print("Warning: RAWG_API_KEY environment variable not set")
+                return None
+
+            # Make request to RAWG API
+            async with aiohttp.ClientSession() as session:
+                async with session.get(
+                    f'{rawg_api_url}/games',
+                    params={
+                        'key': rawg_api_key,
+                        'search': game_name,
+                        'page_size': 1
+                    }
+                ) as response:
+                    if response.status == 200:
+                        data = await response.json()
+                        print(f"RAWG API raw response: {data}")  # Debug log
+                        if data and data.get('results'):
+                            game = data['results'][0]
+                            # Get the full game details to get the description
+                            game_id = game.get('id')
+                            if game_id:
+                                async with session.get(
+                                    f'{rawg_api_url}/games/{game_id}',
+                                    params={'key': rawg_api_key}
+                                ) as detail_response:
+                                    if detail_response.status == 200:
+                                        detail_data = await detail_response.json()
+                                        print(f"RAWG API detail response: {detail_data}")  # Debug log
+                                        return {
+                                            'rawg_id': game.get('id'),
+                                            'box_art_url': game.get('background_image'),
+                                            'release_date': game.get('released'),
+                                            'description': detail_data.get('description_raw', ''),
+                                            'backloggd_url': f"https://www.backloggd.com/games/{game.get('slug')}/"
+                                        }
+                            return {
+                                'rawg_id': game.get('id'),
+                                'box_art_url': game.get('background_image'),
+                                'release_date': game.get('released'),
+                                'description': game.get('description_raw', ''),
+                                'backloggd_url': f"https://www.backloggd.com/games/{game.get('slug')}/"
+                            }
+                    return None
+        except Exception as e:
+            print(f"Error fetching RAWG data for {game_name}: {str(e)}")
+            return None
 
 def get_period_boundaries(dt: datetime, period_type: str):
     """Return (start, end) datetime for the period containing dt. period_type is 'weekly' or 'monthly'. All times in CST."""

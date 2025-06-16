@@ -1136,7 +1136,7 @@ footer {
   scrollbar-width: none;
   justify-content: flex-start;
   padding-left: 0;
-  margin-left: 0;
+  margin-top: 2rem;
 }
 
 .activity-carousel::-webkit-scrollbar {
@@ -1162,6 +1162,7 @@ footer {
   cursor: pointer;
   transition: background 0.15s, color 0.15s, transform 0.1s;
   opacity: 0.95;
+  margin-top: 3.5rem;
 }
 
 .carousel-arrow.left {

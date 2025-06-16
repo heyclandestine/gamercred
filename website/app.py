@@ -20,6 +20,7 @@ from sqlalchemy import text
 from sqlalchemy.ext.declarative import declarative_base
 from models import Base # Import Base for table creation
 import logging
+from sqlalchemy.sql import func
 
 # Set up basic logging
 logging.basicConfig(level=logging.INFO)
@@ -284,17 +285,18 @@ def get_game():
         box_art_url = game_db_info.get('box_art_url', '')
         backloggd_url = game_db_info.get('backloggd_url', '')
 
-        # Only fetch from RAWG API if we don't have the data in the database
-        if not game_db_info.get('rawg_id') or not game_db_info.get('box_art_url') or not game_db_info.get('release_date'):
-            print(f"Fetching RAWG data for game: {game_name} (missing data in database)")
-            rawg_data = run_async(storage.fetch_game_details_from_rawg(game_name))
-            if rawg_data:
-                # Only use RAWG data if we don't have it in the database
-                if not box_art_url:
-                    box_art_url = rawg_data.get('box_art_url', '')
-                description = rawg_data.get('description', '')
-                if not backloggd_url:
-                    backloggd_url = rawg_data.get('backloggd_url', '')
+        # Always fetch description from RAWG API
+        print(f"Fetching RAWG data for game: {game_name}")
+        rawg_data = run_async(storage.fetch_game_details_from_rawg(game_name))
+        print(f"RAWG API response: {rawg_data}")  # Debug log
+        if rawg_data:
+            description = rawg_data.get('description', '')
+            print(f"Description from RAWG: {description}")  # Debug log
+            # Only use RAWG data for box art and backloggd if we don't have it
+            if not box_art_url:
+                box_art_url = rawg_data.get('box_art_url', '')
+            if not backloggd_url:
+                backloggd_url = rawg_data.get('backloggd_url', '')
 
         print(f"DEBUG: Using box art URL: {box_art_url}")
 
@@ -311,6 +313,7 @@ def get_game():
             'release_date': game_db_info.get('release_date', '')
         }
 
+        print(f"Final game data: {final_game_data}")  # Debug log
         return jsonify(final_game_data)
     except Exception as e:
         print(f"Error getting game info: {str(e)}")
@@ -662,8 +665,9 @@ def get_user_leaderboard_history(user_identifier):
 @app.route('/api/recent-activity')
 def recent_activity():
     try:
-        refresh_cache()
-        recent_sessions_data = cache['recent_activity']['data']
+        timeframe = request.args.get('timeframe', 'alltime')
+        # Fetch recent sessions using the new timeframe logic
+        recent_sessions_data = run_async(storage.get_recent_gaming_sessions(timeframe=timeframe))
         if not recent_sessions_data:
             return jsonify([])
         formatted_sessions = []
@@ -678,7 +682,7 @@ def recent_activity():
                     'avatar_url': discord_info.get('avatar_url', ''),
                     'game_name': session['game_name'],
                     'hours': session['hours'],
-                    'timestamp': session['timestamp'].isoformat(),
+                    'timestamp': session['timestamp'].isoformat() if hasattr(session['timestamp'], 'isoformat') else str(session['timestamp']),
                     'box_art_url': session['box_art_url']
                 })
         return jsonify(formatted_sessions)

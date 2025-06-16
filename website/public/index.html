@@ -195,6 +195,11 @@
     </section>
     <section class="activity card activity-wide">
       <h2><i class="fas fa-gamepad"></i> Recent Activity</h2>
+      <div class="activity-tabs">
+        <button class="tab-btn active" data-tab="activity-weekly">Weekly</button>
+        <button class="tab-btn" data-tab="activity-monthly">Monthly</button>
+        <button class="tab-btn" data-tab="activity-alltime">All-Time</button>
+      </div>
       <button class="carousel-arrow left" aria-label="Scroll left"><i class="fas fa-chevron-left"></i></button>
       <div class="activity-carousel">
         <div class="loading-spinner">
@@ -525,13 +530,30 @@
 
     });
 
+    // Add tab switching for activity section
+    const activityTabContainer = document.querySelector('.activity-tabs');
+    const activityTabButtons = activityTabContainer.querySelectorAll('.tab-btn');
+    let currentActivityTimeframe = 'alltime';
+
+    activityTabButtons.forEach(button => {
+      button.addEventListener('click', function() {
+        activityTabButtons.forEach(btn => btn.classList.remove('active'));
+        this.classList.add('active');
+        const tabId = this.getAttribute('data-tab');
+        // Extract timeframe from tab ID (e.g., 'activity-weekly' -> 'weekly')
+        const timeframe = tabId.replace('activity-', '');
+        currentActivityTimeframe = timeframe;
+        fetchRecentActivity(timeframe).then(() => setupActivityCarousel());
+      });
+    });
+
     // --- Recent Activity with localStorage cache ---
-    async function fetchRecentActivity() {
+    async function fetchRecentActivity(timeframe = 'alltime') {
       const activityCarousel = document.querySelector('.activity-carousel');
       if (!activityCarousel) return;
 
       // Try to show cached data instantly
-      const cacheKey = 'recent_activity';
+      const cacheKey = `recent_activity_${timeframe}`;
       const cached = localStorage.getItem(cacheKey);
       if (cached) {
         try {
@@ -560,7 +582,7 @@
 
       // Always fetch fresh data in the background
       try {
-        const response = await fetch('/api/recent-activity');
+        const response = await fetch(`/api/recent-activity?timeframe=${timeframe}`);
         if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
         const recentActivity = await response.json();
         renderRecentActivity(recentActivity);
@@ -622,115 +644,6 @@
         activityCarousel.appendChild(cardWrap);
       });
     }
-
-    // --- Most Popular Games with localStorage cache ---
-    function fetchPopularGames(timeframe) {
-      const popularList = document.querySelector(`#popular-${timeframe} ol`);
-      if (!popularList) return;
-
-      // Try to show cached data instantly
-      const cacheKey = `popular_${timeframe}`;
-      const cached = localStorage.getItem(cacheKey);
-      if (cached) {
-        try {
-          const data = JSON.parse(cached);
-          popularList.innerHTML = '';
-          if (data && data.length > 0) {
-            data.forEach((game, index) => {
-              const listItem = document.createElement('li');
-              
-              let mediaElement;
-              if (game.box_art_url && game.box_art_url.endsWith('.webm')) {
-                  mediaElement = document.createElement('video');
-                  mediaElement.src = game.box_art_url;
-                  mediaElement.autoplay = true;
-                  mediaElement.loop = true;
-                  mediaElement.muted = true;
-                  mediaElement.playsInline = true;
-              } else {
-                  mediaElement = document.createElement('img');
-                  mediaElement.src = game.box_art_url || 'https://static-cdn.jtvnw.net/ttv-boxart/loading_boxart.png';
-                  mediaElement.onerror = function() {
-                      this.src = 'https://static-cdn.jtvnw.net/ttv-boxart/loading_boxart.png';
-                  };
-              }
-              mediaElement.className = 'game-cover-sm';
-              mediaElement.alt = game.name;
-
-              listItem.innerHTML = `
-                <span class="rank">${index + 1}</span>
-                <div class="popular-game-row">
-                  <a class="game-link" href="game.html?game=${encodeURIComponent(game.name)}">${game.name}</a>
-                  <span class="hours">${formatNumberWithCommas(game.total_hours || 0)} hrs</span>
-                </div>
-              `;
-              
-              listItem.insertBefore(mediaElement, listItem.firstChild);
-              popularList.appendChild(listItem);
-            });
-          } else {
-            popularList.innerHTML = '<li>No game data available.</li>';
-          }
-        } catch (e) {}
-      } else {
-        // Show loading state if no cache
-        popularList.innerHTML = '';
-        const loadingPlaceholders = createLoadingPlaceholders(5);
-        loadingPlaceholders.forEach(placeholder => popularList.appendChild(placeholder));
-      }
-
-      // Always fetch fresh data in the background
-      fetch(`/api/popular-games?timeframe=${timeframe}`)
-        .then(response => response.json())
-        .then(data => {
-          popularList.innerHTML = '';
-          if (data && data.length > 0) {
-            data.forEach((game, index) => {
-              const listItem = document.createElement('li');
-              
-              let mediaElement;
-              if (game.box_art_url && game.box_art_url.endsWith('.webm')) {
-                  mediaElement = document.createElement('video');
-                  mediaElement.src = game.box_art_url;
-                  mediaElement.autoplay = true;
-                  mediaElement.loop = true;
-                  mediaElement.muted = true;
-                  mediaElement.playsInline = true;
-              } else {
-                  mediaElement = document.createElement('img');
-                  mediaElement.src = game.box_art_url || 'https://static-cdn.jtvnw.net/ttv-boxart/loading_boxart.png';
-                  mediaElement.onerror = function() {
-                      this.src = 'https://static-cdn.jtvnw.net/ttv-boxart/loading_boxart.png';
-                  };
-              }
-              mediaElement.className = 'game-cover-sm';
-              mediaElement.alt = game.name;
-
-              listItem.innerHTML = `
-                <span class="rank">${index + 1}</span>
-                <div class="popular-game-row">
-                  <a class="game-link" href="game.html?game=${encodeURIComponent(game.name)}">${game.name}</a>
-                  <span class="hours">${formatNumberWithCommas(game.total_hours || 0)} hrs</span>
-                </div>
-              `;
-              
-              listItem.insertBefore(mediaElement, listItem.firstChild);
-              popularList.appendChild(listItem);
-            });
-            localStorage.setItem(cacheKey, JSON.stringify(data));
-          } else {
-            popularList.innerHTML = '<li>No game data available.</li>';
-            localStorage.removeItem(cacheKey);
-          }
-        })
-        .catch(error => {
-          console.error(`Error fetching ${timeframe} popular games data:`, error);
-          popularList.innerHTML = '<li>Error loading game data.</li>';
-        });
-    }
-
-    // Replace the original fetchRecentActivity with the new one
-    fetchRecentActivity();
 
     // Function to detect if user is on mobile
     function isMobileDevice() {
@@ -833,8 +746,8 @@
       });
     }
 
-    // Call setupActivityCarousel after fetching recent activity
-    fetchRecentActivity().then(() => setupActivityCarousel());
+    // On page load, show alltime activity by default
+    fetchRecentActivity('alltime').then(() => setupActivityCarousel());
     
   </script>
 </body>
