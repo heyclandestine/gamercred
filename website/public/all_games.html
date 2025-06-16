@@ -260,28 +260,22 @@
 
         // Render games with current sort and filter
         function renderGames() {
-            console.log('Starting renderGames...');
             const searchTerm = document.getElementById('gameSearch').value.toLowerCase();
-            console.log('Search term:', searchTerm);
             
             const filteredGames = games.filter(game => 
                 game.name.toLowerCase().includes(searchTerm)
             );
-            console.log('Filtered games:', filteredGames);
 
             const sortedGames = sortGames(filteredGames);
-            console.log('Sorted games:', sortedGames);
             
             const gamesGrid = document.getElementById('gamesGrid');
             gamesGrid.innerHTML = '';
 
             if (sortedGames.length === 0) {
-                console.log('No games to display');
                 gamesGrid.innerHTML = '<div class="no-games">No games found</div>';
                 return;
             }
 
-            console.log('Creating game cards...');
             sortedGames.forEach(game => {
                 const gameCard = document.createElement('div');
                 gameCard.className = 'game-card list-view';
@@ -342,7 +336,6 @@
 
                 gamesGrid.appendChild(gameCard);
             });
-            console.log('Finished rendering games');
         }
 
         // Sort games based on current sort settings

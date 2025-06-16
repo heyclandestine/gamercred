@@ -207,11 +207,9 @@
       // Fetch game data
       fetch(`/api/game?name=${encodeURIComponent(gameName)}`)
         .then(response => {
-          console.log('Game API Response:', response);
           return response.json();
         })
         .then(data => {
-          console.log('Game Data:', data);
           if (data.error) {
             showError(data.error);
             return;

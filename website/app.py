@@ -5,7 +5,6 @@ import re # Import re for HTML cleaning
 from dotenv import load_dotenv
 from flask_cors import CORS
 from requests_oauthlib import OAuth2Session
-print("sys.path before storage import:", sys.path) # Print sys.path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))) # Add parent directory to path
 from storage import GameStorage # Import GameStorage
 import requests # Import requests library
@@ -23,7 +22,10 @@ import logging
 from sqlalchemy.sql import func
 
 # Set up basic logging
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(
+    level=logging.WARNING,  # Change from INFO to WARNING
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
 logger = logging.getLogger(__name__)
 # Load environment variables
 load_dotenv()
@@ -51,6 +53,7 @@ print(f"Database URL: {database_url}")
 
 # Initialize storage
 storage = GameStorage()
+logger.info("Storage initialized")
 
 # Cache for Discord user info with 5-minute expiration
 discord_user_cache = {}
@@ -68,7 +71,7 @@ RAWG_API_KEY = os.getenv('RAWG_API_KEY')
 RAWG_API_URL = os.getenv('RAWG_API_URL', 'https://api.rawg.io/api')
 
 if not RAWG_API_KEY:
-    print("Warning: RAWG_API_KEY environment variable not set. Game details may not load.")
+    logger.warning("RAWG_API_KEY environment variable not set. Game details may not load.")
 
 # Add a function to refresh the cache
 def refresh_cache():
@@ -76,22 +79,15 @@ def refresh_cache():
     current_time = time.time()
     try:
         if current_time - cache['leaderboard']['timestamp'] > 30:
-            print("Refreshing leaderboard cache...")
             try:
                 # Get leaderboard data for weekly
                 leaderboard_data = run_async(storage.get_leaderboard_by_timeframe(LeaderboardType.WEEKLY))
-                print(f"Got leaderboard data: {leaderboard_data}")
                 cache['leaderboard']['data'] = leaderboard_data
                 cache['leaderboard']['timestamp'] = current_time
-                print("Leaderboard cache refreshed successfully")
             except Exception as e:
-                print(f"Error refreshing leaderboard cache: {str(e)}")
-                print("Full traceback:")
-                traceback.print_exc()
+                logger.error(f"Error refreshing leaderboard cache: {str(e)}")
     except Exception as e:
-        print(f"Error in refresh_cache: {str(e)}")
-        print("Full traceback:")
-        traceback.print_exc()
+        logger.error(f"Error in refresh_cache: {str(e)}")
 
 # Cache for Discord user info with 5-minute expiration
 @lru_cache(maxsize=1000)
@@ -286,19 +282,14 @@ def get_game():
         backloggd_url = game_db_info.get('backloggd_url', '')
 
         # Always fetch description from RAWG API
-        print(f"Fetching RAWG data for game: {game_name}")
         rawg_data = run_async(storage.fetch_game_details_from_rawg(game_name))
-        print(f"RAWG API response: {rawg_data}")  # Debug log
         if rawg_data:
             description = rawg_data.get('description', '')
-            print(f"Description from RAWG: {description}")  # Debug log
             # Only use RAWG data for box art and backloggd if we don't have it in the database
             if not box_art_url:
-                    box_art_url = rawg_data.get('box_art_url', '')
+                box_art_url = rawg_data.get('box_art_url', '')
             if not backloggd_url:
-                    backloggd_url = rawg_data.get('backloggd_url', '')
-
-        print(f"DEBUG: Using box art URL: {box_art_url}")
+                backloggd_url = rawg_data.get('backloggd_url', '')
 
         # Combine database info with API info
         final_game_data = {
@@ -313,7 +304,6 @@ def get_game():
             'release_date': game_db_info.get('release_date', '')
         }
 
-        print(f"Final game data: {final_game_data}")  # Debug log
         return jsonify(final_game_data)
     except Exception as e:
         print(f"Error getting game info: {str(e)}")
@@ -389,7 +379,7 @@ def handle_error(error):
 @app.route('/api/leaderboard')
 def get_leaderboard():
     timeframe = request.args.get('timeframe', 'weekly')
-    print(f"Fetching leaderboard for timeframe: {timeframe}")
+    logger.info(f"Fetching leaderboard for timeframe: {timeframe}")
     try:
         if timeframe == 'weekly':
             leaderboard_type = LeaderboardType.WEEKLY
@@ -402,13 +392,10 @@ def get_leaderboard():
 
         # Get the leaderboard data using the new timeframe calculation
         leaderboard_data = run_async(storage.get_leaderboard_by_timeframe(leaderboard_type))
-        print(f"Got leaderboard data: {leaderboard_data}")
-        if not leaderboard_data:
-            print("No leaderboard data found")
-            return jsonify([])
-
+        
         # Format the data for the frontend
-            formatted_data = []
+        formatted_data = []
+        if leaderboard_data:
             for user_id, credits, games_played, most_played_game, most_played_hours, total_hours in leaderboard_data:
                 try:
                     user_id_str = str(user_id)
@@ -426,17 +413,12 @@ def get_leaderboard():
                         }
                         formatted_data.append(user_data)
                 except Exception as e:
-                    print(f"Error formatting user data for user {user_id}: {str(e)}")
-                    print("Full traceback:")
-                    traceback.print_exc()
+                    logger.error(f"Error formatting user data for user {user_id}: {str(e)}", exc_info=True)
 
-            print(f"Returning formatted data: {formatted_data}")
-            return jsonify(formatted_data)
+        return jsonify(formatted_data)
 
     except Exception as e:
-        print(f"Error getting leaderboard data: {str(e)}")
-        print("Full traceback:")
-        traceback.print_exc()
+        logger.error(f"Error getting leaderboard data: {str(e)}", exc_info=True)
         return jsonify({'error': 'Failed to get leaderboard data'}), 500
 
 # Add endpoint to fetch recent bonuses

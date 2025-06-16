@@ -15,6 +15,7 @@ from sqlalchemy.sql import select
 import traceback
 import time
 import sys
+import logging
 
 # Load environment variables
 load_dotenv()
@@ -24,42 +25,17 @@ DATABASE_URL = os.getenv('DATABASE_URL')
 if not DATABASE_URL:
     raise ValueError("DATABASE_URL environment variable is not set")
 
+logger = logging.getLogger(__name__)
+
 class GameStorage:
     def __init__(self):
         """Initialize the storage with database connection"""
-        self.database_url = os.getenv('DATABASE_URL')
+        self.database_url = os.getenv('DATABASE_URL') or os.getenv('LOCAL_DATABASE_URL')
         if not self.database_url:
-            raise ValueError("DATABASE_URL environment variable is not set")
+            raise ValueError("DATABASE_URL or LOCAL_DATABASE_URL environment variable is not set")
         
-        print(f"Initializing database with URL: {self.database_url}")
-        
-        # Configure the engine with connection pooling
-        self.engine = create_engine(
-            self.database_url,
-            poolclass=QueuePool,
-            pool_size=5,  # Maximum number of connections to keep
-            max_overflow=10,  # Maximum number of connections that can be created beyond pool_size
-            pool_timeout=30,  # Seconds to wait before giving up on getting a connection from the pool
-            pool_recycle=1800,  # Recycle connections after 30 minutes
-            pool_pre_ping=True  # Enable connection health checks
-        )
-        
-        # Create tables if they don't exist
-        Base.metadata.create_all(self.engine)
-        
-        # Create session factory
-        self.Session = scoped_session(
-            sessionmaker(
-                bind=self.engine,
-                expire_on_commit=False
-            )
-        )
-        
-        # Update capitalization of existing games
-        self.update_game_capitalization()
-        
+        self._initialize_db()
         self.cst = pytz.timezone('America/Chicago')
-        print('Storage initialized successfully!')
 
     def get_session(self):
         """Get a database session with retry logic"""
@@ -71,39 +47,124 @@ class GameStorage:
                 return self.Session()
             except Exception as e:
                 if attempt == max_retries - 1:  # Last attempt
-                    print(f"Failed to get database session after {max_retries} attempts: {str(e)}")
+                    logger.error(f"Failed to get database session after {max_retries} attempts: {str(e)}")
                     raise
-                print(f"Database connection attempt {attempt + 1} failed: {str(e)}")
+                logger.warning(f"Database connection attempt {attempt + 1} failed: {str(e)}")
                 time.sleep(retry_delay)
                 retry_delay *= 2  # Exponential backoff
-
-    def Session(self):
-        return sessionmaker(bind=self.engine)()
 
     def _initialize_db(self):
         """Initialize the database connection"""
         try:
-            print(f"Initializing database with URL: {self.database_url}")
-
-            # Create PostgreSQL engine
-            print("Using PostgreSQL database")
-            print(f"PostgreSQL URL: {self.database_url}")
+            logger.info("Initializing database connection")
             self.engine = create_engine(self.database_url)
-            print("PostgreSQL engine created")
-
-            # Initialize session maker
-            print("Initializing session maker...")
             self.Session = scoped_session(
                 sessionmaker(
                     bind=self.engine,
                     expire_on_commit=False
                 )
             )
-            print("Session maker initialized")
+            logger.info("Database connection initialized successfully")
         except Exception as e:
-            print(f"Error initializing database: {str(e)}")
-            print(f"Current working directory: {os.getcwd()}")
+            logger.error(f"Error initializing database: {str(e)}", exc_info=True)
             raise
+
+    async def get_or_create_game(self, game_name: str, user_id: int, credits_per_hour: float = 1.0) -> Tuple[Game, bool]:
+        """Get or create a game in the database"""
+        session = self.Session()
+        try:
+            # Format the game name
+            formatted_name = ' '.join(word.capitalize() for word in game_name.split())
+            
+            # Check if game exists
+            game = session.query(Game).filter(func.lower(Game.name) == func.lower(formatted_name)).first()
+            created = False
+
+            if not game:
+                # Create the Backloggd URL
+                url_name = formatted_name.lower()
+                url_name = url_name.replace("'", "").replace('"', "")
+                url_name = ''.join(c if c.isalnum() else '-' for c in url_name)
+                url_name = '-'.join(filter(None, url_name.split('-')))
+                
+                backloggd_url = f"https://www.backloggd.com/games/{url_name}/"
+                
+                game = Game(
+                    name=formatted_name, 
+                    credits_per_hour=credits_per_hour, 
+                    added_by=user_id,
+                    backloggd_url=backloggd_url
+                )
+                session.add(game)
+                created = True
+
+            # Fetch and update RAWG data if missing
+            if game and (game.rawg_id is None or game.box_art_url is None):
+                rawg_details = await self.fetch_game_details_from_rawg(game.name)
+                if rawg_details:
+                    logger.debug(f"Updating game with RAWG details: {rawg_details}")
+                    game.rawg_id = rawg_details.get('rawg_id')
+                    game.box_art_url = rawg_details.get('box_art_url')
+                    game.release_date = rawg_details.get('release_date')
+                    session.add(game)
+
+            return game, created
+        except Exception as e:
+            session.rollback()
+            logger.error(f"Error in get_or_create_game: {str(e)}", exc_info=True)
+            return None
+        finally:
+            session.close()
+
+    async def fetch_game_details_from_rawg(self, game_name: str) -> Optional[Dict[str, Any]]:
+        """Fetch game details from RAWG API"""
+        rawg_api_key = os.getenv('RAWG_API_KEY')
+        rawg_api_url = os.getenv('RAWG_API_URL', 'https://api.rawg.io/api')
+        
+        if not rawg_api_key:
+            logger.warning("RAWG_API_KEY not set")
+            return None
+
+        try:
+            async with aiohttp.ClientSession() as session:
+                async with session.get(
+                    f'{rawg_api_url}/games',
+                    params={
+                        'key': rawg_api_key,
+                        'search': game_name,
+                        'page_size': 1
+                    }
+                ) as response:
+                    if response.status == 200:
+                        data = await response.json()
+                        if data and data.get('results'):
+                            game = data['results'][0]
+                            game_id = game.get('id')
+                            if game_id:
+                                async with session.get(
+                                    f'{rawg_api_url}/games/{game_id}',
+                                    params={'key': rawg_api_key}
+                                ) as detail_response:
+                                    if detail_response.status == 200:
+                                        detail_data = await detail_response.json()
+                                        return {
+                                            'rawg_id': game.get('id'),
+                                            'box_art_url': game.get('background_image'),
+                                            'release_date': game.get('released'),
+                                            'description': detail_data.get('description_raw', ''),
+                                            'backloggd_url': f"https://www.backloggd.com/games/{game.get('slug')}/"
+                                        }
+                            return {
+                                'rawg_id': game.get('id'),
+                                'box_art_url': game.get('background_image'),
+                                'release_date': game.get('released'),
+                                'description': game.get('description_raw', ''),
+                                'backloggd_url': f"https://www.backloggd.com/games/{game.get('slug')}/"
+                            }
+                    return None
+        except Exception as e:
+            logger.error(f"Error fetching RAWG data: {str(e)}", exc_info=True)
+            return None
 
     async def announce_period_end(self, bot: discord.Client, leaderboard_type: LeaderboardType, old_period: LeaderboardPeriod) -> None:
         """Create an announcement for the end of a leaderboard period"""
@@ -648,76 +709,6 @@ class GameStorage:
                 'game_zealot': dedicated_games >= 5,
                 'game_fanatic': dedicated_games >= 10
             }
-        finally:
-            session.close()
-
-    async def get_or_create_game(self, game_name: str, user_id: int, credits_per_hour: float = 1.0) -> Tuple[Game, bool]:
-        """Get a game by name or create it if it doesn't exist, and fetch/update RAWG data."""
-        session = self.Session()
-        try:
-            # First, capitalize the first letter of the entire string
-            game_name = game_name.strip()
-            if game_name:
-                game_name = game_name[0].upper() + game_name[1:]
-            
-            # Then capitalize each word, preserving Roman numerals
-            words = game_name.split()
-            formatted_words = []
-            for word in words:
-                # Check if the word is a Roman numeral (case-insensitive)
-                if word.upper() in ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII', 'XIII', 'XIV', 'XV']:
-                    formatted_words.append(word.upper())
-                else:
-                    formatted_words.append(word.capitalize())
-            
-            formatted_name = ' '.join(formatted_words)
-            
-            # Case-insensitive search for existing game
-            game = session.query(Game).filter(func.lower(Game.name) == func.lower(formatted_name)).first()
-            created = False
-
-            if not game:
-                # Create the Backloggd URL by replacing spaces with hyphens and converting to lowercase
-                # Also handle special characters and apostrophes
-                url_name = formatted_name.lower()
-                # Replace apostrophes and quotes with empty string
-                url_name = url_name.replace("'", "").replace('"', "")
-                # Replace spaces and special characters with hyphens
-                url_name = ''.join(c if c.isalnum() else '-' for c in url_name)
-                # Replace multiple hyphens with a single hyphen
-                url_name = '-'.join(filter(None, url_name.split('-')))
-                
-                backloggd_url = f"https://www.backloggd.com/games/{url_name}/"
-                
-                game = Game(
-                    name=formatted_name, 
-                    credits_per_hour=credits_per_hour, 
-                    added_by=user_id,
-                    backloggd_url=backloggd_url
-                )
-                session.add(game)
-                created = True
-
-            # Fetch and update RAWG data if missing
-            if game and (game.rawg_id is None or game.box_art_url is None):
-                rawg_details = await self.fetch_game_details_from_rawg(game.name)
-                if rawg_details:
-                    print(f"Updating game with RAWG details: {rawg_details}")  # Debug print
-                    game.rawg_id = rawg_details.get('rawg_id')  # Use get() to safely access the key
-                    game.box_art_url = rawg_details.get('box_art_url')
-                    game.release_date = rawg_details.get('release_date')
-                    # Don't update the game name with RAWG's display name
-                    print(f"Updated game with RAWG ID: {game.rawg_id}")  # Debug print
-                    session.add(game)
-                    print(f"Added game to session. RAWG ID: {game.rawg_id}")  # Debug print
-
-            return game, created
-        except Exception as e:
-            session.rollback()
-            print(f"Error in get_or_create_game: {str(e)}")  # Debug print
-            print("Full traceback:")
-            traceback.print_exc()
-            return None
         finally:
             session.close()
 
@@ -2024,61 +2015,6 @@ class GameStorage:
             traceback.print_exc()
         finally:
             session.close()
-
-    async def fetch_game_details_from_rawg(self, game_name: str) -> Optional[Dict[str, Any]]:
-        """Fetch game details from RAWG API."""
-        try:
-            # Get RAWG API key from environment variable
-            rawg_api_key = os.getenv('RAWG_API_KEY')
-            rawg_api_url = os.getenv('RAWG_API_URL', 'https://api.rawg.io/api')
-
-            if not rawg_api_key:
-                print("Warning: RAWG_API_KEY environment variable not set")
-                return None
-
-            # Make request to RAWG API
-            async with aiohttp.ClientSession() as session:
-                async with session.get(
-                    f'{rawg_api_url}/games',
-                    params={
-                        'key': rawg_api_key,
-                        'search': game_name,
-                        'page_size': 1
-                    }
-                ) as response:
-                    if response.status == 200:
-                        data = await response.json()
-                        print(f"RAWG API raw response: {data}")  # Debug log
-                        if data and data.get('results'):
-                            game = data['results'][0]
-                            # Get the full game details to get the description
-                            game_id = game.get('id')
-                            if game_id:
-                                async with session.get(
-                                    f'{rawg_api_url}/games/{game_id}',
-                                    params={'key': rawg_api_key}
-                                ) as detail_response:
-                                    if detail_response.status == 200:
-                                        detail_data = await detail_response.json()
-                                        print(f"RAWG API detail response: {detail_data}")  # Debug log
-                                        return {
-                                            'rawg_id': game.get('id'),
-                                            'box_art_url': game.get('background_image'),
-                                            'release_date': game.get('released'),
-                                            'description': detail_data.get('description_raw', ''),
-                                            'backloggd_url': f"https://www.backloggd.com/games/{game.get('slug')}/"
-                                        }
-                            return {
-                                'rawg_id': game.get('id'),
-                                'box_art_url': game.get('background_image'),
-                                'release_date': game.get('released'),
-                                'description': game.get('description_raw', ''),
-                                'backloggd_url': f"https://www.backloggd.com/games/{game.get('slug')}/"
-                            }
-                    return None
-        except Exception as e:
-            print(f"Error fetching RAWG data for {game_name}: {str(e)}")
-            return None
 
 def get_period_boundaries(dt: datetime, period_type: str):
     """Return (start, end) datetime for the period containing dt. period_type is 'weekly' or 'monthly'. All times in CST."""

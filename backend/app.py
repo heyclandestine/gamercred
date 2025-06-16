@@ -146,16 +146,11 @@ async def get_discord_user_info(user_id_str):
     guild_id = "693741073394040843"
     guild_url = f"https://discord.com/api/v10/guilds/{guild_id}/members/{user_id_str}"
     
-    print(f"DEBUG: Attempting to fetch guild member info for user ID: {user_id_str}")
-    
     try:
         async with aiohttp.ClientSession() as session:
             async with session.get(guild_url, headers=headers) as guild_response:
-                print(f"DEBUG: Guild API response status for user ID {user_id_str}: {guild_response.status}")
-                
                 if guild_response.status == 200:
                     guild_data = await guild_response.json()
-                    print(f"DEBUG: Guild API response data: {guild_data}")
                     user_data = guild_data.get('user', {})
                     avatar_hash = user_data.get('avatar')
                     
@@ -182,14 +177,10 @@ async def get_discord_user_info(user_id_str):
                     }
                 
                 # If not found in guild, try global user endpoint
-                print(f"DEBUG: User {user_id_str} not found in guild, trying global user endpoint")
                 url = f"https://discord.com/api/v10/users/{user_id_str}"
                 async with session.get(url, headers=headers) as response:
-                    print(f"DEBUG: Global API response status for user ID {user_id_str}: {response.status}")
-                    
                     if response.status == 200:
                         user_data = await response.json()
-                        print(f"DEBUG: Global API response data: {user_data}")
                         avatar_hash = user_data.get('avatar')
                         
                         if avatar_hash:
@@ -211,7 +202,6 @@ async def get_discord_user_info(user_id_str):
                             'avatar_url': avatar_url
                         }
                     else:
-                        print(f"DEBUG: User {user_id_str} not found in either guild or global endpoints")
                         # Return a default user object instead of None
                         return {
                             'username': f'Unknown User {user_id_str}',
@@ -368,8 +358,7 @@ def get_user_stats_endpoint(user_identifier):
     try:
         # Get timeframe from query parameters, default to 'alltime'
         timeframe = request.args.get('timeframe', 'alltime')
-        print(f"DEBUG: Fetching user stats for {user_identifier} with timeframe: {timeframe}") # Debug print
-
+        
         # Keep as string to preserve precision
         user_id_str = str(user_identifier)
         
@@ -396,7 +385,6 @@ def get_user_stats_endpoint(user_identifier):
             'most_played': most_played_games_data # Include list of most played games data
         }
 
-        print(f"DEBUG: /api/user-stats/{user_identifier} returning: {formatted_stats}") # Debug print
         return jsonify(formatted_stats)
     except Exception as e:
         print(f"Error processing /api/user-stats/{user_identifier}: {e}")

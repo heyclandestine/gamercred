@@ -484,7 +484,6 @@
 
       // Function to fetch and display recent activity
       async function fetchRecentActivity(userIdentifier) {
-          console.log(`DEBUG: fetchRecentActivity called for user: ${userIdentifier}`); // Debug print
           const activityList = document.querySelector('.profile-activity ul');
           if (!activityList) {
               console.error('Recent activity list element not found.');
@@ -494,13 +493,11 @@
           setLoadingState(activityList, true);
           
           try {
-              console.log('Fetching recent activity for user:', userIdentifier);
               const response = await fetch(`/api/user-stats/${userIdentifier}/history`);
               if (!response.ok) {
                   throw new Error(`HTTP error! status: ${response.status}`);
               }
               const activityData = await response.json();
-              console.log('Received activity data:', activityData); // Debug print received data
 
               activityList.innerHTML = ''; // Clear loading state
 

@@ -12,8 +12,14 @@ from constants import TOKEN, COMMAND_PREFIX
 from keepalive import keep_alive
 import asyncio
 from storage import GameStorage  # Add this import
+import logging
 
-print("main.py started")
+# Set up logging
+logging.basicConfig(
+    level=logging.WARNING,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
 
 # Singleton check to prevent multiple instances
 def is_bot_already_running():
@@ -41,11 +47,11 @@ storage = None
 @bot.event
 async def on_ready():
     global storage
-    print(f'Bot is ready! Logged in as {bot.user.name}')
-    print(f'Connected to {len(bot.guilds)} servers')
+    logger.info(f'Bot is ready! Logged in as {bot.user.name}')
+    logger.info(f'Connected to {len(bot.guilds)} servers')
     
     # Always reinitialize commands on ready
-    print('Initializing commands...')
+    logger.info('Initializing commands...')
     try:
         # Remove existing commands if any
         for cog in bot.cogs:
@@ -54,16 +60,13 @@ async def on_ready():
         # Add commands
         gaming_commands = GamingCommands(bot, storage)
         await bot.add_cog(gaming_commands)
-        print('Commands initialized successfully!')
-        print(f'Command prefix is: {bot.command_prefix}')
-        print('Available commands:')
+        logger.info('Commands initialized successfully!')
+        logger.info(f'Command prefix is: {bot.command_prefix}')
+        logger.info('Available commands:')
         for command in bot.commands:
-            print(f'  {command.name}: {command.help}')
+            logger.info(f'  {command.name}: {command.help}')
     except Exception as e:
-        print(f'Error initializing commands: {str(e)}')
-        print('Full error details:', file=sys.stderr)
-        import traceback
-        traceback.print_exc()
+        logger.error(f'Error initializing commands: {str(e)}', exc_info=True)
         raise  # Re-raise the exception to see the full error
 
 @bot.event
@@ -73,11 +76,7 @@ async def on_command_error(ctx, error):
     elif isinstance(error, commands.errors.CommandNotFound):
         await ctx.send(f"❌ Command not found. Use `!help` to see available commands.")
     else:
-        print(f"Error occurred: {str(error)}")  # Add debug logging
-        print(f"Full error details: {error.__class__.__name__}")  # Print error class name
-        print(f"Error traceback:", file=sys.stderr)  # Print full traceback
-        import traceback
-        traceback.print_exc()
+        logger.error(f"Error occurred: {str(error)}", exc_info=True)
         await ctx.send(f"❌ An error occurred: {str(error)}")
 
 @bot.event
@@ -91,33 +90,29 @@ async def async_main():
     global storage
     # Check if bot is already running
     if is_bot_already_running():
-        print("Error: Bot is already running! Exiting to prevent duplicate instances.")
-        print("Use 'python kill_bots.py' to kill all instances and restart.")
+        logger.error("Bot is already running! Exiting to prevent duplicate instances.")
+        logger.info("Use 'python kill_bots.py' to kill all instances and restart.")
         return
 
     if not TOKEN:
-        print("Error: Discord token not found in environment variables!")
+        logger.error("Discord token not found in environment variables!")
         return
 
     try:
-        print("Initializing database...")
+        logger.info("Initializing database...")
         # Initialize the database before starting the bot
         storage = GameStorage()
-        print("Database initialized successfully!")
+        logger.info("Database initialized successfully!")
         
-        print("Checking for running instance...")
-        print("No other instance running, continuing...")
+        logger.info("Starting bot...")
         # Start the keep alive server
         keep_alive()
         # Run the bot
         await bot.start(TOKEN)
     except discord.errors.LoginFailure:
-        print("Error: Failed to login. Please check your Discord token.")
+        logger.error("Failed to login. Please check your Discord token.")
     except Exception as e:
-        print(f"Error: An unexpected error occurred: {str(e)}")
-        print("Full error details:", file=sys.stderr)
-        import traceback
-        traceback.print_exc()
+        logger.error(f"An unexpected error occurred: {str(e)}", exc_info=True)
 
 def main():
     try:

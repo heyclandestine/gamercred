@@ -13,9 +13,9 @@ timeout = 30
 keepalive = 2
 
 # Logging
-accesslog = '-'
+accesslog = None
 errorlog = '-'
-loglevel = 'info'
+loglevel = 'warning'
 
 # Process naming
 proc_name = 'gamercred'

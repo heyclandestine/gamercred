@@ -1,5 +1,4 @@
-console.log('[DEBUG] Current pathname:', window.location.pathname);
-console.log('Script loaded');
+// console.log('Script loaded');
 document.addEventListener('DOMContentLoaded', function() {
   // Check authentication status
   fetch('/api/user')
@@ -26,7 +25,7 @@ document.addEventListener('DOMContentLoaded', function() {
       }
     })
     .catch(error => {
-      console.log('Not authenticated:', error);
+      // console.log('Not authenticated:', error);
     });
 
   // Fetch and display recent bonuses
@@ -50,7 +49,7 @@ document.addEventListener('DOMContentLoaded', function() {
         localStorage.setItem(cacheKey, JSON.stringify(bonuses));
       })
       .catch(error => {
-        console.error('Error fetching bonuses:', error);
+        // console.error('Error fetching bonuses:', error);
         const spinner = bonusesSection.querySelector('.loading-spinner');
         if (spinner) {
           spinner.innerHTML = '<i class="fas fa-exclamation-circle"></i> Error loading bonuses';
@@ -373,7 +372,7 @@ document.addEventListener('DOMContentLoaded', function() {
           renderDropdown();
         })
         .catch(error => {
-          console.error('Error fetching results:', error);
+          // console.error('Error fetching results:', error);
           results = [];
           renderDropdown();
         });
@@ -632,7 +631,6 @@ document.addEventListener('DOMContentLoaded', function() {
   (function() {
     // Remove index page check so this runs everywhere
     const navbarSearchInput = document.querySelector('.search-bar');
-    console.log('[DEBUG] Navbar autocomplete script loaded. Found input:', !!navbarSearchInput);
     if (!navbarSearchInput) return;
 
     // Remove any existing navbar dropdown
@@ -867,7 +865,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
           })
           .catch(error => {
-            console.error('Error:', error);
+            // console.error('Error:', error);
             showToast('Error', 'An error occurred while logging the game session.', 'error');
           });
         })
@@ -992,7 +990,7 @@ document.addEventListener('DOMContentLoaded', function() {
             positionDropdown();
           })
           .catch(error => {
-            console.error('Error fetching game suggestions:', error);
+            // console.error('Error fetching game suggestions:', error);
             renderDropdown([]);
           });
       }, 300);
@@ -1256,7 +1254,7 @@ document.addEventListener('DOMContentLoaded', function() {
                   }
                 })
                 .catch(error => {
-                  console.error('Error:', error);
+                  // console.error('Error:', error);
                   showToast('Error', 'An error occurred while logging the game session.', 'error');
                 });
               })
@@ -1336,7 +1334,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
           })
           .catch(error => {
-            console.error('Error:', error);
+            // console.error('Error:', error);
             showToast('Error', 'An error occurred while logging the game session.', 'error');
           });
         })
@@ -1390,7 +1388,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
           })
           .catch(error => {
-            console.error('Error:', error);
+            // console.error('Error:', error);
             showToast('Error', 'An error occurred while rating the game.', 'error');
           });
         })
