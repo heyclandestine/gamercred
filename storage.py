@@ -205,38 +205,29 @@ class GameStorage:
             with self.Session() as session:
                 # Use enum name (uppercase) for PostgreSQL enum
                 timeframe_str = timeframe.name
-                
-                # Calculate start and end times based on timeframe in CST
                 cst = pytz.timezone('America/Chicago')
                 now = datetime.now(cst)
-                if timeframe == LeaderboardType.WEEKLY:
-                    # Start from Monday 00:00 CST
-                    days_since_monday = now.weekday()
-                    start = now - timedelta(days=days_since_monday)
-                    start = start.replace(hour=0, minute=0, second=0, microsecond=0)
-                    end = start + timedelta(days=7)
-                elif timeframe == LeaderboardType.MONTHLY:
-                    start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-                    if now.month == 12:
-                        end = now.replace(year=now.year + 1, month=1, day=1)
-                    else:
-                        end = now.replace(month=now.month + 1, day=1)
+                if timeframe in [LeaderboardType.WEEKLY, LeaderboardType.MONTHLY]:
+                    start, end = get_period_boundaries(now, timeframe.value.lower())
                 else:  # ALLTIME
                     start = datetime(2020, 1, 1, tzinfo=cst)
                     end = datetime(2100, 1, 1, tzinfo=cst)
-
-            # Create new period
+                period = session.query(LeaderboardPeriod).filter_by(
+                    leaderboard_type=timeframe_str,
+                    start_time=start,
+                    end_time=end
+                ).first()
+                if not period:
                     period = LeaderboardPeriod(
                         leaderboard_type=timeframe_str,
                         start_time=start,
                         end_time=end,
-                    is_active=True
-                )
+                        is_active=True
+                    )
                     session.add(period)
                     print(f"Creating new period: {start} to {end} CST")
-            session.commit()
-
-            return period
+                    session.commit()
+                return period
         except Exception as e:
             raise Exception(str(e))
 
@@ -300,32 +291,34 @@ class GameStorage:
         finally:
             session.close()
 
-    async def get_leaderboard_by_timeframe(self, timeframe: LeaderboardType, bot=None, period=None) -> List[Tuple[int, float, int, str, float, float]]:
-        """Get leaderboard data for a specific timeframe."""
+    async def get_leaderboard_by_timeframe(self, timeframe: LeaderboardType, bot=None, period=None, custom_start=None, custom_end=None) -> List[Tuple[int, float, int, str, float, float]]:
+        """Get leaderboard data for a specific timeframe. Optionally override period boundaries with custom_start/custom_end."""
         db_session = self.Session()
         try:
-            # Calculate timeframe based on current time in CST
-            current_time = datetime.now(self.cst)
-            start_time = None
-            end_time = None
-
-            if timeframe == LeaderboardType.WEEKLY:
-                # Start from last Monday 00:00 CST
-                days_since_monday = current_time.weekday()
-                start_time = (current_time - timedelta(days=days_since_monday)).replace(
-                    hour=0, minute=0, second=0, microsecond=0
-                )
-                end_time = start_time + timedelta(days=7)
-            elif timeframe == LeaderboardType.MONTHLY:
-                # Start from 1st of current month CST
-                start_time = current_time.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-                if current_time.month == 12:
-                    end_time = current_time.replace(year=current_time.year + 1, month=1, day=1)
-                else:
-                    end_time = current_time.replace(month=current_time.month + 1, day=1)
-            else:  # ALLTIME
+            # Calculate timeframe based on current time in CST or use custom boundaries
+            if custom_start is not None and custom_end is not None:
+                start_time = custom_start
+                end_time = custom_end
+            else:
+                current_time = datetime.now(self.cst)
                 start_time = None
                 end_time = None
+
+                if timeframe == LeaderboardType.WEEKLY:
+                    days_since_monday = current_time.weekday()
+                    start_time = (current_time - timedelta(days=days_since_monday)).replace(
+                        hour=0, minute=0, second=0, microsecond=0
+                    )
+                    end_time = start_time + timedelta(days=7)
+                elif timeframe == LeaderboardType.MONTHLY:
+                    start_time = current_time.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+                    if current_time.month == 12:
+                        end_time = current_time.replace(year=current_time.year + 1, month=1, day=1)
+                    else:
+                        end_time = current_time.replace(month=current_time.month + 1, day=1)
+                else:  # ALLTIME
+                    start_time = None
+                    end_time = None
 
             # First, get the most played game for each user
             user_most_played = db_session.query(
@@ -389,41 +382,53 @@ class GameStorage:
                 GamingSession.user_id
             ).subquery()
 
-            # Get bonus credits for each user
-            bonus_credits = db_session.query(
-                Bonus.user_id,
-                func.sum(Bonus.credits).label('bonus_credits')
-            )
+            if timeframe == LeaderboardType.ALLTIME:
+                # Get bonus credits for each user (only for all-time)
+                bonus_credits = db_session.query(
+                    Bonus.user_id,
+                    func.sum(Bonus.credits).label('bonus_credits')
+                ).group_by(
+                    Bonus.user_id
+                ).subquery()
 
-            if start_time:
-                bonus_credits = bonus_credits.filter(Bonus.timestamp >= start_time)
-            if end_time:
-                bonus_credits = bonus_credits.filter(Bonus.timestamp < end_time)
-
-            bonus_credits = bonus_credits.group_by(
-                Bonus.user_id
-            ).subquery()
-
-            # Combine all the data
-            results = db_session.query(
-                session_credits.c.user_id,
-                (func.coalesce(session_credits.c.session_credits, 0) + func.coalesce(bonus_credits.c.bonus_credits, 0)).label('total_credits'),
-                session_credits.c.games_played,
-                most_played_games.c.game_name,
-                most_played_games.c.game_hours,
-                total_hours.c.total_hours
-            ).outerjoin(
-                most_played_games,
-                session_credits.c.user_id == most_played_games.c.user_id
-            ).outerjoin(
-                total_hours,
-                session_credits.c.user_id == total_hours.c.user_id
-            ).outerjoin(
-                bonus_credits,
-                session_credits.c.user_id == bonus_credits.c.user_id
-            ).order_by(
-                (func.coalesce(session_credits.c.session_credits, 0) + func.coalesce(bonus_credits.c.bonus_credits, 0)).desc()
-            ).all()
+                # Combine session and bonus credits for all-time
+                results = db_session.query(
+                    session_credits.c.user_id,
+                    (func.coalesce(session_credits.c.session_credits, 0) + func.coalesce(bonus_credits.c.bonus_credits, 0)).label('total_credits'),
+                    session_credits.c.games_played,
+                    most_played_games.c.game_name,
+                    most_played_games.c.game_hours,
+                    total_hours.c.total_hours
+                ).outerjoin(
+                    most_played_games,
+                    session_credits.c.user_id == most_played_games.c.user_id
+                ).outerjoin(
+                    total_hours,
+                    session_credits.c.user_id == total_hours.c.user_id
+                ).outerjoin(
+                    bonus_credits,
+                    session_credits.c.user_id == bonus_credits.c.user_id
+                ).order_by(
+                    (func.coalesce(session_credits.c.session_credits, 0) + func.coalesce(bonus_credits.c.bonus_credits, 0)).desc()
+                ).all()
+            else:
+                # For weekly and monthly, only use session credits
+                results = db_session.query(
+                    session_credits.c.user_id,
+                    session_credits.c.session_credits.label('total_credits'),
+                    session_credits.c.games_played,
+                    most_played_games.c.game_name,
+                    most_played_games.c.game_hours,
+                    total_hours.c.total_hours
+                ).outerjoin(
+                    most_played_games,
+                    session_credits.c.user_id == most_played_games.c.user_id
+                ).outerjoin(
+                    total_hours,
+                    session_credits.c.user_id == total_hours.c.user_id
+                ).order_by(
+                    session_credits.c.session_credits.desc()
+                ).all()
 
             # Format the results
             leaderboard = []
@@ -450,33 +455,38 @@ class GameStorage:
         finally:
             db_session.close()
 
-    async def record_leaderboard_placements(self, leaderboard_type: LeaderboardType, placements: List[Tuple[int, float, int, str, float]], period: LeaderboardPeriod) -> None:
-        """Record placements for the given leaderboard period"""
+    async def record_leaderboard_placements(self, leaderboard_type: LeaderboardType, placements: List[Tuple[int, float, int, str, float, float]], period: LeaderboardPeriod) -> None:
+        """Record placements for the given leaderboard period. Always use unified period boundaries for recalculation."""
         session = self.Session()
         try:
-            # Use naive current time and localize to CST
+            # Only allow updating the most recent inactive period or an active period
+            most_recent_inactive = session.query(LeaderboardPeriod).filter(
+                LeaderboardPeriod.leaderboard_type == leaderboard_type,
+                LeaderboardPeriod.is_active == False
+            ).order_by(LeaderboardPeriod.end_time.desc()).first()
+            if not period.is_active and (not most_recent_inactive or period.id != most_recent_inactive.id):
+                print(f"Refusing to update placements for period {period.id} (not the most recent inactive period). No changes made.")
+                return
+            # Use unified period boundary calculation
+            from storage import get_period_boundaries
+            period_type = period.leaderboard_type.value.lower()
+            start, end = get_period_boundaries(period.start_time, period_type)
+            # Recalculate leaderboard data for this period
+            leaderboard_data = await self.get_leaderboard_by_timeframe(leaderboard_type, custom_start=start, custom_end=end)
             naive_now = datetime.now()
             current_time = self.cst.localize(naive_now)
-
-            # Debug logging
             print(f"\nRecording placements for {leaderboard_type.value}:")
-            print(f"Period: {period.start_time} to {period.end_time} CST")
-            print(f"Number of placements: {len(placements)}")
-
-            # Check if we already have records for this period
+            print(f"Period: {start} to {end} CST")
+            print(f"Number of placements: {len(leaderboard_data)}")
             existing_records = session.query(LeaderboardHistory)\
                 .filter(LeaderboardHistory.period_id == period.id)\
                 .all()
-
             if existing_records:
                 print(f"Found {len(existing_records)} existing records for this period - updating")
-                # Delete existing records for this period
                 for record in existing_records:
                     session.delete(record)
                 session.commit()
-
-            # Record each placement
-            for position, (user_id, credits, games, most_played, most_played_hours) in enumerate(placements, 1):
+            for position, (user_id, credits, games, most_played, most_played_hours, total_hours) in enumerate(leaderboard_data, 1):
                 history = LeaderboardHistory(
                     user_id=user_id,
                     period_id=period.id,
@@ -486,14 +496,13 @@ class GameStorage:
                     games_played=games,
                     most_played_game=most_played,
                     most_played_hours=most_played_hours,
+                    total_hours=total_hours,
                     timestamp=current_time
                 )
                 session.add(history)
                 print(f"Recording {position}{self._get_ordinal_suffix(position)} place: User {user_id} with {credits:,.1f} credits")
-
             session.commit()
             print("Successfully recorded all placements")
-
         except Exception as e:
             print(f"Error recording leaderboard history: {str(e)}")
             session.rollback()
@@ -1953,3 +1962,21 @@ class GameStorage:
             traceback.print_exc()
         finally:
             session.close()
+
+def get_period_boundaries(dt: datetime, period_type: str):
+    """Return (start, end) datetime for the period containing dt. period_type is 'weekly' or 'monthly'. All times in CST."""
+    cst = pytz.timezone('America/Chicago')
+    dt = dt.astimezone(cst)
+    if period_type == 'weekly':
+        days_since_monday = dt.weekday()
+        start = (dt - timedelta(days=days_since_monday)).replace(hour=0, minute=0, second=0, microsecond=0)
+        end = start + timedelta(days=7)
+    elif period_type == 'monthly':
+        start = dt.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        if dt.month == 12:
+            end = dt.replace(year=dt.year + 1, month=1, day=1, hour=0, minute=0, second=0, microsecond=0)
+        else:
+            end = dt.replace(month=dt.month + 1, day=1, hour=0, minute=0, second=0, microsecond=0)
+    else:
+        raise ValueError('period_type must be weekly or monthly')
+    return start, end

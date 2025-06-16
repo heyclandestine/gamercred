@@ -2,13 +2,13 @@ import asyncio
 import discord
 from datetime import datetime, timedelta
 import pytz
-from storage import GameStorage
+from storage import GameStorage, get_period_boundaries
 from models import LeaderboardType, LeaderboardPeriod, LeaderboardHistory
 from sqlalchemy import and_, func, create_engine, text
 from dotenv import load_dotenv
 import os
 import argparse
-from models import GamingSession, Game
+from models import GamingSession, Game, Bonus
 
 # Load environment variables
 load_dotenv()
@@ -167,7 +167,7 @@ async def announce_leaderboard_results(bot, storage, period):
         
         # Send the announcement only to the guild named 'Kendel Fenner's Test server'
         for guild in bot.guilds:
-            if guild.name == "Kendel Fenner's Test server":
+            if guild.name == "Kendel Fenner's Test server" or guild.name == "Landestine":
                 print(f"\nProcessing guild: {guild.name}")
                 
                 # Find the general channel
@@ -209,165 +209,58 @@ async def announce_leaderboard_results(bot, storage, period):
 async def create_new_period(storage, leaderboard_type):
     """Create a new leaderboard period"""
     print(f"Creating new {leaderboard_type.value} period")
-    
     session = storage.Session()
     try:
-        # Get current time in UTC first
-        utc_now = datetime.now(pytz.UTC)
-        # Convert to CST
         cst = pytz.timezone('America/Chicago')
-        now = utc_now.astimezone(cst)
-        
-        # Calculate period boundaries in CST
-        if leaderboard_type == LeaderboardType.WEEKLY:
-            # Start from last Monday 00:00 CST
-            days_since_monday = now.weekday()
-            period_start = now - timedelta(days=days_since_monday)
-            period_start = period_start.replace(hour=0, minute=0, second=0, microsecond=0)
-            period_end = period_start + timedelta(days=7)
-        else:  # MONTHLY
-            # Start from 1st of current month CST
-            period_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-            # Create end time
-            if now.month == 12:
-                period_end = now.replace(year=now.year + 1, month=1, day=1,
-                                     hour=0, minute=0, second=0, microsecond=0)
-            else:
-                period_end = now.replace(month=now.month + 1, day=1,
-                                     hour=0, minute=0, second=0, microsecond=0)
-        
-        # Create the new period
+        now = datetime.now(cst)
+        if leaderboard_type in [LeaderboardType.WEEKLY, LeaderboardType.MONTHLY]:
+            start, end = get_period_boundaries(now, leaderboard_type.value.lower())
+        else:
+            start = datetime(2020, 1, 1, tzinfo=cst)
+            end = datetime(2100, 1, 1, tzinfo=cst)
         new_period = LeaderboardPeriod(
             leaderboard_type=leaderboard_type,
-            start_time=period_start,
-            end_time=period_end,
+            start_time=start,
+            end_time=end,
             is_active=True
         )
         session.add(new_period)
         session.commit()
-        
-        print(f"Created new {leaderboard_type.value} period: {period_start} to {period_end}")
+        print(f"Created new {leaderboard_type.value} period: {start} to {end}")
         return new_period
     finally:
         session.close()
 
-async def get_leaderboard_data(storage, period):
-    """Get leaderboard data for a specific period"""
-    print(f"Getting leaderboard data for period: {period.start_time} to {period.end_time}")
-    
-    session = storage.Session()
-    try:
-        # Use American Central Time (CST) for comparison
-        cst = pytz.timezone('America/Chicago')
-        start_cst = period.start_time.astimezone(cst)
-        end_cst = period.end_time.astimezone(cst)
-        
-        # Get basic stats for the specific period
-        print("Querying basic stats...")
-        query = session.query(
-            GamingSession.user_id,
-            func.sum(GamingSession.credits_earned).label('total_credits'),
-            func.count(GamingSession.game_id.distinct()).label('games_played')
-        ).filter(
-            GamingSession.timestamp >= start_cst,
-            GamingSession.timestamp < end_cst
-        )
-
-        results = query.group_by(GamingSession.user_id)\
-                     .order_by(func.sum(GamingSession.credits_earned).desc())\
-                     .all()
-
-        print(f"Found {len(results)} users with activity in this period")
-        print("\nRaw query results:")
-        for user_id, credits, games in results:
-            print(f"User {user_id}: {credits:,.1f} credits, {games} games")
-        
-        if not results:
-            print("No activity found in this period")
-            return []
-
-        # For each user, get their most played game in the period
-        print("\nGetting most played games for each user...")
-        final_results = []
-        for user_id, credits, games in results:
-            print(f"\nProcessing user {user_id}...")
-            # Query to get the most played game for this user
-            most_played_query = session.query(
-                Game.name,
-                func.sum(GamingSession.hours).label('total_hours')
-            ).join(GamingSession)\
-             .filter(
-                GamingSession.user_id == user_id,
-                GamingSession.timestamp >= start_cst,
-                GamingSession.timestamp < end_cst
-             )
-
-            most_played_game = most_played_query.group_by(Game.name)\
-                .order_by(func.sum(GamingSession.hours).desc())\
-                .first()
-
-            game_name = most_played_game.name if most_played_game else "No games"
-            game_hours = float(most_played_game.total_hours) if most_played_game else 0.0
-            final_results.append((user_id, float(credits or 0), games, game_name, game_hours))
-            print(f"User {user_id}: {credits:,.1f} credits, {games} games, most played: {game_name} ({game_hours:,.1f}h)")
-
-        print(f"\nProcessed {len(final_results)} users with activity")
-        return final_results
-    except Exception as e:
-        print(f"Error getting leaderboard data: {str(e)}")
-        import traceback
-        print(traceback.format_exc())
-        return []
-    finally:
-        session.close()
-
 async def record_leaderboard_placements(storage, period, placements):
-    """Record placements for a specific period"""
+    """Record placements for the given leaderboard period"""
     print(f"Recording placements for period: {period.start_time} to {period.end_time}")
-    
     session = storage.Session()
     try:
-        # Check if a transaction is already begun and roll back if necessary
         if session.in_transaction():
             session.rollback()
-        
-        # Start a transaction
         session.begin()
-        
-        # Check if we already have records for this period
         existing_records = session.query(LeaderboardHistory)\
             .filter(LeaderboardHistory.period_id == period.id)\
             .all()
-
         if existing_records:
             print(f"Found {len(existing_records)} existing records for this period - updating")
-            # Delete existing records for this period
             for record in existing_records:
                 session.delete(record)
-            session.flush()  # Flush changes but don't commit yet
-            
-            # Get the current sequence value and max ID
+            session.flush()
             current_seq = session.execute(text("SELECT last_value FROM leaderboard_history_id_seq")).scalar()
             max_id = session.query(func.max(LeaderboardHistory.id)).scalar() or 0
-            
             print(f"Current sequence value: {current_seq}, Max ID: {max_id}")
-            
-            # If sequence is behind max ID, reset it
             if current_seq <= max_id:
                 new_seq = max_id + 1
                 print(f"Resetting sequence to {new_seq}")
                 session.execute(text(f"ALTER SEQUENCE leaderboard_history_id_seq RESTART WITH {new_seq}"))
                 session.flush()
-
-        # Record each placement
-        for position, (user_id, credits, games, most_played, most_played_hours) in enumerate(placements, 1):
+        for position, (user_id, credits, games, most_played, most_played_hours, total_hours) in enumerate(placements, 1):
             try:
-                # Get the next sequence value
                 next_id = session.execute(text("SELECT nextval('leaderboard_history_id_seq')")).scalar()
                 print(f"Using ID {next_id} for placement {position}")
-                
                 history = LeaderboardHistory(
-                    id=next_id,  # Explicitly set the ID
+                    id=next_id,
                     user_id=user_id,
                     period_id=period.id,
                     leaderboard_type=period.leaderboard_type,
@@ -376,6 +269,7 @@ async def record_leaderboard_placements(storage, period, placements):
                     games_played=games,
                     most_played_game=most_played,
                     most_played_hours=most_played_hours,
+                    total_hours=total_hours,
                     timestamp=datetime.now(pytz.timezone('America/Chicago'))
                 )
                 session.add(history)
@@ -384,8 +278,6 @@ async def record_leaderboard_placements(storage, period, placements):
                 print(f"Error recording placement for user {user_id}: {str(e)}")
                 session.rollback()
                 raise
-
-        # Commit the transaction
         session.commit()
         print("Successfully recorded all placements")
     except Exception as e:
@@ -398,93 +290,20 @@ async def record_leaderboard_placements(storage, period, placements):
 async def process_leaderboard_period(bot, storage, leaderboard_type):
     """Process a leaderboard period: announce results for the most recent inactive period"""
     print(f"\nProcessing {leaderboard_type.value} leaderboard")
-    
     session = storage.Session()
     try:
-        # First check if we have any periods at all
-        total_periods = session.query(LeaderboardPeriod).filter(
-            LeaderboardPeriod.leaderboard_type == leaderboard_type
-        ).count()
-        
-        print(f"Total {leaderboard_type.value} periods in database: {total_periods}")
-        
-        if total_periods == 0:
-            print(f"No {leaderboard_type.value} periods found in database. Creating a new one...")
-            await create_new_period(storage, leaderboard_type)
-            return
-        
-        # Look for the most recent inactive period
-        print(f"Looking for most recent inactive {leaderboard_type.value} period...")
-        current_period = session.query(LeaderboardPeriod).filter(
+        # Find the most recent inactive period
+        period = session.query(LeaderboardPeriod).filter(
             LeaderboardPeriod.leaderboard_type == leaderboard_type,
             LeaderboardPeriod.is_active == False
         ).order_by(LeaderboardPeriod.end_time.desc()).first()
-        
-        if not current_period:
-            print(f"No inactive {leaderboard_type.value} periods found")
-            
-            # Check if we have any active periods
-            active_period = session.query(LeaderboardPeriod).filter(
-                LeaderboardPeriod.leaderboard_type == leaderboard_type,
-                LeaderboardPeriod.is_active == True
-            ).first()
-            
-            if active_period:
-                print(f"Found active period: {active_period.start_time} to {active_period.end_time}")
-                print("This period is still active, no announcement needed")
-            else:
-                print("No active periods found either. Creating a new period...")
-                await create_new_period(storage, leaderboard_type)
+        if not period:
+            print(f"No inactive {leaderboard_type.value} periods found.")
             return
-        
-        print(f"Found most recent inactive period: {current_period.start_time} to {current_period.end_time}")
-        
-        # For weekly leaderboards, check if this is the most recent inactive period
-        if leaderboard_type == LeaderboardType.WEEKLY:
-            # Get the current time in CST
-            utc_now = datetime.now(pytz.UTC)
-            cst = pytz.timezone('America/Chicago')
-            now = utc_now.astimezone(cst)
-            
-            # Check if there's a more recent inactive period
-            more_recent_period = session.query(LeaderboardPeriod).filter(
-                LeaderboardPeriod.leaderboard_type == LeaderboardType.WEEKLY,
-                LeaderboardPeriod.is_active == False,
-                LeaderboardPeriod.end_time > current_period.end_time
-            ).first()
-            
-            if more_recent_period:
-                print(f"Found more recent inactive period: {more_recent_period.start_time} to {more_recent_period.end_time}")
-                print("Skipping this period as it's not the most recent")
-                return
-        
-        # Get leaderboard data
-        print("Getting leaderboard data...")
-        leaderboard_data = await get_leaderboard_data(storage, current_period)
-        
-        if not leaderboard_data:
-            print("No leaderboard data found for this period")
-            return
-        
-        print(f"Found data for {len(leaderboard_data)} users")
-        
-        # Record placements if they don't exist
-        print("Checking for existing records...")
-        existing_records = session.query(LeaderboardHistory).filter(
-            LeaderboardHistory.period_id == current_period.id
-        ).count()
-        
-        if existing_records != len(leaderboard_data):
-            print(f"Existing records ({existing_records}) do not match leaderboard data ({len(leaderboard_data)}), updating records...")
-            await record_leaderboard_placements(storage, current_period, leaderboard_data)
-        else:
-            print(f"Found {existing_records} existing records for this period, matches leaderboard data.")
-        
-        # Announce results
-        print("Announcing results...")
-        await announce_leaderboard_results(bot, storage, current_period)
-        
-        print(f"Successfully processed {leaderboard_type.value} leaderboard")
+        print(f"Found most recent inactive period: {period.start_time} to {period.end_time}")
+        # Only announce existing placements, do not recalculate or overwrite
+        await announce_leaderboard_results(bot, storage, period)
+        print(f"Successfully processed {leaderboard_type.value} leaderboard (announce only, no DB changes)")
     except Exception as e:
         print(f"Error processing {leaderboard_type.value} leaderboard: {str(e)}")
         import traceback

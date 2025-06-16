@@ -67,6 +67,7 @@ class LeaderboardHistory(Base):
     games_played = Column(Integer)
     most_played_game = Column(String)
     most_played_hours = Column(Float)
+    total_hours = Column(Float)
     timestamp = Column(DateTime)
     period = relationship("LeaderboardPeriod", back_populates="history")
 

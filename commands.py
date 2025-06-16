@@ -2,7 +2,7 @@ from discord.ext import commands
 from discord import Embed
 import discord
 from typing import Optional
-from storage import GameStorage
+from storage import GameStorage, get_period_boundaries
 from constants import MESSAGES, COMMANDS, CHANNEL_ID
 from models import LeaderboardPeriod, LeaderboardType
 import re
@@ -172,20 +172,18 @@ class GamingCommands(commands.Cog):
     async def weekly_leaderboard(self, ctx):
         """Show the weekly gamer cred leaderboard"""
         try:
-            # Get current period and leaderboard
+            cst = self.storage.cst
+            now = datetime.now(cst)
+            start, end = get_period_boundaries(now, 'weekly')
             period = await self.storage.get_or_create_current_period(LeaderboardType.WEEKLY)
-            leaderboard = await self.storage.get_leaderboard_by_timeframe(LeaderboardType.WEEKLY, self.bot, period=period)
-
+            leaderboard = await self.storage.get_leaderboard_by_timeframe(LeaderboardType.WEEKLY, self.bot, custom_start=start, custom_end=end)
             if not leaderboard:
                 await ctx.send("No gaming activity in the current week!")
                 return
-
-            # Record the placements in history
             await self.storage.record_leaderboard_placements(LeaderboardType.WEEKLY, leaderboard, period)
-
             embed = Embed(
                 title="📅 Weekly Gamer Cred Leaderboard",
-                description=f"Period: {self.format_cst_time(period.start_time)} to {self.format_cst_time(period.end_time)}\nResets every Monday at 00:00 CST",
+                description=f"Period: {self.format_cst_time(start)} to {self.format_cst_time(end)}\nResets every Monday at 00:00 CST",
                 color=0x00ff00,
                 url="https://gamercred.onrender.com"
             )
@@ -197,9 +195,7 @@ class GamingCommands(commands.Cog):
                     value=f"💎 {credits:,.1f} cred\n🎮 {games} games\n⏱️ Total hours: {total_hours:,.1f}h\n🏆 Most played: {most_played} ({most_played_hours:,.1f}h)",
                     inline=False
                 )
-
             await ctx.send(embed=embed)
-
         except Exception as e:
             await ctx.send(MESSAGES['error'].format(error=str(e)))
 
@@ -207,20 +203,18 @@ class GamingCommands(commands.Cog):
     async def monthly_leaderboard(self, ctx):
         """Show the monthly gamer cred leaderboard"""
         try:
-            # Get current period and leaderboard
+            cst = self.storage.cst
+            now = datetime.now(cst)
+            start, end = get_period_boundaries(now, 'monthly')
             period = await self.storage.get_or_create_current_period(LeaderboardType.MONTHLY)
-            leaderboard = await self.storage.get_leaderboard_by_timeframe(LeaderboardType.MONTHLY, self.bot, period=period)
-
+            leaderboard = await self.storage.get_leaderboard_by_timeframe(LeaderboardType.MONTHLY, self.bot, custom_start=start, custom_end=end)
             if not leaderboard:
                 await ctx.send("No gaming activity in the current month!")
                 return
-
-            # Record the placements in history
             await self.storage.record_leaderboard_placements(LeaderboardType.MONTHLY, leaderboard, period)
-
             embed = Embed(
                 title="📅 Monthly Gamer Cred Leaderboard",
-                description=f"Period: {self.format_cst_time(period.start_time)} to {self.format_cst_time(period.end_time)}\nResets on the 1st of each month at 00:00 CST",
+                description=f"Period: {self.format_cst_time(start)} to {self.format_cst_time(end)}\nResets on the 1st of each month at 00:00 CST",
                 color=0x00ff00,
                 url="https://gamercred.onrender.com"
             )
@@ -232,9 +226,7 @@ class GamingCommands(commands.Cog):
                     value=f"💎 {credits:,.1f} cred\n🎮 {games} games\n⏱️ Total hours: {total_hours:,.1f}h\n🏆 Most played: {most_played} ({most_played_hours:,.1f}h)",
                     inline=False
                 )
-
             await ctx.send(embed=embed)
-
         except Exception as e:
             await ctx.send(MESSAGES['error'].format(error=str(e)))
 
@@ -1056,43 +1048,31 @@ class GamingCommands(commands.Cog):
         except Exception as e:
             await ctx.send(MESSAGES['error'].format(error=str(e)))
 
-    @tasks.loop(minutes=1)  # Check every minute instead of every 5 minutes
+    @tasks.loop(minutes=1)
     async def check_periods(self):
-        """Background task to check if periods have ended"""
         try:
             print("\nChecking leaderboard periods...")
-            
-            # Get current time in UTC first
             utc_now = datetime.now(pytz.UTC)
-            # Convert to CST
             now = utc_now.astimezone(self.storage.cst)
             print(f"Current time - UTC: {utc_now}, CST: {now}")
-            
             # Check weekly period
             weekly_period = await self.storage.get_or_create_current_period(LeaderboardType.WEEKLY)
             print(f"Weekly period: {weekly_period.start_time} to {weekly_period.end_time} CST")
-            
             # Check monthly period
             monthly_period = await self.storage.get_or_create_current_period(LeaderboardType.MONTHLY)
             print(f"Monthly period: {monthly_period.start_time} to {monthly_period.end_time} CST")
-            
             # Check if either period has ended
             if now >= weekly_period.end_time:
                 print("Weekly period has ended - forcing transition")
                 session = self.storage.Session()
                 try:
-                    # Get current placements before ending period
-                    placements = await self.storage.get_leaderboard_by_timeframe(LeaderboardType.WEEKLY, self.bot)
-                    await self.storage.record_leaderboard_placements(LeaderboardType.WEEKLY, placements)
-                    
-                    # End current period
+                    # Use unified period boundary calculation
+                    start, end = get_period_boundaries(weekly_period.start_time, 'weekly')
+                    placements = await self.storage.get_leaderboard_by_timeframe(LeaderboardType.WEEKLY, self.bot, custom_start=start, custom_end=end)
+                    await self.storage.record_leaderboard_placements(LeaderboardType.WEEKLY, placements, weekly_period)
                     weekly_period.is_active = False
                     session.commit()
-                    
-                    # Make announcement
                     await self.storage.announce_period_end(self.bot, LeaderboardType.WEEKLY, weekly_period)
-                    
-                    # Create new period in the same session
                     new_period = LeaderboardPeriod(
                         leaderboard_type=LeaderboardType.WEEKLY,
                         start_time=weekly_period.end_time,
@@ -1104,23 +1084,16 @@ class GamingCommands(commands.Cog):
                     print("Created new weekly period")
                 finally:
                     session.close()
-            
             if now >= monthly_period.end_time:
                 print("Monthly period has ended - forcing transition")
                 session = self.storage.Session()
                 try:
-                    # Get current placements before ending period
-                    placements = await self.storage.get_leaderboard_by_timeframe(LeaderboardType.MONTHLY, self.bot)
-                    await self.storage.record_leaderboard_placements(LeaderboardType.MONTHLY, placements)
-                    
-                    # End current period
+                    start, end = get_period_boundaries(monthly_period.start_time, 'monthly')
+                    placements = await self.storage.get_leaderboard_by_timeframe(LeaderboardType.MONTHLY, self.bot, custom_start=start, custom_end=end)
+                    await self.storage.record_leaderboard_placements(LeaderboardType.MONTHLY, placements, monthly_period)
                     monthly_period.is_active = False
                     session.commit()
-                    
-                    # Make announcement
                     await self.storage.announce_period_end(self.bot, LeaderboardType.MONTHLY, monthly_period)
-                    
-                    # Create new period in the same session
                     new_period = LeaderboardPeriod(
                         leaderboard_type=LeaderboardType.MONTHLY,
                         start_time=monthly_period.end_time,
@@ -1132,7 +1105,6 @@ class GamingCommands(commands.Cog):
                     print("Created new monthly period")
                 finally:
                     session.close()
-            
         except Exception as e:
             print(f"Error checking periods: {str(e)}")
             import traceback
