@@ -195,11 +195,6 @@
     </section>
     <section class="activity card activity-wide">
       <h2><i class="fas fa-gamepad"></i> Recent Activity</h2>
-      <div class="activity-tabs">
-        <button class="tab-btn active" data-tab="activity-weekly">Weekly</button>
-        <button class="tab-btn" data-tab="activity-monthly">Monthly</button>
-        <button class="tab-btn" data-tab="activity-alltime">All-Time</button>
-      </div>
       <button class="carousel-arrow left" aria-label="Scroll left"><i class="fas fa-chevron-left"></i></button>
       <div class="activity-carousel">
         <div class="loading-spinner">
@@ -530,30 +525,13 @@
 
     });
 
-    // Add tab switching for activity section
-    const activityTabContainer = document.querySelector('.activity-tabs');
-    const activityTabButtons = activityTabContainer.querySelectorAll('.tab-btn');
-    let currentActivityTimeframe = 'alltime';
-
-    activityTabButtons.forEach(button => {
-      button.addEventListener('click', function() {
-        activityTabButtons.forEach(btn => btn.classList.remove('active'));
-        this.classList.add('active');
-        const tabId = this.getAttribute('data-tab');
-        // Extract timeframe from tab ID (e.g., 'activity-weekly' -> 'weekly')
-        const timeframe = tabId.replace('activity-', '');
-        currentActivityTimeframe = timeframe;
-        fetchRecentActivity(timeframe).then(() => setupActivityCarousel());
-      });
-    });
-
     // --- Recent Activity with localStorage cache ---
-    async function fetchRecentActivity(timeframe = 'alltime') {
+    async function fetchRecentActivity() {
       const activityCarousel = document.querySelector('.activity-carousel');
       if (!activityCarousel) return;
 
       // Try to show cached data instantly
-      const cacheKey = `recent_activity_${timeframe}`;
+      const cacheKey = 'recent_activity';
       const cached = localStorage.getItem(cacheKey);
       if (cached) {
         try {
@@ -582,7 +560,7 @@
 
       // Always fetch fresh data in the background
       try {
-        const response = await fetch(`/api/recent-activity?timeframe=${timeframe}`);
+        const response = await fetch('/api/recent-activity');
         if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
         const recentActivity = await response.json();
         renderRecentActivity(recentActivity);
@@ -747,7 +725,7 @@
     }
 
     // On page load, show alltime activity by default
-    fetchRecentActivity('alltime').then(() => setupActivityCarousel());
+    fetchRecentActivity().then(() => setupActivityCarousel());
     
   </script>
 </body>

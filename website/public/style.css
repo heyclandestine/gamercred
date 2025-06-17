@@ -1162,7 +1162,7 @@ footer {
   cursor: pointer;
   transition: background 0.15s, color 0.15s, transform 0.1s;
   opacity: 0.95;
-  margin-top: 3.5rem;
+  margin-top: 2rem;
 }
 
 .carousel-arrow.left {
