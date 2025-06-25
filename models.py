@@ -74,7 +74,7 @@ class LeaderboardHistory(Base):
 class Bonus(Base):
     __tablename__ = 'bonuses'
     
-    id = Column(Integer, primary_key=True)
+    id = Column(Integer, primary_key=True, autoincrement=True)
     user_id = Column(BigInteger, ForeignKey('user_stats.user_id'), nullable=False)
     credits = Column(Float, nullable=False)
     reason = Column(String, nullable=False)

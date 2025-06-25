@@ -845,6 +845,9 @@ def log_game():
             return jsonify({'message': 'Game session logged successfully'}), 200
         except Exception as e:
             logger.error(f"Error in storage.log_game_session: {str(e)}", exc_info=True)
+            # Custom error for missing game
+            if 'Game does not exist in the database' in str(e):
+                return jsonify({'error': 'That game does not exist. Please add it or check the name.'}), 400
             return jsonify({'error': f'Failed to log game session: {str(e)}'}), 500
 
     except Exception as e:
