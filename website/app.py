@@ -531,6 +531,9 @@ def get_user_stats_endpoint(user_identifier):
         formatted_stats = {
             'user_id': user_id_str,  # Use string version
             'total_credits': user_overall_stats.get('total_credits', 0),
+            'total_hours': user_overall_stats.get('total_hours', 0),
+            'games_played': user_overall_stats.get('games_played', 0),
+            'total_sessions': user_overall_stats.get('total_sessions', 0),
             'rank': user_overall_stats.get('rank'),
             'username': discord_info.get('username', f'User{user_id_str}'), # Use fetched username or fallback
             'avatar_url': discord_info.get('avatar_url', f'https://randomuser.me/api/portraits/men/{user_id_str}.jpg'), # Use fetched avatar or fallback

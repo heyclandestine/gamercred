@@ -27,7 +27,7 @@ This directory contains the organized static files for the Gamer Cred website.
 - `index.html` - Homepage (served from root route)
 - `all_games.html` - All games listing page
 - `game.html` - Individual game page
-- `user.html` - User profile page
+- `user.html` - User profile page (includes total hours, games played, sessions stats)
 
 ### `/docs/` - Documentation
 - `CSS_STRUCTURE.md` - CSS organization documentation
@@ -46,3 +46,16 @@ All HTML files now reference assets using absolute paths:
 - The main.css file contains all the original styles
 - All file paths have been updated to reference the new folder structure
 - Flask routes have been updated to serve HTML files from the `/pages/` folder 
+
+## Features
+
+### User Profile Page
+The user profile page (`/pages/user.html`) displays comprehensive user statistics including:
+- **Total Credits** - Points earned from gaming
+- **Rank** - User's position on the leaderboard
+- **Total Hours** - Total time spent gaming
+- **Games Played** - Number of unique games played
+- **Total Sessions** - Number of gaming sessions logged
+- **Most Played Games** - Top games by playtime (weekly/monthly/all-time)
+- **Recent Activity** - Latest gaming sessions
+- **Leaderboard History** - Previous leaderboard placements 

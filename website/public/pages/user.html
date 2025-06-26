@@ -53,6 +53,23 @@
       gap: 16px;
       justify-content: center;
     }
+    .profile-stats-secondary {
+      display: flex;
+      gap: 16px;
+      justify-content: center;
+      margin-top: 8px;
+      margin-bottom: 1rem;
+      font-size: 0.9em;
+      color: #888;
+    }
+    .profile-stats-secondary span {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .profile-stats-secondary i {
+      font-size: 0.9em;
+    }
     .side-by-side-cards {
         display: flex;
         flex-wrap: wrap;
@@ -241,8 +258,13 @@
         <div class="profile-info">
           <h1>PlayerOne</h1>
           <div class="profile-stats">
-            <span><i class="fas fa-trophy"></i> 1,800 pts</span>
-            <span><i class="fas fa-medal"></i> Rank #1</span>
+            <span><i class="fas fa-trophy"></i> <span id="totalCredits">1,800 pts</span></span>
+            <span><i class="fas fa-medal"></i> <span id="userRank">Rank #1</span></span>
+          </div>
+          <div class="profile-stats-secondary">
+            <span><i class="fas fa-clock"></i> <span id="totalHours">0 hrs</span></span>
+            <span><i class="fas fa-gamepad"></i> <span id="gamesPlayed">0 games</span></span>
+            <span><i class="fas fa-list"></i> <span id="totalSessions">0 sessions</span></span>
           </div>
         </div>
       </div>
@@ -328,8 +350,11 @@
           console.error('User identifier not found in URL.');
           document.querySelector('.profile-header h1').textContent = 'User Not Found';
           document.querySelector('.profile-avatar').src = 'https://www.gravatar.com/avatar/?d=mp&s=50'; // Default avatar
-          document.querySelector('.profile-stats span:nth-child(1)').textContent = '';
-          document.querySelector('.profile-stats span:nth-child(2)').textContent = '';
+          document.getElementById('totalCredits').textContent = '';
+          document.getElementById('userRank').textContent = '';
+          document.getElementById('totalHours').textContent = '';
+          document.getElementById('gamesPlayed').textContent = '';
+          document.getElementById('totalSessions').textContent = '';
           // Hide or clear most played section if user not found
           document.querySelector('.most-played .most-played-carousel .activity-carousel').innerHTML = '<p>User not found or has no stats.</p>';
           return;
@@ -347,16 +372,22 @@
                   const basicInfo = await discordInfoResponse.json();
                   document.querySelector('.profile-header h1').textContent = basicInfo.username;
                   document.querySelector('.profile-avatar').src = basicInfo.avatar_url;
-                  document.querySelector('.profile-stats span:nth-child(1)').textContent = '0 pts';
-                  document.querySelector('.profile-stats span:nth-child(2)').textContent = 'Rank N/A';
+                  document.getElementById('totalCredits').textContent = '0 pts';
+                  document.getElementById('userRank').textContent = 'Rank N/A';
+                  document.getElementById('totalHours').textContent = '0 hrs';
+                  document.getElementById('gamesPlayed').textContent = '0 games';
+                  document.getElementById('totalSessions').textContent = '0 sessions';
                   document.querySelector('.most-played .most-played-carousel .activity-carousel').innerHTML = '<p>No gaming activity recorded for this timeframe.</p>';
               } else {
                   // Fallback if even basic info fails
                   document.querySelector('.profile-header h1').textContent = 'User Not Found';
                   document.querySelector('.profile-avatar').src = 'https://www.gravatar.com/avatar/?d=mp&s=50'; // Default avatar
-                  document.querySelector('.profile-stats span:nth-child(1)').textContent = '';
-                  document.querySelector('.profile-stats span:nth-child(2)').textContent = '';
-                   document.querySelector('.most-played .most-played-carousel .activity-carousel').innerHTML = '<p>User not found.</p>';
+                  document.getElementById('totalCredits').textContent = '';
+                  document.getElementById('userRank').textContent = '';
+                  document.getElementById('totalHours').textContent = '';
+                  document.getElementById('gamesPlayed').textContent = '';
+                  document.getElementById('totalSessions').textContent = '';
+                  document.querySelector('.most-played .most-played-carousel .activity-carousel').innerHTML = '<p>User not found.</p>';
               }
               return; // Exit the function as user stats were not found
           } else if (!response.ok) {
@@ -369,8 +400,13 @@
           // Update profile header with fetched data
           document.querySelector('.profile-header h1').textContent = userData.username;
           document.querySelector('.profile-avatar').src = userData.avatar_url;
-          document.querySelector('.profile-stats span:nth-child(1)').textContent = `${formatNumberWithCommas(userData.total_credits)} pts`;
-          document.querySelector('.profile-stats span:nth-child(2)').textContent = userData.rank !== null ? `Rank #${userData.rank}` : 'Rank N/A';
+          document.getElementById('totalCredits').textContent = `${formatNumberWithCommas(userData.total_credits)} pts`;
+          document.getElementById('userRank').textContent = userData.rank !== null ? `Rank #${userData.rank}` : 'Rank N/A';
+          
+          // Update secondary stats
+          document.getElementById('totalHours').textContent = `${formatNumberWithCommas(userData.total_hours || 0)} hrs`;
+          document.getElementById('gamesPlayed').textContent = `${formatNumberWithCommas(userData.games_played || 0)} games`;
+          document.getElementById('totalSessions').textContent = `${formatNumberWithCommas(userData.total_sessions || 0)} sessions`;
 
           // Update Most Played section
           const mostPlayedCarousel = document.querySelector('#played-' + timeframe + ' .activity-carousel');
@@ -435,8 +471,11 @@
           // Display an error message on the page
           document.querySelector('.profile-header h1').textContent = 'Error loading profile';
           document.querySelector('.profile-avatar').src = 'https://www.gravatar.com/avatar/?d=mp&s=50'; // Default avatar
-          document.querySelector('.profile-stats span:nth-child(1)').textContent = '';
-          document.querySelector('.profile-stats span:nth-child(2)').textContent = '';
+          document.getElementById('totalCredits').textContent = '';
+          document.getElementById('userRank').textContent = '';
+          document.getElementById('totalHours').textContent = '';
+          document.getElementById('gamesPlayed').textContent = '';
+          document.getElementById('totalSessions').textContent = '';
           document.querySelector('.most-played .most-played-carousel .activity-carousel').innerHTML = '<p>Error loading profile data.</p>';
         }
       }
