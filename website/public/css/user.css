@@ -42,7 +42,6 @@
   gap: 1.5em;
   font-size: 1.1em;
   color: #8be9fd;
-  margin-bottom: 1.5rem;
 }
 
 .profile-activity ul {
@@ -296,28 +295,6 @@
 
 .players-list li:hover {
   background: #36393f;
-}
-
-.players-list li .avatar-sm {
-  width: 40px;
-  height: 40px;
-  margin-right: 0;
-  margin-bottom: 0;
-}
-
-.players-list li .user-link {
-  font-size: 1rem;
-  font-weight: bold;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  max-width: 100%;
-}
-
-.play-time {
-  margin-left: 0;
-  color: #ffb86c;
-  font-weight: 600;
 }
 
 .players-list li .avatar-sm {
@@ -765,9 +742,7 @@
   min-width: 185px;
   max-width: 185px;
   height: 286px;
-  background: #2a2a3a;
   border-radius: 12px;
-  box-shadow: 0 4px 24px rgba(255,111,174,0.08);
   display: block;
   scroll-snap-align: start;
   padding-bottom: 0;
@@ -786,21 +761,6 @@
   width: 100%;
   height: 100%;
   object-fit: cover;
-  transition: none;
-  cursor: pointer;
-  border-radius: 18px;
-  display: block;
-  z-index: 1;
-  box-shadow: none;
-  filter: none;
-}
-
-a:hover .game-cover-carousel, .activity-card:hover .game-cover-carousel {
-  filter: none;
-}
-
-.game-cover-carousel:hover {
-  filter: none;
 }
 
 .activity-date {
@@ -1248,20 +1208,19 @@ a:hover .game-cover-carousel, .activity-card:hover .game-cover-carousel {
     width: 100%;
 }
 
-.more-button {
-    background: #4f46e5;
-    color: white;
+.more-button, .less-button {
+  background: #6366f1;
+  color: white;
   border: none;
-    padding: 0.5rem 1.5rem;
-    border-radius: 20px;
-    font-weight: 600;
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
   cursor: pointer;
-    transition: background-color 0.2s;
-    min-width: 120px;
+  margin-top: 0.5rem;
+  font-size: 0.9em;
 }
 
-.more-button:hover {
-    background: #4338ca;
+.more-button:hover, .less-button:hover {
+  background: #4f46e5;
 }
 
 /* Style for the less button */
@@ -2053,5 +2012,341 @@ a:hover .game-cover-carousel, .activity-card:hover .game-cover-carousel {
     font-size: 1rem;
     padding: 0.5rem 1rem;
   }
+}
+
+/* User Profile Page Specific Styles */
+
+.tab-content {
+  display: none;
+}
+
+.tab-content.active {
+  display: block;
+}
+
+.activity-userblock {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.activity-sessions {
+  font-size: 0.9em;
+  color: #a0a0a0;
+}
+
+.activity-time {
+  font-size: 1.1em;
+  font-weight: 600;
+}
+
+.profile-card {
+  text-align: center;
+  padding: 0px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+}
+
+.profile-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+
+.profile-info {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.profile-stats {
+  display: flex;
+  gap: 16px;
+  justify-content: center;
+}
+
+.profile-stats-secondary {
+  display: flex;
+  gap: 16px;
+  justify-content: center;
+  margin-top: 8px;
+  margin-bottom: 1rem;
+  font-size: 0.9em;
+  color: #888;
+}
+
+.profile-stats-secondary span {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.profile-stats-secondary i {
+  font-size: 0.9em;
+}
+
+.side-by-side-cards {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2.5rem;
+  box-sizing: border-box;
+  flex: 1 1 0;
+  align-items: stretch;
+  align-self: stretch;
+}
+
+.side-by-side-cards .card {
+  flex: 1;
+  min-width: 300px;
+  margin-bottom: 0;
+  box-sizing: border-box;
+}
+
+.loading-spinner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  color: #666;
+  font-size: 0.9em;
+}
+
+.loading-spinner i {
+  margin-right: 8px;
+}
+
+.leaderboard-tabs {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.leaderboard-tabs .tab-btn {
+  background: #f3f3f3;
+  border: none;
+  padding: 0.5rem 1.5rem;
+  border-radius: 20px 20px 0 0;
+  font-weight: 600;
+  cursor: pointer;
+  color: #444;
+  transition: background 0.2s, color 0.2s;
+}
+
+.leaderboard-tabs .tab-btn.active {
+  background: #4f46e5;
+  color: #fff;
+}
+
+.leaderboard-history-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.leaderboard-history-list li {
+  background: #24272e;
+  border-radius: 12px;
+  margin-bottom: 1rem;
+  padding: 1rem 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+  border-left: 6px solid #6366f1;
+  position: relative;
+  transition: box-shadow 0.2s;
+}
+
+.leaderboard-history-list li .placement {
+  font-size: 1.3em;
+  font-weight: 700;
+  margin-right: 0.7em;
+  display: inline-block;
+  color: #fff;
+}
+
+.leaderboard-history-list li .placement-icon {
+  font-size: 1.2em;
+  margin-right: 0.3em;
+  vertical-align: middle;
+}
+
+.leaderboard-history-list li .period {
+  color: #6366f1;
+  font-weight: 600;
+  font-size: 1em;
+  margin-bottom: 0.2em;
+}
+
+.leaderboard-history-list li .credits {
+  color: #fff;
+  font-size: 0.98em;
+  font-weight: 500;
+}
+
+.leaderboard-history-list li .most-played {
+  color: #666;
+  font-size: 0.95em;
+  margin-top: 0.2em;
+}
+
+.profile-activity ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.profile-activity li {
+  background: #24272e;
+  border-radius: 12px;
+  margin-bottom: 1rem;
+  padding: 1rem 1.5rem;
+  display: flex;
+  flex-direction: row;
+  gap: 1.2rem;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+  border-left: 6px solid #6366f1;
+  position: relative;
+  transition: box-shadow 0.2s;
+}
+
+.profile-activity li:hover {
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+}
+
+.profile-activity .game-cover-activity {
+  width: 60px;
+  height: 80px;
+  object-fit: cover;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  flex-shrink: 0;
+}
+
+.profile-activity .activity-details {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2em;
+  flex: 1;
+}
+
+.profile-activity .game-name {
+  font-weight: 700;
+  color: #fff;
+  font-size: 1.15em;
+  margin-bottom: 0.1em;
+}
+
+.profile-activity .activity-time {
+  color: #6366f1;
+  font-weight: 700;
+  font-size: 1em;
+  margin-bottom: 0.1em;
+}
+
+.profile-activity .activity-credits {
+  color: #fff;
+  font-size: 0.98em;
+  font-weight: 500;
+  margin-bottom: 0.1em;
+}
+
+.profile-activity .activity-date {
+  color: #666;
+  font-size: 0.95em;
+  margin-top: 0.2em;
+}
+
+.most-played-tabs {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.most-played-tabs .tab-btn {
+  background: #f3f3f3;
+  border: none;
+  padding: 0.5rem 1.5rem;
+  border-radius: 20px 20px 0 0;
+  font-weight: 600;
+  cursor: pointer;
+  color: #444;
+  transition: background 0.2s, color 0.2s;
+}
+
+.most-played-tabs .tab-btn.active {
+  background: #4f46e5;
+  color: #fff;
+}
+
+.most-played-carousel {
+  margin-top: 1rem;
+}
+
+.activity-carousel {
+  display: flex;
+  gap: 1rem;
+  overflow-x: auto;
+}
+
+.activity-card-wrap {
+  flex-shrink: 0;
+  width: 120px;
+}
+
+.activity-card {
+  position: relative;
+  border-radius: 8px;
+  overflow: hidden;
+  aspect-ratio: 2/3;
+}
+
+.activity-card a {
+  display: block;
+  height: 100%;
+  text-decoration: none;
+}
+
+.game-cover-carousel {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.activity-overlay {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(0deg, #23232be0 80%, transparent 100%);
+  color: #fff;
+  padding: 0.7em 1em;
+  display: flex;
+  align-items: center;
+  gap: 0.7em;
+  font-size: 1.05em;
+  z-index: 2;
+  border-radius: 0 0 18px 18px;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.more-button, .less-button {
+  background: #6366f1;
+  color: white;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  cursor: pointer;
+  margin-top: 0.5rem;
+  font-size: 0.9em;
+}
+
+.more-button:hover, .less-button:hover {
+  background: #4f46e5;
 }
 

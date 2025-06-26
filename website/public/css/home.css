@@ -154,9 +154,7 @@
   min-width: 185px;
   max-width: 185px;
   height: 286px;
-  background: #2a2a3a;
   border-radius: 12px;
-  box-shadow: 0 4px 24px rgba(255,111,174,0.08);
   display: block;
   scroll-snap-align: start;
   padding-bottom: 0;
@@ -548,6 +546,19 @@ a:hover .game-cover-carousel, .activity-card:hover .game-cover-carousel {
 }
 
 .loading-spinner i {
+  margin-right: 8px;
+}
+
+.loading-placeholder {
+  display: flex;
+  align-items: center;
+  padding: 10px;
+  color: #666;
+  font-size: 0.9em;
+  border-bottom: 1px solid #eee;
+}
+
+.loading-placeholder i {
   margin-right: 8px;
 }
 

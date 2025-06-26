@@ -2,3 +2,127 @@
 /* Games listing page styles */
 /* Extracted from style.css */
 
+/* All Games Page Specific Styles */
+
+.games-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.games-grid-section {
+  box-shadow: none;
+}
+
+.view-toggle {
+  display: flex;
+  gap: 8px;
+  align-self: center;
+  padding-top: 1rem;
+}
+
+.view-btn {
+  background: none;
+  border: 1px solid #444;
+  color: #888;
+  padding: 8px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.view-btn:hover {
+  background: #333;
+  color: #fff;
+}
+
+.view-btn.active {
+  background: #444;
+  color: #fff;
+}
+
+.games-grid {
+  display: grid;
+  gap: 20px;
+}
+
+.games-grid.list-view {
+  grid-template-columns: 1fr;
+}
+
+.games-grid.grid-view {
+  grid-template-columns: repeat(5, 1fr);
+}
+
+.game-card {
+  border-radius: 8px;
+  overflow: hidden;
+  transition: transform 0.2s;
+}
+
+.game-card:hover {
+  transform: translateY(-4px);
+}
+
+.game-card.grid-view {
+  aspect-ratio: 2/3;
+  background: #19191f !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+.game-card.grid-view .game-card-link {
+  height: 100%;
+  width: 100%;
+  display: block;
+}
+
+.game-card.grid-view .game-card-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  margin: 0;
+  display: block;
+}
+
+.game-card.grid-view .game-card-info {
+  display: none;
+}
+
+.game-card.grid-view .cph-indicator {
+  position: absolute;
+  bottom: 8px;
+  background: rgba(0, 0, 0, 0.75);
+  color: #fff;
+  padding: 4px 8px;
+  border-radius: 10px;
+  font-size: 1em;
+  font-weight: 500;
+  z-index: 1;
+  display: block;
+}
+
+.game-card.list-view .cph-indicator {
+  display: none;
+}
+
+/* Override any search-related styles for grid view */
+.games-grid.grid-view .game-card {
+  background: #19191f !important;
+}
+
+.games-grid.grid-view .game-card:hover {
+  background: #19191f !important;
+}
+
+.games-grid.grid-view .game-card:focus {
+  background: #19191f !important;
+}
+
+.games-grid.grid-view .game-card:focus-within {
+  background: #19191f !important;
+}
+

@@ -304,6 +304,12 @@ main {
   gap: 0.3em;
 }
 
+.bonuses .bonus-credits {
+  color: #ffb86c;
+  font-weight: 700;
+  margin-left: 0.3em;
+}
+
 .activity ul {
   list-style: none;
   padding-left: 0;
@@ -1204,9 +1210,7 @@ footer {
   min-width: 185px;
   max-width: 185px;
   height: 286px;
-  background: #2a2a3a;
   border-radius: 12px;
-  box-shadow: 0 4px 24px rgba(255,111,174,0.08);
   display: block;
   scroll-snap-align: start;
   padding-bottom: 0;
