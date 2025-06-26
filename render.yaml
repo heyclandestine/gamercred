@@ -54,6 +54,8 @@ services:
         fromDatabase:
           name: gamercred-db
           property: connectionString
+      - key: RAWG_API_KEY
+        sync: false
 
 databases:
   - name: gamercred-db

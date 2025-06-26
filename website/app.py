@@ -868,6 +868,47 @@ def log_game():
         logger.error(error_msg, exc_info=True)
         return jsonify({'error': 'Internal server error', 'details': str(e)}), 500
 
+@app.route('/api/rate-game', methods=['POST'])
+def rate_game():
+    """Rate a game (set credits per hour)"""
+    try:
+        data = request.json
+        if not data:
+            return jsonify({'error': 'No data provided'}), 400
+
+        user_id = data.get('user_id')
+        game_name = data.get('game_name')
+        rating = data.get('rating')  # This is actually credits per hour, not a rating
+
+        if not all([user_id, game_name, rating]):
+            return jsonify({'error': 'Missing required fields'}), 400
+
+        try:
+            rating = float(rating)
+        except ValueError:
+            return jsonify({'error': 'Rating must be a number'}), 400
+
+        if rating < 0.1:
+            return jsonify({'error': 'Rating must be at least 0.1'}), 400
+
+        logger.info(f"Setting rate for game {game_name} to {rating} credits/hour by user {user_id}")
+        
+        try:
+            # Use the storage method to set the game rate
+            success = run_async(storage.set_game_credits_per_hour(game_name, rating, user_id))
+            if success:
+                return jsonify({'message': f'Successfully set rate for {game_name} to {rating} credits/hour'}), 200
+            else:
+                return jsonify({'error': f'Failed to set rate for {game_name}'}), 500
+        except Exception as e:
+            logger.error(f"Error setting game rate: {str(e)}", exc_info=True)
+            return jsonify({'error': f'Failed to set game rate: {str(e)}'}), 500
+
+    except Exception as e:
+        error_msg = f"Error rating game: {str(e)}"
+        logger.error(error_msg, exc_info=True)
+        return jsonify({'error': 'Internal server error'}), 500
+
 @app.route('/api/search-games', methods=['GET'])
 def search_games():
     """Search for games by name"""
