@@ -135,6 +135,7 @@
     font-size: 0.9rem;
     min-width: 18px;
     flex-shrink: 0;
+    order: -1;
   }
 
   .leaderboard .score,

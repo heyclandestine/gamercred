@@ -977,6 +977,7 @@ footer {
 
 .popular-games-list li .rank {
   font-size: 1.2em;
+  order: -1;
 }
 
 .game-cover-sm {
