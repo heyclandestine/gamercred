@@ -213,7 +213,7 @@ def clean_and_truncate_description(html_text):
 @app.route('/')
 def index():
     try:
-        return send_from_directory(app.static_folder, 'index.html')
+        return send_from_directory(app.static_folder, 'pages/index.html')
     except Exception as e:
         print(f"Error serving index.html: {str(e)}")
         print("Full traceback:")
@@ -223,7 +223,7 @@ def index():
 @app.route('/game.html')
 def game():
     try:
-        return send_from_directory(app.static_folder, 'game.html')
+        return send_from_directory(app.static_folder, 'pages/game.html')
     except Exception as e:
         print(f"Error serving game.html: {str(e)}")
         print("Full traceback:")
@@ -233,12 +233,22 @@ def game():
 @app.route('/user.html')
 def user():
     try:
-        return send_from_directory(app.static_folder, 'user.html')
+        return send_from_directory(app.static_folder, 'pages/user.html')
     except Exception as e:
         print(f"Error serving user.html: {str(e)}")
         print("Full traceback:")
         traceback.print_exc()
         return "Error serving user.html", 500
+
+@app.route('/all_games.html')
+def all_games():
+    try:
+        return send_from_directory(app.static_folder, 'pages/all_games.html')
+    except Exception as e:
+        print(f"Error serving all_games.html: {str(e)}")
+        print("Full traceback:")
+        traceback.print_exc()
+        return "Error serving all_games.html", 500
 
 @app.route('/<path:path>')
 def serve_static(path):
@@ -249,7 +259,7 @@ def serve_static(path):
         
         # Skip root path
         if path == '':
-            return send_from_directory(app.static_folder, 'index.html')
+            return send_from_directory(app.static_folder, 'pages/index.html')
         
         # Handle HTML files
         if path.endswith('.html'):

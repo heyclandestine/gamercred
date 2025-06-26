@@ -4,9 +4,9 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Game - Gamer Cred</title>
-  <link rel="icon" type="image/png" href="/favicon.png">
+  <link rel="icon" type="image/png" href="/images/favicon.png">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap">
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="/css/main.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
 </head>
 <body>
@@ -16,13 +16,13 @@
         <i class="fas fa-bars"></i>
       </button>
       <a href="/" class="site-title nav-home-btn">
-        <img src="/favicon.png" alt="Gamer Cred" class="nav-favicon">
+        <img src="/images/favicon.png" alt="Gamer Cred" class="nav-favicon">
         Gamer Cred
       </a>
     </div>
     <div class="nav-center">
       <input type="text" class="search-bar" placeholder="Search players, games...">
-      <a href="/all_games.html" class="nav-link desktop-only">All Games</a>
+      <a href="/pages/all_games.html" class="nav-link desktop-only">All Games</a>
     </div>
     <div class="nav-right">
       <div id="auth-container">
@@ -117,7 +117,7 @@
       </ul>
     </section>
 
-    <a href="index.html" class="back-link">&larr; Back to Home</a>
+    <a href="/" class="back-link">&larr; Back to Home</a>
   </main>
 
   <script>
@@ -236,7 +236,7 @@
             playersList.innerHTML = data.map(player => `
               <li>
                 <img class="avatar-sm" src="${player.avatar_url}" alt="${player.username}">
-                <a class="user-link" href="user.html?user=${player.user_id}">${player.username}</a>
+                <a class="user-link" href="/pages/user.html?user=${player.user_id}">${player.username}</a>
               </li>
             `).join('');
           }
@@ -267,7 +267,7 @@
               <li>
                 <img class="avatar-sm" src="${activity.avatar_url}" alt="${activity.username}">
                 <div class="activity-details">
-                  <a class="user-link" href="user.html?user=${String(activity.user_id)}">${activity.username}</a>
+                  <a class="user-link" href="/pages/user.html?user=${String(activity.user_id)}">${activity.username}</a>
                   <span class="activity-text">played for ${formatHours(activity.hours)}</span>
                 </div>
                 <span class="activity-time">${formatTimeAgo(activity.timestamp)}</span>
@@ -382,11 +382,11 @@
         <div class="error-message">
           <h2>Error</h2>
           <p>${message}</p>
-          <a href="index.html" class="back-link">&larr; Back to Home</a>
+          <a href="/" class="back-link">&larr; Back to Home</a>
         </div>
       `;
     }
   </script>
-  <script src="script.js"></script>
+  <script src="/js/script.js"></script>
 </body>
 </html> 

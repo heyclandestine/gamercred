@@ -43,7 +43,7 @@ document.addEventListener('DOMContentLoaded', function() {
         `;
         item.addEventListener('mousedown', e => {
           e.preventDefault();
-          window.location.href = `game.html?game=${encodeURIComponent(game.name)}`;
+          window.location.href = `/pages/game.html?game=${encodeURIComponent(game.name)}`;
         });
         list.appendChild(item);
         flatResults.push(item);
@@ -70,7 +70,7 @@ document.addEventListener('DOMContentLoaded', function() {
         `;
         item.addEventListener('mousedown', e => {
           e.preventDefault();
-          window.location.href = `user.html?user=${encodeURIComponent(userId)}`;
+          window.location.href = `/pages/user.html?user=${encodeURIComponent(userId)}`;
         });
         list.appendChild(item);
         flatResults.push(item);

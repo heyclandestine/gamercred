@@ -5,9 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>PlayerOne - Gamer Cred</title>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap">
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="/css/main.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
-  <link rel="icon" type="image/png" href="/favicon.png">
+  <link rel="icon" type="image/png" href="/images/favicon.png">
   <style>
     .tab-content {
       display: none;
@@ -217,13 +217,13 @@
         <i class="fas fa-bars"></i>
       </button>
       <a href="/" class="site-title nav-home-btn">
-        <img src="/favicon.png" alt="Gamer Cred" class="nav-favicon">
+        <img src="/images/favicon.png" alt="Gamer Cred" class="nav-favicon">
         Gamer Cred
       </a>
     </div>
     <div class="nav-center">
       <input type="text" class="search-bar" placeholder="Search players, games...">
-      <a href="/all_games.html" class="nav-link desktop-only">All Games</a>
+      <a href="/pages/all_games.html" class="nav-link desktop-only">All Games</a>
     </div>
     <div class="nav-right">
       <div id="auth-container">
@@ -307,7 +307,7 @@
         </div>
       </section>
     </div>
-    <a href="index.html" class="back-link">&larr; Back to Home</a>
+    <a href="/" class="back-link">&larr; Back to Home</a>
   </main>
   <footer>
     <p>Inspired by backloggd & letterboxd. Not affiliated with Discord.</p>
@@ -981,7 +981,7 @@
               cardWrap.className = 'activity-card-wrap';
               cardWrap.innerHTML = `
                 <div class="activity-card">
-                  <a href="game.html?game=${encodeURIComponent(game.name)}">
+                  <a href="/pages/game.html?game=${encodeURIComponent(game.name)}">
                     <img class="game-cover-carousel" src="${game.box_art_url || 'https://static-cdn.jtvnw.net/ttv-boxart/loading_boxart.png'}" alt="${game.name}">
                   </a>
                   <div class="activity-overlay">
@@ -1068,7 +1068,7 @@
         .then(user => {
           const authContainer = document.getElementById('auth-container');
           authContainer.innerHTML = `
-            <a href="/user.html?user=${user.id}" class="user-profile">
+            <a href="/pages/user.html?user=${user.id}" class="user-profile">
               <img src="${user.avatar ? `https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png` : 'https://cdn.discordapp.com/embed/avatars/0.png'}" 
                    alt="${user.username}" 
                    class="user-avatar">
@@ -1091,6 +1091,6 @@
         });
     });
   </script>
-  <script src="script.js"></script>
+  <script src="/js/script.js"></script>
 </body>
-</html> 
+</html>

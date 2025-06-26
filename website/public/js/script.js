@@ -12,7 +12,7 @@ document.addEventListener('DOMContentLoaded', function() {
       const authContainer = document.getElementById('auth-container');
       if (authContainer) {
         authContainer.innerHTML = `
-          <a href="/user.html?user=${user.id}" class="user-profile">
+          <a href="/pages/user.html?user=${user.id}" class="user-profile">
             <img src="${user.avatar ? `https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png` : 'https://cdn.discordapp.com/embed/avatars/0.png'}" 
                  alt="${user.username}" 
                  class="user-avatar">
@@ -76,7 +76,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const li = document.createElement('li');
         li.innerHTML = `
           <img class="avatar-sm" src="${bonus.avatar_url || `https://cdn.discordapp.com/embed/avatars/${parseInt(bonus.user_id.slice(-1)) % 6}.png`}" alt="${bonus.username}">
-          <a class="user-link" href="user.html?user=${String(bonus.user_id)}">${bonus.username}</a> earned 
+          <a class="user-link" href="/pages/user.html?user=${String(bonus.user_id)}">${bonus.username}</a> earned 
           <span class="bonus"><i class="fas fa-bolt"></i> "${bonus.reason}"</span>
         `;
         ul.appendChild(li);
@@ -414,9 +414,9 @@ document.addEventListener('DOMContentLoaded', function() {
           if (activeIndex >= 0 && activeIndex < results.length) {
             const result = results[activeIndex];
             if (result.type === 'game') {
-              window.location.href = `/game.html?game=${encodeURIComponent(result.name)}`;
+              window.location.href = `/pages/game.html?game=${encodeURIComponent(result.name)}`;
             } else {
-              window.location.href = `/user.html?user=${result.id}`;
+              window.location.href = `/pages/user.html?user=${result.id}`;
             }
           }
           break;
@@ -435,9 +435,9 @@ document.addEventListener('DOMContentLoaded', function() {
         if (index >= 0 && index < results.length) {
           const result = results[index];
           if (result.type === 'game') {
-            window.location.href = `/game.html?game=${encodeURIComponent(result.name)}`;
+            window.location.href = `/pages/game.html?game=${encodeURIComponent(result.name)}`;
           } else {
-            window.location.href = `/user.html?user=${result.id}`;
+            window.location.href = `/pages/user.html?user=${result.id}`;
           }
         }
       }
@@ -742,9 +742,9 @@ document.addEventListener('DOMContentLoaded', function() {
         if (results[idx]) {
           const result = results[idx];
           if (result.type === 'game') {
-            window.location.href = `/game.html?game=${encodeURIComponent(result.title)}`;
+            window.location.href = `/pages/game.html?game=${encodeURIComponent(result.title)}`;
           } else if (result.type === 'user') {
-            window.location.href = `/user.html?user=${result.user_id}`;
+            window.location.href = `/pages/user.html?user=${result.user_id}`;
           }
         }
       }
@@ -768,9 +768,9 @@ document.addEventListener('DOMContentLoaded', function() {
         if (activeIndex >= 0 && results[activeIndex]) {
           const result = results[activeIndex];
           if (result.type === 'game') {
-            window.location.href = `/game.html?game=${encodeURIComponent(result.title)}`;
+            window.location.href = `/pages/game.html?game=${encodeURIComponent(result.title)}`;
           } else if (result.type === 'user') {
-            window.location.href = `/user.html?user=${result.user_id}`;
+            window.location.href = `/pages/user.html?user=${result.user_id}`;
           }
           e.preventDefault();
         }
