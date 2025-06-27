@@ -671,9 +671,9 @@
   align-items: flex-start;
   position: relative;
   scrollbar-width: none;
-  justify-content: flex-start;
+  justify-content: center;
   padding-left: 0;
-  margin-top: 2rem;
+  margin-top: 0rem;
 }
 
 .activity-carousel::-webkit-scrollbar {
@@ -2082,11 +2082,47 @@
 .profile-stats-secondary span {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 0.5rem;
+  color: #6272a4;
+  font-size: 0.9rem;
 }
 
 .profile-stats-secondary i {
-  font-size: 0.9em;
+  color: #8be9fd;
+}
+
+.profile-actions {
+  margin-top: 1rem;
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.stats-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+  color: white;
+  margin-bottom: 1.5rem;
+  text-decoration: none;
+  border-radius: 12px;
+  font-weight: 600;
+  font-size: 0.9rem;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3);
+}
+
+.stats-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(79, 70, 229, 0.4);
+  color: white;
+  text-decoration: none;
+}
+
+.stats-btn i {
+  font-size: 1rem;
 }
 
 .side-by-side-cards {

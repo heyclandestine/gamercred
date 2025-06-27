@@ -174,10 +174,28 @@ function updateGameInfo(game) {
 
   // Update game description
   const descriptionElement = document.getElementById('gameDescription');
+  const moreButton = document.querySelector('.more-button');
+  const lessButton = document.querySelector('.less-button');
+  
   if (game.description) {
     descriptionElement.textContent = game.description;
+    
+    // Check if description is truncated and show/hide buttons accordingly
+    setTimeout(() => {
+      const isTruncated = descriptionElement.scrollHeight > descriptionElement.clientHeight;
+      
+      if (isTruncated) {
+        moreButton.style.display = 'inline-block';
+        lessButton.style.display = 'none';
+      } else {
+        moreButton.style.display = 'none';
+        lessButton.style.display = 'none';
+      }
+    }, 100); // Small delay to ensure content is rendered
   } else {
     descriptionElement.textContent = 'No description available.';
+    moreButton.style.display = 'none';
+    lessButton.style.display = 'none';
   }
 
   // Update game stats
@@ -264,4 +282,27 @@ function showError(message) {
       <a href="/" class="back-link">&larr; Back to Home</a>
     </div>
   `;
-} 
+}
+
+// Add event listeners for More/Less buttons
+document.addEventListener('DOMContentLoaded', function() {
+  const moreButton = document.querySelector('.more-button');
+  const lessButton = document.querySelector('.less-button');
+  const descriptionElement = document.getElementById('gameDescription');
+
+  if (moreButton && lessButton && descriptionElement) {
+    moreButton.addEventListener('click', function() {
+      descriptionElement.style.maxHeight = 'none';
+      descriptionElement.style.overflow = 'visible';
+      moreButton.style.display = 'none';
+      lessButton.style.display = 'inline-block';
+    });
+
+    lessButton.addEventListener('click', function() {
+      descriptionElement.style.maxHeight = '200px';
+      descriptionElement.style.overflow = 'hidden';
+      moreButton.style.display = 'inline-block';
+      lessButton.style.display = 'none';
+    });
+  }
+}); 

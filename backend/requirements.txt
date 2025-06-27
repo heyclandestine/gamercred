@@ -1,7 +1,0 @@
-Flask==3.0.2
-Flask-Cors==4.0.0
-python-dotenv==1.0.1
-requests==2.31.0
-sqlalchemy==2.0.27
-pytz==2024.1
-aiohttp==3.9.1 

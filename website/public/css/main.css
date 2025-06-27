@@ -1710,17 +1710,19 @@ a:hover .game-cover-carousel, .activity-card:hover .game-cover-carousel {
 
 /* Style for the less button */
 .less-button {
-  background: none;
+  background: #4f46e5;
+  color: white;
   border: none;
-  color: #8be9fd;
+  padding: 0.5rem 1.5rem;
+  border-radius: 20px;
+  font-weight: 600;
   cursor: pointer;
-  font-size: 1rem;
-  padding: 0;
-  text-align: left;
+  transition: background-color 0.2s;
+  min-width: 120px;
 }
 
 .less-button:hover {
-  text-decoration: underline;
+  background: #4338ca;
 }
 
 /* Style for the new activity details container */

@@ -232,6 +232,7 @@ def game():
 
 @app.route('/user.html')
 def user():
+    """Serve the user profile page"""
     try:
         return send_from_directory(app.static_folder, 'pages/user.html')
     except Exception as e:
@@ -239,6 +240,17 @@ def user():
         print("Full traceback:")
         traceback.print_exc()
         return "Error serving user.html", 500
+
+@app.route('/user_stats.html')
+def user_stats():
+    """Serve the user stats page"""
+    try:
+        return send_from_directory(app.static_folder, 'pages/user_stats.html')
+    except Exception as e:
+        print(f"Error serving user_stats.html: {str(e)}")
+        print("Full traceback:")
+        traceback.print_exc()
+        return "Error serving user_stats.html", 500
 
 @app.route('/all_games.html')
 def all_games():
@@ -286,20 +298,22 @@ def get_game():
         if not game_db_info:
             return jsonify({'error': 'Game not found'}), 404
 
-        # Initialize RAWG data variables
-        description = ''
+        # Use stored description from database
+        description = game_db_info.get('description', '')
         box_art_url = game_db_info.get('box_art_url', '')
         backloggd_url = game_db_info.get('backloggd_url', '')
 
-        # Always fetch description from RAWG API
-        rawg_data = run_async(storage.fetch_game_details_from_rawg(game_name))
-        if rawg_data:
-            description = rawg_data.get('description', '')
-            # Only use RAWG data for box art and backloggd if we don't have it in the database
-            if not box_art_url:
-                box_art_url = rawg_data.get('box_art_url', '')
-            if not backloggd_url:
-                backloggd_url = rawg_data.get('backloggd_url', '')
+        # Only fetch from RAWG API if we don't have the data in the database
+        if not description or not box_art_url:
+            rawg_data = run_async(storage.fetch_game_details_from_rawg(game_name))
+            if rawg_data:
+                # Use RAWG data to fill in missing information
+                if not description:
+                    description = rawg_data.get('description', '')
+                if not box_art_url:
+                    box_art_url = rawg_data.get('box_art_url', '')
+                if not backloggd_url:
+                    backloggd_url = rawg_data.get('backloggd_url', '')
 
         # Combine database info with API info
         final_game_data = {
@@ -555,14 +569,14 @@ def get_user_history_endpoint(user_identifier):
         
         # Profile DB query
         start_db = time.time()
-        user_history = storage.get_user_gaming_history(user_id_str) # Removed limit
+        history = storage.get_user_gaming_history(user_id_str)
         end_db = time.time()
         
-        if not user_history:
+        if not history:
             return jsonify([])
 
         # Batch fetch game info
-        game_names = list({entry.get('game') for entry in user_history if entry.get('game')})
+        game_names = list({entry.get('game') for entry in history if entry.get('game')})
         
         start_batch = time.time()
         game_info_map = storage.get_multiple_game_stats(game_names)
@@ -571,7 +585,7 @@ def get_user_history_endpoint(user_identifier):
         # Format the history data
         formatted_history = []
         start_loop = time.time()
-        for entry in user_history:
+        for entry in history:
             try:
                 game_name = entry.get('game')
                 game_info = game_info_map.get(game_name, {})
@@ -956,6 +970,63 @@ def get_user_game_stats_endpoint(user_identifier):
     except Exception as e:
         print(f"Error getting user game stats: {str(e)}")
         return jsonify({'error': 'Failed to get user game stats'}), 500
+
+@app.route('/api/user-game-summaries/<user_identifier>')
+def get_user_game_summaries_endpoint(user_identifier):
+    """Get detailed game summaries for a user"""
+    try:
+        print(f"Getting game summaries for user: {user_identifier}")
+        
+        # Get user's game summaries
+        game_summaries = storage.get_user_game_summaries(user_identifier)
+        
+        print(f"Raw game summaries: {game_summaries}")
+        
+        if not game_summaries:
+            return jsonify([])
+
+        # Format the response with additional data
+        formatted_summaries = []
+        for summary in game_summaries:
+            try:
+                # Get game details to include box art and other info
+                game_details = storage.get_game_stats(summary['game'])
+                
+                formatted_summary = {
+                    'game_name': summary['game'],
+                    'total_hours': summary['total_hours'],
+                    'total_credits': summary['total_credits'],
+                    'total_sessions': summary['sessions'],
+                    'first_played': summary['first_played'],
+                    'last_played': summary['last_played'],
+                    'box_art_url': game_details.get('box_art_url') if game_details else None,
+                    'backloggd_url': game_details.get('backloggd_url') if game_details else None,
+                    'credits_per_hour': game_details.get('credits_per_hour') if game_details else 1.0
+                }
+                formatted_summaries.append(formatted_summary)
+            except Exception as e:
+                print(f"Error formatting summary for game {summary.get('game', 'unknown')}: {str(e)}")
+                continue
+
+        print(f"Formatted summaries: {formatted_summaries}")
+        return jsonify(formatted_summaries)
+
+    except Exception as e:
+        print(f"Error getting user game summaries: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': 'Failed to get user game summaries'}), 500
+
+# Add endpoint to fetch pre-aggregated daily credits for the heatmap
+@app.route('/api/user-daily-credits/<user_identifier>')
+def get_user_daily_credits(user_identifier):
+    try:
+        user_id_str = str(user_identifier)
+        # Use a new or existing storage method to get daily credits
+        daily_credits = storage.get_user_daily_credits(user_id_str)
+        return jsonify(daily_credits)
+    except Exception as e:
+        return jsonify({'error': 'Internal server error', 'details': str(e)}), 500
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True) 

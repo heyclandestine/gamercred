@@ -106,6 +106,7 @@ class GameStorage:
                     game.rawg_id = rawg_details.get('rawg_id')
                     game.box_art_url = rawg_details.get('box_art_url')
                     game.release_date = rawg_details.get('release_date')
+                    game.description = rawg_details.get('description')
                     session.add(game)
 
             return game, created
@@ -607,12 +608,12 @@ class GameStorage:
         finally:
             session.close()
 
-    def get_user_gaming_history(self, user_id: str, limit: int = 10) -> List[Dict]:
-        """Get user's recent gaming history"""
+    def get_user_gaming_history(self, user_id: str, limit: int = None) -> List[Dict]:
+        """Get user's gaming history (all sessions)"""
         session = self.Session()
         try:
-            # Get recent sessions with game info in a single query
-            results = session.execute(text("""
+            # Get all sessions with game info in a single query
+            sql = """
                 SELECT 
                     g.name as game,
                     gs.hours,
@@ -623,11 +624,12 @@ class GameStorage:
                 JOIN games g ON g.id = gs.game_id
                 WHERE gs.user_id = :user_id
                 ORDER BY gs.timestamp DESC
-                LIMIT :limit
-            """), {
-                "user_id": user_id,
-                "limit": limit
-            }).fetchall()
+            """
+            params = {"user_id": user_id}
+            if limit:
+                sql += " LIMIT :limit"
+                params["limit"] = limit
+            results = session.execute(text(sql), params).fetchall()
 
             return [{
                 "game": row.game,
@@ -736,10 +738,12 @@ class GameStorage:
                         game.rawg_id = rawg_data.get('rawg_id')
                         game.box_art_url = rawg_data.get('box_art_url')
                         game.release_date = rawg_data.get('release_date')
+                        game.description = rawg_data.get('description')
                         print(f"Successfully force updated RAWG data for existing game: {game.name}")
                         print(f"- RAWG ID: {game.rawg_id}")
                         print(f"- Box art URL: {game.box_art_url}")
                         print(f"- Release date: {game.release_date}")
+                        print(f"- Description: {len(game.description) if game.description else 0} chars")
                     else:
                         print(f"Failed to fetch RAWG data for existing game: {game.name}")
                 except Exception as e:
@@ -786,7 +790,8 @@ class GameStorage:
                     backloggd_url=backloggd_url,
                     rawg_id=rawg_data.get('rawg_id') if rawg_data else None,
                     box_art_url=rawg_data.get('box_art_url') if rawg_data else None,
-                    release_date=rawg_data.get('release_date') if rawg_data else None
+                    release_date=rawg_data.get('release_date') if rawg_data else None,
+                    description=rawg_data.get('description') if rawg_data else None
                 )
                 
                 session.add(game)
@@ -1198,7 +1203,8 @@ class GameStorage:
                 "backloggd_url": game.backloggd_url,
                 "box_art_url": game.box_art_url,
                 "rawg_id": game.rawg_id,
-                "release_date": game.release_date
+                "release_date": game.release_date,
+                "description": game.description
             }
         finally:
             session.close()
@@ -1212,7 +1218,9 @@ class GameStorage:
                     g.name,
                     COALESCE(SUM(gs.hours), 0) as total_hours,
                     COALESCE(SUM(gs.credits_earned), 0) as total_credits,
-                    COUNT(*) as sessions
+                    COUNT(*) as sessions,
+                    MIN(gs.timestamp) as first_played,
+                    MAX(gs.timestamp) as last_played
                 FROM gaming_sessions gs
                 JOIN games g ON g.id = gs.game_id
                 WHERE gs.user_id = :user_id
@@ -1224,7 +1232,9 @@ class GameStorage:
                 "game": row.name,
                 "total_hours": float(row.total_hours),
                 "total_credits": float(row.total_credits),
-                "sessions": row.sessions
+                "sessions": row.sessions,
+                "first_played": row.first_played,
+                "last_played": row.last_played
             } for row in results]
         finally:
             session.close()
@@ -2013,6 +2023,21 @@ class GameStorage:
             print(f"Error updating game capitalization: {str(e)}")
             print("Full traceback:")
             traceback.print_exc()
+        finally:
+            session.close()
+
+    def get_user_daily_credits(self, user_id: str) -> List[Dict]:
+        """Get total credits earned per day for a user."""
+        session = self.Session()
+        try:
+            results = session.execute(text("""
+                SELECT DATE(gs.timestamp) as date, SUM(gs.credits_earned) as credits
+                FROM gaming_sessions gs
+                WHERE gs.user_id = :user_id
+                GROUP BY DATE(gs.timestamp)
+                ORDER BY date ASC
+            """), {"user_id": user_id}).fetchall()
+            return [{"date": str(row.date), "credits": float(row.credits)} for row in results]
         finally:
             session.close()
 

@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>User Stats - Gamer Cred</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap">
+  <link rel="stylesheet" href="/css/main.css">
+  <link rel="stylesheet" href="/css/user.css">
+  <link rel="stylesheet" href="/css/user_stats.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+  <link rel="icon" type="image/png" href="/images/favicon.png">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/calendar-heatmap/dist/calendar-heatmap.min.css">
+</head>
+<body>
+  <nav class="navbar">
+    <div class="nav-left">
+      <button class="mobile-menu-toggle mobile-only" aria-label="Toggle menu">
+        <i class="fas fa-bars"></i>
+      </button>
+      <a href="/" class="site-title nav-home-btn">
+        <img src="/images/favicon.png" alt="Gamer Cred" class="nav-favicon">
+        Gamer Cred
+      </a>
+    </div>
+    <div class="nav-center">
+      <input type="text" class="search-bar" placeholder="Search players, games...">
+      <a href="/all_games.html" class="nav-link desktop-only">All Games</a>
+    </div>
+    <div class="nav-right">
+      <div id="auth-container">
+        <a href="/login" class="auth-button login-button">
+          <i class="fab fa-discord"></i>
+          Login with Discord
+        </a>
+      </div>
+    </div>
+  </nav>
+  
+  <div class="stats-page">
+    <div class="header-row">
+      <section class="user-card card merged-stats">
+        <div class="user-avatar-block">
+          <img class="user-avatar" src="" alt="User Avatar" id="userAvatar">
+          <h1 id="userName">Loading...</h1>
+        </div>
+        <div class="all-stats-grid">
+          <div class="stat-block"><i class="fas fa-trophy"></i><span id="totalCredits">-</span><label>Total Credits</label></div>
+          <div class="stat-block"><i class="fas fa-clock"></i><span id="totalHours">-</span><label>Total Hours</label></div>
+          <div class="stat-block"><i class="fas fa-gamepad"></i><span id="gamesPlayed">-</span><label>Games Played</label></div>
+          <div class="stat-block"><i class="fas fa-medal"></i><span id="userRank">-</span><label>Global Rank</label></div>
+          <div class="stat-block"><i class="fas fa-fire"></i><span id="avgHoursPerSession">-</span><label>Avg Hours/Session</label></div>
+          <div class="stat-block"><i class="fas fa-calendar"></i><span id="daysActive">-</span><label>Days Active</label></div>
+          <div class="stat-block"><i class="fas fa-star"></i><span id="avgCreditsPerHour">-</span><label>Avg Credits/Hour</label></div>
+          <div class="stat-block"><i class="fas fa-trophy"></i><span id="bestGame">-</span><label>Best Game (CPH)</label></div>
+        </div>
+      </section>
+    </div>
+    <div class="main-row">
+      <section class="visualizations-card card">
+        <h2><i class="fas fa-chart-pie"></i> Visualizations</h2>
+        <div class="charts-grid">
+          <div class="chart-container"><h3>Hours by Game (Top 10)</h3><canvas id="hoursChart"></canvas></div>
+          <div class="chart-container"><h3>Credits by Game (Top 10)</h3><canvas id="creditsChart"></canvas></div>
+          <div class="chart-container"><h3>Activity Heatmap</h3>
+            <div id="activityHeatmap" style="height: 180px;"></div>
+          </div>
+          <div class="chart-container"><h3>Total Playtime Distribution</h3><canvas id="distributionChart"></canvas></div>
+        </div>
+      </section>
+    </div>
+    <section class="games-table-card card">
+      <div class="games-header">
+        <h2><i class="fas fa-list"></i> All Games Played</h2>
+        <div class="games-controls">
+          <input type="text" id="gameSearch" placeholder="Search games..." class="game-search">
+          <select id="sortSelect" class="sort-select">
+            <option value="hours">Sort by Hours</option>
+            <option value="credits">Sort by Credits</option>
+            <option value="sessions">Sort by Sessions</option>
+            <option value="name">Sort by Name</option>
+            <option value="cph">Sort by CPH</option>
+          </select>
+          <button id="sortDirection" class="sort-direction"><i class="fas fa-sort-amount-down"></i></button>
+        </div>
+      </div>
+      <div class="games-table-container">
+        <table class="games-table">
+          <thead>
+            <tr>
+              <th>Game</th>
+              <th>Hours</th>
+              <th>Credits</th>
+              <th>Sessions</th>
+              <th>CPH</th>
+              <th>First Played</th>
+              <th>Last Played</th>
+            </tr>
+          </thead>
+          <tbody id="gamesTableBody">
+            <tr>
+              <td colspan="8" class="loading-row">
+                <div class="loading-spinner"><i class="fas fa-spinner fa-spin"></i> Loading games...</div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="games-pagination">
+        <button id="prevPage" class="pagination-btn" disabled><i class="fas fa-chevron-left"></i> Previous</button>
+        <span id="pageInfo">Page 1 of 1</span>
+        <button id="nextPage" class="pagination-btn" disabled>Next <i class="fas fa-chevron-right"></i></button>
+      </div>
+    </section>
+    <div class="navigation-links" style="margin: 2rem auto 0 auto; display: flex; justify-content: center; gap: 2rem;">
+      <a href="/user.html?user=" id="backToProfile" class="nav-link-btn"><i class="fas fa-user"></i> Back to Profile</a>
+      <a href="/" class="nav-link-btn"><i class="fas fa-home"></i> Back to Home</a>
+    </div>
+  </div>
+
+  <script src="/js/script.js"></script>
+  <script src="https://unpkg.com/calendar-heatmap@1.5.6/dist/calendar-heatmap.min.js"></script>
+  <script src="/js/user_stats.js"></script>
+</body>
+</html> 

@@ -141,6 +141,12 @@ document.addEventListener('DOMContentLoaded', () => {
       document.getElementById('gamesPlayed').textContent = `${formatNumberWithCommas(userData.games_played || 0)} games`;
       document.getElementById('totalSessions').textContent = `${formatNumberWithCommas(userData.total_sessions || 0)} sessions`;
 
+      // Update stats button URL
+      const statsBtn = document.getElementById('viewStatsBtn');
+      if (statsBtn) {
+        statsBtn.href = `/user_stats.html?user=${encodeURIComponent(userIdentifier)}`;
+      }
+
       // Update Most Played section
       const mostPlayedCarousel = document.querySelector('#played-' + timeframe + ' .activity-carousel');
       if (!mostPlayedCarousel) {

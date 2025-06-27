@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Float, ForeignKey, DateTime, Boolean, Enum, BigInteger
+from sqlalchemy import Column, Integer, String, Float, ForeignKey, DateTime, Boolean, Enum, BigInteger, Text
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
 import enum
@@ -20,6 +20,7 @@ class Game(Base):
     rawg_id = Column(Integer)
     box_art_url = Column(String)
     release_date = Column(String)  # Store the release date as a string in ISO format
+    description = Column(Text)  # Store game descriptions from RAWG API
     gaming_sessions = relationship("GamingSession", back_populates="game")
 
 class UserStats(Base):
