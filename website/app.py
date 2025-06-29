@@ -1,4 +1,4 @@
-from flask import Flask, render_template, jsonify, request, send_from_directory, redirect, url_for
+from flask import Flask, render_template, jsonify, request, send_from_directory, redirect, url_for, make_response
 import os
 import sys # Import the sys module
 import re # Import re for HTML cleaning
@@ -872,8 +872,8 @@ def callback_desktop():
     
     user = user_response.json()
     
-    # Return success page with cookies that desktop app can read
-    resp = f"""
+    # Create response with cookies set via HTTP headers
+    html_content = f"""
     <html>
     <body style="font-family: Arial, sans-serif; text-align: center; padding: 50px; background: #23232b; color: white;">
         <h2 style="color: #ff6fae;">✅ Login Successful!</h2>
@@ -881,18 +881,28 @@ def callback_desktop():
         <p>You have been logged in successfully.</p>
         <p>This window will close automatically.</p>
         <script>
-            // Set cookies that the desktop app can read
-            document.cookie = "desktop_token=" + "{access_token}" + "; path=/; max-age=3600";
-            document.cookie = "desktop_user_id=" + "{user['id']}" + "; path=/; max-age=3600";
-            document.cookie = "desktop_username=" + "{user['username']}" + "; path=/; max-age=3600";
+            // Make token data available to desktop app
+            window.desktopTokenData = {{
+                token: "{access_token}",
+                user_id: "{user['id']}",
+                username: "{user['username']}",
+                avatar: "{user.get('avatar', '')}"
+            }};
             
-            setTimeout(() => {{
+            setTimeout(function() {{
                 window.close();
             }}, 2000);
         </script>
     </body>
     </html>
     """
+    
+    resp = make_response(html_content)
+    
+    # Set cookies via HTTP headers (these will be accessible to the desktop app)
+    resp.set_cookie('desktop_token', access_token, httponly=False, max_age=3600, path='/')
+    resp.set_cookie('desktop_user_id', user['id'], httponly=False, max_age=3600, path='/')
+    resp.set_cookie('desktop_username', user['username'], httponly=False, max_age=3600, path='/')
     
     return resp
 
@@ -967,6 +977,31 @@ def get_desktop_user_status():
     # Verify the token is still valid
     headers = {
         'Authorization': f'Bearer {desktop_token}'
+    }
+    
+    user_response = requests.get(f'{DISCORD_API_URL}/users/@me', headers=headers)
+    if user_response.status_code != 200:
+        return jsonify({'error': 'Invalid token'}), 401
+    
+    user = user_response.json()
+    
+    return jsonify({
+        'id': user['id'],
+        'username': user['username'],
+        'avatar': user.get('avatar'),
+        'email': user.get('email')
+    })
+
+@app.route('/api/user/desktop-token')
+def get_desktop_user_by_token():
+    """Get user status for desktop app using token from query parameter"""
+    token = request.args.get('token')
+    if not token:
+        return jsonify({'error': 'No token provided'}), 401
+    
+    # Verify the token is still valid
+    headers = {
+        'Authorization': f'Bearer {token}'
     }
     
     user_response = requests.get(f'{DISCORD_API_URL}/users/@me', headers=headers)
