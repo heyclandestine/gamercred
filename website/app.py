@@ -881,14 +881,6 @@ def callback_desktop():
         <p>You have been logged in successfully.</p>
         <p>This window will close automatically.</p>
         <script>
-            // Make token data available to desktop app
-            window.desktopTokenData = {{
-                token: "{access_token}",
-                user_id: "{user['id']}",
-                username: "{user['username']}",
-                avatar: "{user.get('avatar', '')}"
-            }};
-            
             setTimeout(function() {{
                 window.close();
             }}, 2000);
@@ -900,9 +892,9 @@ def callback_desktop():
     resp = make_response(html_content)
     
     # Set cookies via HTTP headers (these will be accessible to the desktop app)
-    resp.set_cookie('desktop_token', access_token, httponly=False, max_age=3600, path='/')
-    resp.set_cookie('desktop_user_id', user['id'], httponly=False, max_age=3600, path='/')
-    resp.set_cookie('desktop_username', user['username'], httponly=False, max_age=3600, path='/')
+    resp.set_cookie('desktop_token', access_token, httponly=False, max_age=3600, path='/', samesite='Lax')
+    resp.set_cookie('desktop_user_id', user['id'], httponly=False, max_age=3600, path='/', samesite='Lax')
+    resp.set_cookie('desktop_username', user['username'], httponly=False, max_age=3600, path='/', samesite='Lax')
     
     return resp
 
@@ -1015,6 +1007,34 @@ def get_desktop_user_by_token():
         'username': user['username'],
         'avatar': user.get('avatar'),
         'email': user.get('email')
+    })
+
+@app.route('/api/user/desktop-check')
+def check_desktop_login():
+    """Simple endpoint to check if user is logged in via desktop flow"""
+    desktop_token = request.cookies.get('desktop_token')
+    if not desktop_token:
+        return jsonify({'logged_in': False, 'error': 'No desktop token found'}), 401
+    
+    # Verify the token is still valid
+    headers = {
+        'Authorization': f'Bearer {desktop_token}'
+    }
+    
+    user_response = requests.get(f'{DISCORD_API_URL}/users/@me', headers=headers)
+    if user_response.status_code != 200:
+        return jsonify({'logged_in': False, 'error': 'Invalid token'}), 401
+    
+    user = user_response.json()
+    
+    return jsonify({
+        'logged_in': True,
+        'user': {
+            'id': user['id'],
+            'username': user['username'],
+            'avatar': user.get('avatar'),
+            'email': user.get('email')
+        }
     })
 
 @app.route('/api/log-game', methods=['POST'])
