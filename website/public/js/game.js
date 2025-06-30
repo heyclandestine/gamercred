@@ -208,10 +208,10 @@ function updateGameInfo(game) {
   const halfLifeElement = document.getElementById('halfLife');
   if (halfLifeElement) {
     if (game.half_life_hours) {
-      halfLifeElement.textContent = `${game.half_life_hours}h (CPH halves every ${game.half_life_hours}h)`;
+      halfLifeElement.textContent = `${game.half_life_hours}h`;
       halfLifeElement.style.display = 'block';
     } else {
-      halfLifeElement.textContent = 'None (no CPH decay)';
+      halfLifeElement.textContent = 'None';
       halfLifeElement.style.display = 'block';
     }
   }

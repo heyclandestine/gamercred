@@ -665,7 +665,7 @@ footer {
   background: #29293a;
   padding: 1rem;
   border-radius: 10px;
-  min-width: 120px;
+  min-width: 100px;
   width: fit-content;
 }
 
