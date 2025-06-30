@@ -963,9 +963,15 @@ class GameStorage:
             # Get or create the game
             game, is_new = await self.get_or_create_game(game_name, user_id)
             
-            # Calculate credits earned with half-life system
-            credits_earned = self.calculate_credits_with_half_life(
+            # Get user's total hours for this game (before this session)
+            total_game_hours = session.query(func.sum(GamingSession.hours))\
+                .filter(GamingSession.user_id == user_id, GamingSession.game_id == game.id)\
+                .scalar() or 0.0
+            
+            # Calculate credits earned with half-life system based on total accumulated hours
+            credits_earned = self.calculate_credits_with_half_life_for_session(
                 hours, 
+                total_game_hours, 
                 game.credits_per_hour, 
                 game.half_life_hours
             )
@@ -1785,6 +1791,48 @@ class GameStorage:
         
         return total_credits
 
+    def calculate_credits_with_half_life_for_session(self, session_hours: float, total_game_hours: float, base_cph: float, half_life_hours: float = None) -> float:
+        """
+        Calculate credits earned for a new session with half-life system based on total accumulated hours.
+        
+        Args:
+            session_hours: Hours for this specific session
+            total_game_hours: Total hours already played on this game (before this session)
+            base_cph: Base credits per hour
+            half_life_hours: Hours after which CPH is halved (None means no half-life)
+        
+        Returns:
+            Total credits earned for this session
+        """
+        if half_life_hours is None or half_life_hours <= 0:
+            # No half-life, use simple calculation
+            return session_hours * base_cph
+        
+        total_credits = 0.0
+        remaining_session_hours = session_hours
+        current_hour = total_game_hours  # Start from where we left off
+        
+        while remaining_session_hours > 0:
+            # Calculate which half-life bracket we're in
+            half_life_period = int(current_hour // half_life_hours)
+            current_cph = base_cph / (2 ** half_life_period)
+            
+            # Calculate the next threshold
+            next_threshold = (half_life_period + 1) * half_life_hours
+            
+            # Calculate how many hours we can apply at the current CPH rate
+            hours_until_next_threshold = next_threshold - current_hour
+            hours_at_current_rate = min(remaining_session_hours, hours_until_next_threshold)
+            
+            # Add credits for this segment
+            total_credits += hours_at_current_rate * current_cph
+            
+            # Update remaining hours and current hour
+            remaining_session_hours -= hours_at_current_rate
+            current_hour += hours_at_current_rate
+        
+        return total_credits
+
     def calculate_credits(self, duration_minutes: int) -> float:
         """Calculate credits earned for a given duration in minutes."""
         # Base rate is 1 credit per hour
@@ -1946,9 +1994,15 @@ class GameStorage:
             if not game:
                 raise Exception("Game does not exist in the database, please set the rate")
 
-            # Calculate credits earned with half-life system
-            credits_earned = self.calculate_credits_with_half_life(
+            # Get user's total hours for this game (before this session)
+            total_game_hours = session.query(func.sum(GamingSession.hours))\
+                .filter(GamingSession.user_id == user_id, GamingSession.game_id == game.id)\
+                .scalar() or 0.0
+
+            # Calculate credits earned with half-life system based on total accumulated hours
+            credits_earned = self.calculate_credits_with_half_life_for_session(
                 hours, 
+                total_game_hours, 
                 game.credits_per_hour, 
                 game.half_life_hours
             )
