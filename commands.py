@@ -85,11 +85,26 @@ class GamingCommands(commands.Cog):
             parts = game.split()
             half_life_hours = None
             
-            # Check if the last part is a number (half-life)
-            if len(parts) >= 2 and parts[-1].replace('.', '').isdigit():
+            # Check if the last part is a number that could be a half-life
+            # Only treat it as half-life if it's a reasonable value (between 0.1 and 10000)
+            # and if there are at least 2 parts (to avoid treating single-word games as half-life)
+            if len(parts) >= 2:
                 try:
-                    half_life_hours = float(parts[-1])
-                    game_name = ' '.join(parts[:-1])  # Remove the last part (half-life)
+                    potential_half_life = float(parts[-1])
+                    # Only treat as half-life if it's a reasonable value and not likely part of game name
+                    if 0.1 <= potential_half_life <= 10000:
+                        # Additional check: if the second-to-last part is also a number, 
+                        # it's probably part of the game name (like "Portal 2")
+                        try:
+                            float(parts[-2])
+                            # If second-to-last is also a number, treat last part as game name
+                            game_name = game
+                        except ValueError:
+                            # Second-to-last is not a number, so last part could be half-life
+                            half_life_hours = potential_half_life
+                            game_name = ' '.join(parts[:-1])
+                    else:
+                        game_name = game
                 except ValueError:
                     game_name = game  # If conversion fails, treat as part of game name
             else:
