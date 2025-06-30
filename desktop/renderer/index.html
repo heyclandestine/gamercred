@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gamer Cred Desktop</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+  <link rel="stylesheet" href="styles/main.css">
+  <link rel="stylesheet" href="styles/components.css">
+</head>
+<body>
+  <div class="app-container">
+    <!-- Sidebar Navigation -->
+    <nav class="sidebar">
+      <div class="sidebar-header">
+        <div class="logo">
+          <i class="fas fa-gamepad"></i>
+          <span>Gamer Cred</span>
+        </div>
+      </div>
+      
+      <ul class="nav-menu">
+        <li class="nav-item active" data-page="dashboard">
+          <i class="fas fa-home"></i>
+          <span>Dashboard</span>
+        </li>
+        <li class="nav-item" data-page="session-tracker">
+          <i class="fas fa-clock"></i>
+          <span>Session Tracker</span>
+        </li>
+        <li class="nav-item" data-page="leaderboard">
+          <i class="fas fa-trophy"></i>
+          <span>Leaderboard</span>
+        </li>
+        <li class="nav-item" data-page="my-stats">
+          <i class="fas fa-chart-line"></i>
+          <span>My Stats</span>
+        </li>
+        <li class="nav-item" data-page="recent-activity">
+          <i class="fas fa-history"></i>
+          <span>Recent Activity</span>
+        </li>
+        <li class="nav-item" data-page="games">
+          <i class="fas fa-gamepad"></i>
+          <span>Games</span>
+        </li>
+        <li class="nav-item" data-page="settings">
+          <i class="fas fa-cog"></i>
+          <span>Settings</span>
+        </li>
+      </ul>
+      
+      <div class="sidebar-footer">
+        <div class="user-info">
+          <div class="user-avatar">
+            <i class="fas fa-user"></i>
+          </div>
+          <div class="user-details">
+            <div class="username">Not logged in</div>
+            <div class="user-status">Click to login</div>
+          </div>
+        </div>
+      </div>
+    </nav>
+
+    <!-- Main Content Area -->
+    <main class="main-content">
+      <!-- Header -->
+      <header class="header">
+        <div class="header-left">
+          <h1 id="page-title">Dashboard</h1>
+        </div>
+        <div class="header-right">
+          <div class="tracking-status" id="tracking-status">
+            <i class="fas fa-circle status-indicator"></i>
+            <span>Not tracking</span>
+          </div>
+          <button class="notification-btn" id="notification-btn">
+            <i class="fas fa-bell"></i>
+          </button>
+        </div>
+      </header>
+
+      <!-- Page Content -->
+      <div class="page-content">
+        <!-- Dashboard Page -->
+        <div class="page active" id="dashboard-page">
+          <div class="dashboard-grid">
+            <!-- Quick Stats -->
+            <div class="card stats-card">
+              <h3>Quick Stats</h3>
+              <div class="stats-grid">
+                <div class="stat-item">
+                  <div class="stat-value" id="total-credits">0</div>
+                  <div class="stat-label">Total Credits</div>
+                </div>
+                <div class="stat-item">
+                  <div class="stat-value" id="total-hours">0</div>
+                  <div class="stat-label">Total Hours</div>
+                </div>
+                <div class="stat-item">
+                  <div class="stat-value" id="games-played">0</div>
+                  <div class="stat-label">Games Played</div>
+                </div>
+                <div class="stat-item">
+                  <div class="stat-value" id="current-rank">-</div>
+                  <div class="stat-label">Current Rank</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Current Session -->
+            <div class="card session-card">
+              <h3>Current Session</h3>
+              <div class="session-info" id="session-info">
+                <div class="no-session">
+                  <i class="fas fa-play-circle"></i>
+                  <p>No active session</p>
+                  <button class="btn btn-primary" id="start-tracking-btn">
+                    Start Tracking
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Recent Activity -->
+            <div class="card activity-card">
+              <h3>Recent Activity</h3>
+              <div class="activity-list" id="recent-activity-list">
+                <div class="loading">
+                  <i class="fas fa-spinner fa-spin"></i>
+                  Loading recent activity...
+                </div>
+              </div>
+            </div>
+
+            <!-- Quick Actions -->
+            <div class="card actions-card">
+              <h3>Quick Actions</h3>
+              <div class="action-buttons">
+                <button class="btn btn-secondary" id="log-session-btn">
+                  <i class="fas fa-plus"></i>
+                  Log Session
+                </button>
+                <button class="btn btn-secondary" id="view-leaderboard-btn">
+                  <i class="fas fa-trophy"></i>
+                  View Leaderboard
+                </button>
+                <button class="btn btn-secondary" id="check-balance-btn">
+                  <i class="fas fa-wallet"></i>
+                  Check Balance
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Session Tracker Page -->
+        <div class="page" id="session-tracker-page">
+          <div class="tracker-container">
+            <div class="tracker-header">
+              <h2>Session Tracker</h2>
+              <p>Automatically track your gaming sessions</p>
+            </div>
+            
+            <div class="tracker-controls">
+              <button class="btn btn-primary btn-large" id="tracker-start-btn">
+                <i class="fas fa-play"></i>
+                Start Tracking
+              </button>
+              <button class="btn btn-danger btn-large" id="tracker-stop-btn" style="display: none;">
+                <i class="fas fa-stop"></i>
+                Stop Tracking
+              </button>
+            </div>
+            
+            <div class="tracker-display" id="tracker-display" style="display: none;">
+              <div class="current-game">
+                <div class="game-icon">
+                  <i class="fas fa-gamepad"></i>
+                </div>
+                <div class="game-info">
+                  <h3 id="current-game-name">No game detected</h3>
+                  <p id="current-game-status">Waiting for game detection...</p>
+                </div>
+              </div>
+              
+              <div class="session-timer">
+                <div class="timer-display">
+                  <span id="timer-hours">00</span>:
+                  <span id="timer-minutes">00</span>:
+                  <span id="timer-seconds">00</span>
+                </div>
+                <div class="timer-label">Session Duration</div>
+              </div>
+              
+              <div class="session-actions">
+                <button class="btn btn-success" id="log-current-session-btn">
+                  <i class="fas fa-save"></i>
+                  Log Session
+                </button>
+                <button class="btn btn-warning" id="pause-session-btn">
+                  <i class="fas fa-pause"></i>
+                  Pause
+                </button>
+              </div>
+            </div>
+            
+            <div class="tracker-settings">
+              <h3>Tracking Settings</h3>
+              <div class="setting-item">
+                <label>
+                  <input type="checkbox" id="auto-track-checkbox">
+                  Auto-start tracking when app launches
+                </label>
+              </div>
+              <div class="setting-item">
+                <label>
+                  <input type="checkbox" id="notifications-checkbox" checked>
+                  Show notifications for game detection
+                </label>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Leaderboard Page -->
+        <div class="page" id="leaderboard-page">
+          <div class="leaderboard-container">
+            <div class="leaderboard-header">
+              <h2>Leaderboard</h2>
+              <div class="leaderboard-tabs">
+                <button class="tab-btn active" data-period="weekly">Weekly</button>
+                <button class="tab-btn" data-period="monthly">Monthly</button>
+                <button class="tab-btn" data-period="alltime">All-Time</button>
+              </div>
+            </div>
+            
+            <div class="leaderboard-content">
+              <div class="loading" id="leaderboard-loading">
+                <i class="fas fa-spinner fa-spin"></i>
+                Loading leaderboard...
+              </div>
+              <div class="leaderboard-list" id="leaderboard-list" style="display: none;"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- My Stats Page -->
+        <div class="page" id="my-stats-page">
+          <div class="stats-container">
+            <div class="stats-header">
+              <h2>My Gaming Stats</h2>
+              <div class="user-profile" id="user-profile">
+                <div class="profile-loading">
+                  <i class="fas fa-spinner fa-spin"></i>
+                  Loading profile...
+                </div>
+              </div>
+            </div>
+            
+            <div class="stats-grid">
+              <div class="stats-card">
+                <h3>Overview</h3>
+                <div class="stats-overview" id="stats-overview"></div>
+              </div>
+              
+              <div class="stats-card">
+                <h3>Top Games</h3>
+                <div class="top-games" id="top-games"></div>
+              </div>
+              
+              <div class="stats-card">
+                <h3>Recent Sessions</h3>
+                <div class="recent-sessions" id="recent-sessions"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Recent Activity Page -->
+        <div class="page" id="recent-activity-page">
+          <div class="activity-container">
+            <div class="activity-header">
+              <h2>Recent Activity</h2>
+              <div class="activity-filters">
+                <button class="filter-btn active" data-filter="all">All</button>
+                <button class="filter-btn" data-filter="sessions">Sessions</button>
+                <button class="filter-btn" data-filter="bonuses">Bonuses</button>
+              </div>
+            </div>
+            
+            <div class="activity-content">
+              <div class="loading" id="activity-loading">
+                <i class="fas fa-spinner fa-spin"></i>
+                Loading activity...
+              </div>
+              <div class="activity-list" id="activity-list" style="display: none;"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Games Page -->
+        <div class="page" id="games-page">
+          <div class="games-container">
+            <div class="games-header">
+              <h2>Games</h2>
+              <div class="games-search">
+                <input type="text" placeholder="Search games..." id="games-search-input">
+                <i class="fas fa-search"></i>
+              </div>
+            </div>
+            
+            <div class="games-content">
+              <div class="loading" id="games-loading">
+                <i class="fas fa-spinner fa-spin"></i>
+                Loading games...
+              </div>
+              <div class="games-grid" id="games-grid" style="display: none;"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Settings Page -->
+        <div class="page" id="settings-page">
+          <div class="settings-container">
+            <div class="settings-header">
+              <h2>Settings</h2>
+            </div>
+            
+            <div class="settings-content">
+              <div class="settings-section">
+                <h3>General</h3>
+                <div class="setting-item">
+                  <label>
+                    <input type="checkbox" id="start-with-windows">
+                    Start with Windows
+                  </label>
+                </div>
+                <div class="setting-item">
+                  <label>
+                    <input type="checkbox" id="minimize-to-tray">
+                    Minimize to system tray
+                  </label>
+                </div>
+              </div>
+              
+              <div class="settings-section">
+                <h3>Tracking</h3>
+                <div class="setting-item">
+                  <label>
+                    <input type="checkbox" id="auto-track-setting">
+                    Auto-start tracking when app launches
+                  </label>
+                </div>
+                <div class="setting-item">
+                  <label>
+                    <input type="checkbox" id="notifications-setting" checked>
+                    Show notifications
+                  </label>
+                </div>
+              </div>
+              
+              <div class="settings-section">
+                <h3>API Configuration</h3>
+                <div class="setting-item">
+                  <label for="api-url">API URL:</label>
+                  <input type="text" id="api-url" value="https://gamercred.onrender.com">
+                </div>
+              </div>
+              
+              <div class="settings-section">
+                <h3>Account</h3>
+                <div class="setting-item">
+                  <button class="btn btn-primary" id="login-btn">
+                    <i class="fab fa-discord"></i>
+                    Login with Discord
+                  </button>
+                  <button class="btn btn-secondary" id="logout-btn" style="display: none;">
+                    Logout
+                  </button>
+                  <button class="btn btn-outline" id="check-login-btn">
+                    <i class="fas fa-sync"></i>
+                    Check Login Status
+                  </button>
+                </div>
+              </div>
+              
+              <div class="settings-section">
+                <h3>About</h3>
+                <div class="about-info">
+                  <p><strong>Version:</strong> <span id="app-version">1.0.0</span></p>
+                  <p><strong>Platform:</strong> <span id="platform-info">Windows</span></p>
+                  <p><strong>Electron:</strong> <span id="electron-version">-</span></p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- Modals -->
+  <div class="modal" id="log-session-modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Log Gaming Session</h3>
+        <button class="modal-close" id="log-session-modal-close">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+      <div class="modal-body">
+        <form id="log-session-form">
+          <div class="form-group">
+            <label for="session-game">Game:</label>
+            <input type="text" id="session-game" placeholder="Enter game name..." required>
+          </div>
+          <div class="form-group">
+            <label for="session-hours">Hours:</label>
+            <input type="number" id="session-hours" step="0.5" min="0.1" required>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" id="log-session-cancel">Cancel</button>
+        <button class="btn btn-primary" id="log-session-submit">Log Session</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Notification Container -->
+  <div class="notification-container" id="notification-container"></div>
+
+  <script src="js/app.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/pages/dashboard.js"></script>
+  <script src="js/pages/session-tracker.js"></script>
+  <script src="js/pages/leaderboard.js"></script>
+  <script src="js/pages/my-stats.js"></script>
+  <script src="js/pages/recent-activity.js"></script>
+  <script src="js/pages/games.js"></script>
+  <script src="js/pages/settings.js"></script>
+</body>
+</html> 
