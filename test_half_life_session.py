@@ -65,6 +65,14 @@ def test_session_half_life_calculation():
             'base_cph': 400,
             'half_life_hours': 24,
             'expected': 16800  # Complex calculation across multiple brackets
+        },
+        {
+            'name': 'User example: 30h total, 3h session, 10h half-life',
+            'session_hours': 3,
+            'total_game_hours': 30,
+            'base_cph': 300,
+            'half_life_hours': 10,
+            'expected': 225  # 3 * 75 (halved twice: 300->150->75)
         }
     ]
     

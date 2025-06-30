@@ -1813,12 +1813,16 @@ class GameStorage:
         current_hour = total_game_hours  # Start from where we left off
         
         while remaining_session_hours > 0:
-            # Calculate which half-life bracket we're in
-            half_life_period = int(current_hour // half_life_hours)
-            current_cph = base_cph / (2 ** half_life_period)
+            # Calculate how many half-life boundaries have been crossed
+            # At 0-10h: 0 boundaries crossed, CPH = base_cph
+            # At 10-20h: 1 boundary crossed, CPH = base_cph/2
+            # At 20-30h: 2 boundaries crossed, CPH = base_cph/4
+            # etc.
+            boundaries_crossed = int(current_hour // half_life_hours)
+            current_cph = base_cph / (2 ** boundaries_crossed)
             
             # Calculate the next threshold
-            next_threshold = (half_life_period + 1) * half_life_hours
+            next_threshold = (boundaries_crossed + 1) * half_life_hours
             
             # Calculate how many hours we can apply at the current CPH rate
             hours_until_next_threshold = next_threshold - current_hour
