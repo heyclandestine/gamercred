@@ -324,6 +324,7 @@ def get_game():
             'unique_players': game_db_info.get('unique_players', 0),
             'total_hours': game_db_info.get('total_hours', 0.0),
             'credits_per_hour': game_db_info.get('credits_per_hour', 1.0),
+            'half_life_hours': game_db_info.get('half_life_hours'),
             'avg_hours': game_db_info.get('total_hours', 0.0) / game_db_info.get('unique_players', 1) if game_db_info.get('unique_players', 0) > 0 else 0.0,
             'release_date': game_db_info.get('release_date', '')
         }
