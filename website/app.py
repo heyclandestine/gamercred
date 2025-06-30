@@ -1,4 +1,4 @@
-from flask import Flask, render_template, jsonify, request, send_from_directory, redirect, url_for
+from flask import Flask, render_template, jsonify, request, send_from_directory, redirect, url_for, make_response
 import os
 import sys # Import the sys module
 import re # Import re for HTML cleaning
@@ -809,6 +809,95 @@ def callback():
     
     return resp
 
+@app.route('/callback/desktop')
+def callback_desktop():
+    """Handle the OAuth2 callback for desktop app"""
+    if request.values.get('error'):
+        return f"""
+        <html>
+        <body style="font-family: Arial, sans-serif; text-align: center; padding: 50px; background: #23232b; color: white;">
+            <h2 style="color: #ff6fae;">❌ Login Failed</h2>
+            <p>Error: {request.values['error']}</p>
+            <p>You can close this window and try again.</p>
+        </body>
+        </html>
+        """
+    
+    code = request.values.get('code')
+    if not code:
+        return "No code provided", 400
+
+    # Exchange the code for an access token
+    data = {
+        'client_id': DISCORD_CLIENT_ID,
+        'client_secret': DISCORD_CLIENT_SECRET,
+        'grant_type': 'authorization_code',
+        'code': code,
+        'redirect_uri': 'https://gamercred.onrender.com/callback/desktop'
+    }
+    
+    headers = {
+        'Content-Type': 'application/x-www-form-urlencoded'
+    }
+    
+    response = requests.post(DISCORD_TOKEN_URL, data=data, headers=headers)
+    if response.status_code != 200:
+        return f"""
+        <html>
+        <body style="font-family: Arial, sans-serif; text-align: center; padding: 50px; background: #23232b; color: white;">
+            <h2 style="color: #ff6fae;">❌ Login Failed</h2>
+            <p>Error getting token: {response.text}</p>
+        </body>
+        </html>
+        """
+    
+    token_data = response.json()
+    access_token = token_data['access_token']
+    
+    # Get user info
+    headers = {
+        'Authorization': f'Bearer {access_token}'
+    }
+    
+    user_response = requests.get(f'{DISCORD_API_URL}/users/@me', headers=headers)
+    if user_response.status_code != 200:
+        return f"""
+        <html>
+        <body style="font-family: Arial, sans-serif; text-align: center; padding: 50px; background: #23232b; color: white;">
+            <h2 style="color: #ff6fae;">❌ Login Failed</h2>
+            <p>Error getting user info: {user_response.text}</p>
+        </body>
+        </html>
+        """
+    
+    user = user_response.json()
+    
+    # Create response with success message
+    html_content = f"""
+    <html>
+    <body style="font-family: Arial, sans-serif; text-align: center; padding: 50px; background: #23232b; color: white;">
+        <h2 style="color: #ff6fae;">✅ Login Successful!</h2>
+        <p>Welcome, {user['username']}!</p>
+        <p>You have been logged in successfully.</p>
+        <p>You can now return to the desktop app and click "Check Login Status".</p>
+        <script>
+            setTimeout(function() {{
+                window.close();
+            }}, 3000);
+        </script>
+    </body>
+    </html>
+    """
+    
+    resp = make_response(html_content)
+    
+    # Set a simple session cookie that indicates desktop login
+    resp.set_cookie('desktop_logged_in', 'true', httponly=False, max_age=3600, path='/', samesite='Lax')
+    resp.set_cookie('desktop_user_id', user['id'], httponly=False, max_age=3600, path='/', samesite='Lax')
+    resp.set_cookie('desktop_username', user['username'], httponly=False, max_age=3600, path='/', samesite='Lax')
+    
+    return resp
+
 @app.route('/logout')
 def logout():
     """Log out the user"""
@@ -840,6 +929,104 @@ def get_user():
         'username': user['username'],
         'avatar': user.get('avatar'),
         'email': user.get('email')
+    })
+
+@app.route('/api/user/desktop')
+def get_user_desktop():
+    """Get the current user's information for desktop app (uses Authorization header)"""
+    auth_header = request.headers.get('Authorization')
+    if not auth_header or not auth_header.startswith('Bearer '):
+        return jsonify({'error': 'No valid authorization header'}), 401
+    
+    access_token = auth_header.split(' ')[1]
+    
+    headers = {
+        'Authorization': f'Bearer {access_token}'
+    }
+    
+    user_response = requests.get(f'{DISCORD_API_URL}/users/@me', headers=headers)
+    if user_response.status_code != 200:
+        return jsonify({'error': 'Invalid token'}), 401
+    
+    user = user_response.json()
+    return jsonify({
+        'id': user['id'],
+        'username': user['username'],
+        'avatar': user.get('avatar'),
+        'email': user.get('email')
+    })
+
+@app.route('/api/user/desktop-status')
+def get_desktop_user_status():
+    """Get user status for desktop app using desktop-specific cookies"""
+    desktop_token = request.cookies.get('desktop_token')
+    desktop_user_id = request.cookies.get('desktop_user_id')
+    desktop_username = request.cookies.get('desktop_username')
+    
+    if not all([desktop_token, desktop_user_id, desktop_username]):
+        return jsonify({'error': 'Not logged in via desktop'}), 401
+    
+    # Verify the token is still valid
+    headers = {
+        'Authorization': f'Bearer {desktop_token}'
+    }
+    
+    user_response = requests.get(f'{DISCORD_API_URL}/users/@me', headers=headers)
+    if user_response.status_code != 200:
+        return jsonify({'error': 'Invalid token'}), 401
+    
+    user = user_response.json()
+    
+    return jsonify({
+        'id': user['id'],
+        'username': user['username'],
+        'avatar': user.get('avatar'),
+        'email': user.get('email')
+    })
+
+@app.route('/api/user/desktop-token')
+def get_desktop_user_by_token():
+    """Get user status for desktop app using token from query parameter"""
+    token = request.args.get('token')
+    if not token:
+        return jsonify({'error': 'No token provided'}), 401
+    
+    # Verify the token is still valid
+    headers = {
+        'Authorization': f'Bearer {token}'
+    }
+    
+    user_response = requests.get(f'{DISCORD_API_URL}/users/@me', headers=headers)
+    if user_response.status_code != 200:
+        return jsonify({'error': 'Invalid token'}), 401
+    
+    user = user_response.json()
+    
+    return jsonify({
+        'id': user['id'],
+        'username': user['username'],
+        'avatar': user.get('avatar'),
+        'email': user.get('email')
+    })
+
+@app.route('/api/user/desktop-check')
+def check_desktop_login():
+    """Simple endpoint to check if user is logged in via desktop flow"""
+    desktop_logged_in = request.cookies.get('desktop_logged_in')
+    desktop_user_id = request.cookies.get('desktop_user_id')
+    desktop_username = request.cookies.get('desktop_username')
+    
+    if not all([desktop_logged_in, desktop_user_id, desktop_username]):
+        return jsonify({'logged_in': False, 'error': 'Not logged in via desktop'}), 401
+    
+    return jsonify({
+        'logged_in': True,
+        'user': {
+            'id': desktop_user_id,
+            'username': desktop_username,
+            'avatar': request.cookies.get('desktop_avatar', ''),
+            'email': ''  # We don't store email in cookies for security
+        }
     })
 
 @app.route('/api/log-game', methods=['POST'])

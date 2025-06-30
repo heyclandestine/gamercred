@@ -158,6 +158,7 @@ async def announce_leaderboard_results(bot, storage, period):
                 value=(
                     f"💎 {placement.credits:,.1f} credits earned\n"
                     f"🎮 {placement.games_played} games played\n"
+                    f"⏱️ {placement.total_hours:,.1f} total hours\n"
                     f"🏆 Most played: {placement.most_played_game} ({placement.most_played_hours:,.1f}h)"
                 ),
                 inline=False

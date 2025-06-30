@@ -79,22 +79,62 @@ class GamingCommands(commands.Cog):
 
     @commands.command(name='setrate')
     async def set_game_credits_per_hour(self, ctx, credits: float, *, game: str):
-        """Set credits per hour for a game"""
+        """Set credits per hour for a game (optionally with half-life)"""
         try:
+            # Parse the game name and optional half-life
+            parts = game.split()
+            half_life_hours = None
+            
+            # Check if the last part is a number (half-life)
+            if len(parts) >= 2 and parts[-1].replace('.', '').isdigit():
+                try:
+                    half_life_hours = float(parts[-1])
+                    game_name = ' '.join(parts[:-1])  # Remove the last part (half-life)
+                except ValueError:
+                    game_name = game  # If conversion fails, treat as part of game name
+            else:
+                game_name = game
+
             # Validate credits
             if credits < 0.1:
                 await ctx.send("Credits per hour must be at least 0.1!\n🌐 View on [Gamer Cred](https://gamercred.onrender.com)")
                 return
 
+            # Validate half-life if provided
+            if half_life_hours is not None and half_life_hours <= 0:
+                await ctx.send("Half-life hours must be greater than 0! Use 0 to disable half-life.\n🌐 View on [Gamer Cred](https://gamercred.onrender.com)")
+                return
+
             # Set credits per hour
-            success = await self.storage.set_game_credits_per_hour(game, credits, ctx.author.id)
-            if success:
-                # URL encode the game name
-                encoded_game = urllib.parse.quote(game)
-                
-                await ctx.send(f"✅ Successfully set rate for {game} to {credits:,.1f} credits per hour!\n🌐 View on [Gamer Cred](https://gamercred.onrender.com/game.html?game={encoded_game})")
+            success = await self.storage.set_game_credits_per_hour(game_name, credits, ctx.author.id)
+            if not success:
+                await ctx.send(f"❌ Failed to set rate for {game_name}. Please try again.")
+                return
+
+            # Set half-life if provided
+            if half_life_hours is not None:
+                half_life_success = await self.storage.set_game_half_life(game_name, half_life_hours, ctx.author.id)
+                if not half_life_success:
+                    await ctx.send(f"✅ Set rate for {game_name} to {credits:,.1f} credits per hour, but failed to set half-life.")
+                    return
+
+            # URL encode the game name
+            encoded_game = urllib.parse.quote(game_name)
+            
+            # Build response message
+            response = f"✅ Successfully set rate for {game_name} to {credits:,.1f} credits per hour!"
+            if half_life_hours is not None:
+                if half_life_hours > 0:
+                    response += f"\n⏰ Half-life set to {half_life_hours} hours (CPH halves every {half_life_hours}h)"
+                else:
+                    response += f"\n⏰ Half-life disabled (no CPH decay)"
             else:
-                await ctx.send(f"❌ Failed to set rate for {game}. Please try again.")
+                response += f"\n⏰ No half-life set (no CPH decay)"
+            
+            response += f"\n🌐 View on [Gamer Cred](https://gamercred.onrender.com/game.html?game={encoded_game})"
+            
+            await ctx.send(response)
+
         except Exception as e:
             await ctx.send(MESSAGES['error'].format(error=str(e)) + "\n🌐 View on [Gamer Cred](https://gamercred.onrender.com)")
 
@@ -117,12 +157,20 @@ class GamingCommands(commands.Cog):
                 # URL encode the game name
                 encoded_game = urllib.parse.quote(game_info['name'])
 
-                await ctx.send(
-                    f"📊 Rate for {game}: {game_info['credits_per_hour']:,.1f} cred/hour\n"
-                    f"👤 Set by: {setter_name}\n"
-                    f"🎮 View the game on [Backloggd]({game_info['backloggd_url']})\n"
-                    f"🌐 View on [Gamer Cred](https://gamercred.onrender.com/game.html?game={encoded_game})"
-                )
+                # Build the response message
+                response = f"📊 Rate for {game}: {game_info['credits_per_hour']:,.1f} cred/hour\n"
+                response += f"👤 Set by: {setter_name}\n"
+                
+                # Add half-life information if available
+                if game_info.get('half_life_hours'):
+                    response += f"⏰ Half-life: {game_info['half_life_hours']} hours (CPH halves every {game_info['half_life_hours']}h)\n"
+                else:
+                    response += f"⏰ Half-life: None (no CPH decay)\n"
+                
+                response += f"🎮 View the game on [Backloggd]({game_info['backloggd_url']})\n"
+                response += f"🌐 View on [Gamer Cred](https://gamercred.onrender.com/game.html?game={encoded_game})"
+
+                await ctx.send(response)
             else:
                 await ctx.send(f"❓ Game '{game}' not found in database")
 
@@ -654,6 +702,11 @@ class GamingCommands(commands.Cog):
         embed.add_field(
             name="!setrate <credits> <game>",
             value="Set credits per hour for a game",
+            inline=False
+        )
+        embed.add_field(
+            name="!setrate <credits> <game> <half-life>",
+            value="Set credits per hour and half-life for a game",
             inline=False
         )
         embed.add_field(

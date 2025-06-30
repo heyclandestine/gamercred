@@ -135,7 +135,16 @@ function renderGames() {
         // Always add CPH indicator, CSS will handle visibility
         const cphIndicator = document.createElement('div');
         cphIndicator.className = 'cph-indicator';
-        cphIndicator.textContent = `${cphValue} CPH`;
+        
+        // Add half-life information to CPH indicator if available
+        if (game.half_life_hours) {
+            cphIndicator.textContent = `${cphValue} CPH (${game.half_life_hours}h half-life)`;
+            cphIndicator.title = `CPH halves every ${game.half_life_hours} hours`;
+        } else {
+            cphIndicator.textContent = `${cphValue} CPH`;
+            cphIndicator.title = 'No CPH decay';
+        }
+        
         gameCard.appendChild(cphIndicator);
 
         gamesGrid.appendChild(gameCard);

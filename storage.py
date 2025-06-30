@@ -847,7 +847,7 @@ class GameStorage:
             return False
 
     def recalculate_all_credits(self) -> None:
-        """Recalculate all credits based on current game rates"""
+        """Recalculate all credits based on current game rates and half-life settings"""
         session = self.Session()
         try:
             # Force refresh of all data
@@ -868,8 +868,12 @@ class GameStorage:
                 total_sessions += len(sessions)
 
                 for gaming_session in sessions:
-                    # Calculate new credits based on current rate
-                    new_credits = gaming_session.hours * game.credits_per_hour
+                    # Calculate new credits based on current rate and half-life
+                    new_credits = self.calculate_credits_with_half_life(
+                        gaming_session.hours, 
+                        game.credits_per_hour, 
+                        game.half_life_hours
+                    )
 
                     # Update credits regardless of whether they've changed
                     gaming_session.credits_earned = new_credits
@@ -959,8 +963,12 @@ class GameStorage:
             # Get or create the game
             game, is_new = await self.get_or_create_game(game_name, user_id)
             
-            # Calculate credits earned
-            credits_earned = hours * game.credits_per_hour
+            # Calculate credits earned with half-life system
+            credits_earned = self.calculate_credits_with_half_life(
+                hours, 
+                game.credits_per_hour, 
+                game.half_life_hours
+            )
             
             # Create or update gaming session
             gaming_session = GamingSession(
@@ -1091,6 +1099,7 @@ class GameStorage:
             return {
                 "name": result.name,
                 "credits_per_hour": float(result.credits_per_hour),
+                "half_life_hours": float(result.half_life_hours) if result.half_life_hours else None,
                 "added_by": result.added_by,
                 "backloggd_url": result.backloggd_url
             }
@@ -1199,6 +1208,7 @@ class GameStorage:
                 "total_sessions": result.total_sessions,
                 "unique_players": result.unique_players,
                 "credits_per_hour": game.credits_per_hour,
+                "half_life_hours": game.half_life_hours,
                 "added_by": game.added_by,
                 "backloggd_url": game.backloggd_url,
                 "box_art_url": game.box_art_url,
@@ -1737,6 +1747,44 @@ class GameStorage:
         finally:
             session.close()
 
+    def calculate_credits_with_half_life(self, hours: float, base_cph: float, half_life_hours: float = None) -> float:
+        """
+        Calculate credits earned with half-life system.
+        
+        Args:
+            hours: Total hours played
+            base_cph: Base credits per hour
+            half_life_hours: Hours after which CPH is halved (None means no half-life)
+        
+        Returns:
+            Total credits earned
+        """
+        if half_life_hours is None or half_life_hours <= 0:
+            # No half-life, use simple calculation
+            return hours * base_cph
+        
+        total_credits = 0.0
+        remaining_hours = hours
+        current_cph = base_cph
+        current_threshold = half_life_hours
+        
+        while remaining_hours > 0:
+            # Calculate how many hours we can apply at the current CPH rate
+            hours_at_current_rate = min(remaining_hours, current_threshold)
+            
+            # Add credits for this segment
+            total_credits += hours_at_current_rate * current_cph
+            
+            # Update remaining hours
+            remaining_hours -= hours_at_current_rate
+            
+            # If we still have hours remaining, halve the CPH and double the threshold
+            if remaining_hours > 0:
+                current_cph /= 2.0
+                current_threshold *= 2.0
+        
+        return total_credits
+
     def calculate_credits(self, duration_minutes: int) -> float:
         """Calculate credits earned for a given duration in minutes."""
         # Base rate is 1 credit per hour
@@ -1833,6 +1881,7 @@ class GameStorage:
                 Game.name,
                 Game.box_art_url,
                 Game.credits_per_hour,
+                Game.half_life_hours,
                 Game.backloggd_url,
                 Game.release_date,  # Include release_date from database
                 func.count(distinct(GamingSession.user_id)).label('unique_players'),
@@ -1870,6 +1919,7 @@ class GameStorage:
                     'name': name,
                     'box_art_url': row.box_art_url,
                     'credits_per_hour': float(row.credits_per_hour),
+                    'half_life_hours': float(row.half_life_hours) if row.half_life_hours else None,
                     'backloggd_url': row.backloggd_url,
                     'unique_players': row.unique_players or 0,
                     'total_hours': float(row.total_hours or 0),
@@ -1896,8 +1946,12 @@ class GameStorage:
             if not game:
                 raise Exception("Game does not exist in the database, please set the rate")
 
-            # Calculate credits earned
-            credits_earned = hours * game.credits_per_hour
+            # Calculate credits earned with half-life system
+            credits_earned = self.calculate_credits_with_half_life(
+                hours, 
+                game.credits_per_hour, 
+                game.half_life_hours
+            )
 
             # Create timestamp in CST
             utc_now = datetime.now(pytz.UTC)
@@ -2038,6 +2092,57 @@ class GameStorage:
                 ORDER BY date ASC
             """), {"user_id": user_id}).fetchall()
             return [{"date": str(row.date), "credits": float(row.credits)} for row in results]
+        finally:
+            session.close()
+
+    async def set_game_half_life(self, game_name: str, half_life_hours: float, user_id: int) -> bool:
+        """Set half-life hours for a game"""
+        session = self.Session()
+        try:
+            # Format the game name
+            formatted_name = ' '.join(word.capitalize() for word in game_name.split())
+            
+            # Get existing game
+            game = session.query(Game).filter(func.lower(Game.name) == func.lower(formatted_name)).first()
+            
+            if game:
+                # Update existing game
+                game.half_life_hours = half_life_hours if half_life_hours > 0 else None
+                game.added_by = user_id
+                
+                # Recalculate all existing gaming sessions for this game with new half-life
+                gaming_sessions = session.query(GamingSession).filter(GamingSession.game_id == game.id).all()
+                for gaming_session in gaming_sessions:
+                    # Recalculate credits based on hours and new half-life
+                    new_credits = self.calculate_credits_with_half_life(
+                        gaming_session.hours, 
+                        game.credits_per_hour, 
+                        game.half_life_hours
+                    )
+                    gaming_session.credits_earned = new_credits
+            else:
+                # Game doesn't exist, create it with default CPH
+                game = Game(
+                    name=formatted_name, 
+                    credits_per_hour=1.0,  # Default CPH
+                    half_life_hours=half_life_hours if half_life_hours > 0 else None,
+                    added_by=user_id
+                )
+                session.add(game)
+            
+            session.commit()
+            
+            # Recalculate user totals since credits may have changed
+            self.recalculate_all_user_credits()
+            
+            return True
+
+        except Exception as e:
+            session.rollback()
+            print(f"Error setting game half-life: {str(e)}")
+            print("Full traceback:")
+            traceback.print_exc()
+            return False
         finally:
             session.close()
 

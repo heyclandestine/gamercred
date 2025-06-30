@@ -204,6 +204,18 @@ function updateGameInfo(game) {
   document.getElementById('creditsPerHour').textContent = formatNumber(game.credits_per_hour || 0);
   document.getElementById('releaseDate').textContent = game.release_date ? new Date(game.release_date).toLocaleDateString() : 'N/A';
 
+  // Update half-life information if available
+  const halfLifeElement = document.getElementById('halfLife');
+  if (halfLifeElement) {
+    if (game.half_life_hours) {
+      halfLifeElement.textContent = `${game.half_life_hours}h (CPH halves every ${game.half_life_hours}h)`;
+      halfLifeElement.style.display = 'block';
+    } else {
+      halfLifeElement.textContent = 'None (no CPH decay)';
+      halfLifeElement.style.display = 'block';
+    }
+  }
+
   // Update game cover
   const coverElement = document.getElementById('gameCover');
   if (game.box_art_url) {

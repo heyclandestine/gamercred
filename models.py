@@ -15,6 +15,7 @@ class Game(Base):
     id = Column(Integer, primary_key=True)
     name = Column(String, unique=True)
     credits_per_hour = Column(Float, default=1.0)
+    half_life_hours = Column(Float, default=None)  # Hours after which CPH is halved, null means no half-life
     added_by = Column(BigInteger)  # User ID who added the game
     backloggd_url = Column(String)
     rawg_id = Column(Integer)
