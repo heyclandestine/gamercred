@@ -1148,11 +1148,22 @@ class GameStorage:
                 ),
                 user_rank AS (
                     SELECT 
-                        gs.user_id,
-                        RANK() OVER (ORDER BY (COALESCE(SUM(gs.credits_earned), 0) + COALESCE(b.credits, 0)) DESC) as rank
-                    FROM gaming_sessions gs
-                    LEFT JOIN bonuses b ON gs.user_id = b.user_id
-                    GROUP BY gs.user_id
+                        user_id,
+                        RANK() OVER (ORDER BY (COALESCE(SUM(credits_earned), 0) + COALESCE(SUM(bonus_credits), 0)) DESC) as rank
+                    FROM (
+                        SELECT 
+                            gs.user_id,
+                            gs.credits_earned,
+                            0 as bonus_credits
+                        FROM gaming_sessions gs
+                        UNION ALL
+                        SELECT 
+                            b.user_id,
+                            0 as credits_earned,
+                            b.credits as bonus_credits
+                        FROM bonuses b
+                    ) combined_credits
+                    GROUP BY user_id
                 )
                 SELECT 
                     us.total_hours,
