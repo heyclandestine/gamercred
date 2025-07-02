@@ -1121,12 +1121,18 @@ class GameStorage:
                 WITH user_stats AS (
                     SELECT 
                         COALESCE(SUM(hours), 0) as total_hours,
-                        COALESCE(SUM(credits_earned), 0) as total_credits,
+                        COALESCE(SUM(credits_earned), 0) as session_credits,
                         COUNT(DISTINCT game_id) as games_played,
                         COUNT(*) as total_sessions,
                         MIN(timestamp) as first_played,
                         MAX(timestamp) as last_played
                     FROM gaming_sessions
+                    WHERE user_id = :user_id
+                ),
+                bonus_stats AS (
+                    SELECT 
+                        COALESCE(SUM(credits), 0) as bonus_credits
+                    FROM bonuses
                     WHERE user_id = :user_id
                 ),
                 most_played AS (
@@ -1142,17 +1148,24 @@ class GameStorage:
                 ),
                 user_rank AS (
                     SELECT 
-                        user_id,
-                        RANK() OVER (ORDER BY COALESCE(SUM(credits_earned), 0) DESC) as rank
-                    FROM gaming_sessions
-                    GROUP BY user_id
+                        gs.user_id,
+                        RANK() OVER (ORDER BY (COALESCE(SUM(gs.credits_earned), 0) + COALESCE(b.credits, 0)) DESC) as rank
+                    FROM gaming_sessions gs
+                    LEFT JOIN bonuses b ON gs.user_id = b.user_id
+                    GROUP BY gs.user_id
                 )
                 SELECT 
-                    us.*,
+                    us.total_hours,
+                    (us.session_credits + COALESCE(bs.bonus_credits, 0)) as total_credits,
+                    us.games_played,
+                    us.total_sessions,
+                    us.first_played,
+                    us.last_played,
                     mp.name as most_played_game,
                     mp.total_hours as most_played_hours,
                     ur.rank
                 FROM user_stats us
+                LEFT JOIN bonus_stats bs ON true
                 LEFT JOIN most_played mp ON true
                 LEFT JOIN user_rank ur ON ur.user_id = :user_id
             """), {"user_id": user_id}).first()
