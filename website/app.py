@@ -601,6 +601,7 @@ def get_user_history_endpoint(user_identifier):
                     'game_name': game_name or 'Unknown Game',
                     'hours': float(entry.get('hours', 0.0)),
                     'credits_earned': float(entry.get('credits_earned', 0.0)),
+                    'players': entry.get('players', 1),
                     'timestamp': entry.get('timestamp', datetime.now()).isoformat(),
                     'box_art_url': box_art_url,
                     'user_id': user_id_str,
@@ -692,6 +693,7 @@ def recent_activity():
                     'avatar_url': discord_info.get('avatar_url', ''),
                     'game_name': session['game_name'],
                     'hours': session['hours'],
+                    'players': session.get('players', 1),
                     'timestamp': session['timestamp'].isoformat() if hasattr(session['timestamp'], 'isoformat') else str(session['timestamp']),
                     'box_art_url': session['box_art_url']
                 })
@@ -749,7 +751,7 @@ def get_all_games():
 def login():
     """Redirect to Discord OAuth2 login page"""
     return redirect('https://discord.com/oauth2/authorize?client_id=1344451764530708571&response_type=code&redirect_uri=https%3A%2F%2Fgamercred.onrender.com%2Fcallback&scope=identify+guilds+email+guilds.join+connections')
-    #return redirect('https://discord.com/oauth2/authorize?client_id=1344451764530708571&response_type=code&redirect_uri=http%3A%2F%2Flocalhost%3A5000%2Fcallback&scope=identify+guilds+email+guilds.join+connections')
+    #return redirect('https://discord.com/oauth2/authorize?client_id=1344451764530708571&response_type=code&redirect_uri=http://localhost:5000/callback&scope=identify+guilds+email+guilds.join+connections')
 
 @app.route('/callback')
 def callback():
@@ -1042,6 +1044,7 @@ def log_game():
         user_id = data.get('user_id')
         game_name = data.get('game_name')
         hours = data.get('hours')
+        players = data.get('players', 1)
 
         if not all([user_id, game_name, hours]):
             logger.warning(f"Missing required fields for game logging. Received: {data}")
@@ -1049,14 +1052,22 @@ def log_game():
 
         try:
             hours = float(hours)
+            # Handle players parameter - convert string "5+" to integer 5
+            if isinstance(players, str) and players == "5+":
+                players = 5
+            else:
+                try:
+                    players = int(players)
+                except (ValueError, TypeError):
+                    players = 1
         except ValueError:
-            logger.warning(f"Invalid hours value: {hours}")
+            logger.warning(f"Invalid hours value: hours={hours}")
             return jsonify({'error': 'Hours must be a number'}), 400
 
-        logger.info(f"Logging game session for user {user_id}: {game_name} - {hours} hours")
+        logger.info(f"Logging game session for user {user_id}: {game_name} - {hours} hours, {players} players")
         
         try:
-            storage.log_game_session(user_id, game_name, hours)
+            storage.log_game_session(user_id, game_name, hours, players)
             return jsonify({'message': 'Game session logged successfully'}), 200
         except Exception as e:
             logger.error(f"Error in storage.log_game_session: {str(e)}", exc_info=True)

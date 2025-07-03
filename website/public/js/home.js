@@ -393,6 +393,7 @@ function renderRecentActivity(recentActivity) {
         <a href="/pages/game.html?game=${encodeURIComponent(session.game_name)}">
         </a>
         <div class="activity-date">${timestamp.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</div>
+        ${session.players > 1 ? `<div class="coop-icon"><span class="player-count">${session.players}</span><i class="fas fa-users"></i></div>` : ''}
         <div class="activity-overlay">
           <img class="activity-avatar" src="${session.avatar_url}" alt="${session.username}">
           <div class="activity-userblock">

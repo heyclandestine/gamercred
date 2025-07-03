@@ -126,6 +126,19 @@
             </label>
             <input type="number" id="hours" placeholder="Hours..." step="0.5" min="0.5" required>
           </div>
+          <div class="form-group players-group">
+            <label for="players">
+              <i class="fas fa-users"></i>
+              Players
+            </label>
+            <select id="players" class="players-dropdown" required>
+              <option value="1">1</option>
+              <option value="2">2</option>
+              <option value="3">3</option>
+              <option value="4">4</option>
+              <option value="5+">5+</option>
+            </select>
+          </div>
           <button type="submit" class="submit-button">
             <i class="fas fa-plus"></i>
             Log
@@ -146,6 +159,19 @@
               <input type="text" id="timer-game-name" placeholder="Search for a game..." autocomplete="off">
             </div>
           </div>
+          <div class="form-group timer-players-group">
+            <label for="timer-players">
+              <i class="fas fa-users"></i>
+              Players
+            </label>
+            <select id="timer-players" class="players-dropdown" required>
+              <option value="1">1</option>
+              <option value="2">2</option>
+              <option value="3">3</option>
+              <option value="4">4</option>
+              <option value="5+">5+</option>
+            </select>
+          </div>
           <div class="timer-controls">
             <button id="start-timer" class="timer-button" disabled>START TIMER</button>
             <button id="stop-timer" class="timer-button" disabled style="display: none;">STOP</button>
@@ -154,6 +180,9 @@
         <div class="timer-display" style="display: none;">
           <div class="timer-box-art">
             <img src="https://static-cdn.jtvnw.net/ttv-boxart/loading_boxart.png" alt="Game Box Art" id="timer-box-art">
+          </div>
+          <div class="timer-coop-indicator" style="display: none;">
+            <span class="timer-player-count"></span><i class="fas fa-users"></i>
           </div>
           <div class="timer-time">
             <span id="timer-hours">00</span>:<span id="timer-minutes">00</span>:<span id="timer-seconds">00</span>

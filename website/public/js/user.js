@@ -308,7 +308,7 @@ document.addEventListener('DOMContentLoaded', () => {
           listItem.innerHTML = `
             ${mediaElement.outerHTML}
             <div class="activity-details">
-              <div class="game-name">${activity.game_name}</div>
+              <div class="game-name">${activity.game_name}${activity.players > 1 ? ` <span class="coop-indicator"><span class="player-count">${activity.players}</span><i class="fas fa-users"></i></span>` : ''}</div>
               <div class="activity-time">${timeDisplay}</div>
               <div class="activity-credits">${formatNumberWithCommas(activity.credits_earned)} credits</div>
               <div class="activity-date">${date}</div>

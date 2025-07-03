@@ -1221,6 +1221,43 @@ footer {
   box-sizing: border-box;
 }
 
+.coop-icon {
+  position: absolute;
+  top: 0px;
+  left: 0px;
+  display: flex;
+  background: #09a341;
+  color: #fff;
+  font-size: 1em;
+  font-weight: 600;
+  gap: 3px;
+  z-index: 3;
+  padding: 0.25em 0.7em;
+  border-radius: 1em;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+  pointer-events: none;
+  justify-content: center;
+  align-items: center;
+  line-height: 1;
+}
+
+.coop-indicator {
+  display: inline-block;
+  margin-left: 8px;
+  color: #09a341;
+  font-size: 14px;
+}
+
+.coop-indicator i {
+  font-size: 12px;
+}
+
+.coop-indicator .player-count {
+  font-size: 12px;
+  font-weight: bold;
+  margin-right: 2px;
+}
+
 .activity-card:hover {
   box-shadow: 0 4px 24px rgba(255,111,174,0.08);
   border-color: #50cdff;
@@ -3498,4 +3535,86 @@ a:hover .game-cover-carousel, .activity-card:hover .game-cover-carousel {
   gap: 1rem;
   width: 100%;
   margin-top: 0;
+}
+
+.hours-group {
+  flex: 1;
+}
+
+.players-group {
+  flex: 0 0 auto;
+  width: 80px;
+}
+
+.players-dropdown {
+  background: #23232b;
+    border: 2px solid #2d2d35;
+    border-radius: 8px;
+    padding: 0.8rem 1rem;
+    color: #fff;
+    font-size: 1rem;
+    transition: all 0.2s ease;
+    width: -webkit-fill-available;
+}
+
+.players-dropdown:focus {
+  border-color: #ff6fae;
+}
+
+.timer-players-group {
+  flex: 0 0 auto;
+  width: 80px;
+  margin-right: 1rem;
+}
+
+.form-group label {
+  color: #8be9fd;
+  font-size: 0.95rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding-bottom: 0.5rem;
+}
+
+.form-group label i {
+  color: #ff6fae;
+  font-size: 0.9rem;
+}
+
+.timer-time {
+  font-size: 2rem;
+  font-weight: bold;
+  color: #fff;
+  text-align: center;
+  margin: 1rem 0;
+}
+
+.timer-display .timer-coop-indicator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  background: #09a341;
+  color: white;
+  padding: 0.5rem 1rem;
+  border-radius: 1rem;
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 0.5rem 0;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+  flex-shrink: 0;
+}
+
+.timer-display .timer-coop-indicator .timer-player-count {
+  font-weight: bold;
+}
+
+.timer-display .timer-coop-indicator i {
+  font-size: 14px;
+}
+
+.timer-active-controls {
+  display: flex;
+  gap: 1rem;
+  flex-shrink: 0;
 }

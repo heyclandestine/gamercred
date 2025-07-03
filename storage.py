@@ -619,7 +619,8 @@ class GameStorage:
                     gs.hours,
                     gs.credits_earned,
                     g.credits_per_hour as rate,
-                    gs.timestamp
+                    gs.timestamp,
+                    gs.players
                 FROM gaming_sessions gs
                 JOIN games g ON g.id = gs.game_id
                 WHERE gs.user_id = :user_id
@@ -636,7 +637,8 @@ class GameStorage:
                 "hours": float(row.hours),
                 "credits_earned": float(row.credits_earned),
                 "rate": float(row.rate),
-                "timestamp": row.timestamp
+                "timestamp": row.timestamp,
+                "players": row.players
             } for row in results]
         finally:
             session.close()
@@ -1454,6 +1456,7 @@ class GameStorage:
                 GamingSession.game_id,
                 GamingSession.hours,
                 GamingSession.timestamp,
+                GamingSession.players,
                 Game.name.label('game_name'),
                 Game.box_art_url
             ).join(Game, GamingSession.game_id == Game.id, isouter=True)
@@ -1490,6 +1493,7 @@ class GameStorage:
                     'game_id': row.game_id,
                     'hours': row.hours,
                     'timestamp': row.timestamp,
+                    'players': row.players,
                     'game_name': row.game_name or f'Game{row.game_id}',
                     'box_art_url': box_art_url
                 })
@@ -2010,7 +2014,7 @@ class GameStorage:
         finally:
             session.close()
 
-    def log_game_session(self, user_id: int, game_name: str, hours: float) -> None:
+    def log_game_session(self, user_id: int, game_name: str, hours: float, players: int = 1) -> None:
         """Log a new game session"""
         session = self.Session()
         try:
@@ -2028,12 +2032,25 @@ class GameStorage:
                 .scalar() or 0.0
 
             # Calculate credits earned with half-life system based on total accumulated hours
-            credits_earned = self.calculate_credits_with_half_life_for_session(
+            base_credits = self.calculate_credits_with_half_life_for_session(
                 hours, 
                 total_game_hours, 
                 game.credits_per_hour, 
                 game.half_life_hours
             )
+
+            # Handle players parameter - convert string "5+" to integer 5
+            if isinstance(players, str) and players == "5+":
+                players = 5
+            else:
+                try:
+                    players = int(players)
+                except (ValueError, TypeError):
+                    players = 1
+
+            # Apply players bonus: +10% per extra player, up to 5 players (max 40% bonus)
+            players = max(1, min(players, 5))
+            credits_earned = base_credits * (1 + 0.1 * (players - 1))
 
             # Create timestamp in CST
             utc_now = datetime.now(pytz.UTC)
@@ -2045,7 +2062,8 @@ class GameStorage:
                 game_id=game.id,
                 hours=hours,
                 credits_earned=credits_earned,
-                timestamp=cst_time
+                timestamp=cst_time,
+                players=players
             )
             session.add(gaming_session)
             session.commit()

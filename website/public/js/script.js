@@ -838,6 +838,7 @@ document.addEventListener('DOMContentLoaded', function() {
       event.preventDefault();
       const gameName = document.getElementById('game-name').value;
       const hours = document.getElementById('hours').value;
+      const players = document.getElementById('players').value;
 
       fetch('/api/user')
         .then(response => {
@@ -853,7 +854,8 @@ document.addEventListener('DOMContentLoaded', function() {
             body: JSON.stringify({
               user_id: user.id,
               game_name: gameName,
-              hours: hours
+              hours: hours,
+              players: players
             })
           })
           .then(response => response.json())
@@ -896,13 +898,14 @@ document.addEventListener('DOMContentLoaded', function() {
 
     if (!timerGameNameInput || !startTimerButton || !stopTimerButton) return;
 
-    let timerInterval;
-    let startTime;
-    let elapsedTime = 0;
     let isRunning = false;
+    let startTime = 0;
+    let elapsedTime = 0;
+    let timerInterval = null;
+    let currentGame = null;
+    let selectedPlayers = 1; // Store the selected players value
     let isPaused = false;
     let isLoggedIn = false;
-    let currentGame = null;
 
     // Check login status on load
     fetch('/api/user')
@@ -1131,9 +1134,53 @@ document.addEventListener('DOMContentLoaded', function() {
         timerDisplay.classList.add('active');
       }
       
+      // Show co-op indicator if multiple players
+      // Wait a moment for the DOM to update, then find the elements
+      setTimeout(() => {
+        const coopIndicator = document.querySelector('.timer-coop-indicator');
+        const playerCountSpan = document.querySelector('.timer-player-count');
+        console.log('Co-op indicator element:', coopIndicator);
+        console.log('Player count span element:', playerCountSpan);
+        console.log('Selected players value:', selectedPlayers);
+        console.log('Timer display element:', document.querySelector('.timer-display'));
+        console.log('Timer display HTML:', document.querySelector('.timer-display')?.innerHTML);
+        
+        if (coopIndicator && playerCountSpan) {
+          if (selectedPlayers > 1) {
+            playerCountSpan.textContent = selectedPlayers;
+            coopIndicator.style.display = 'flex';
+            console.log('SHOWING co-op indicator with', selectedPlayers, 'players');
+          } else {
+            coopIndicator.style.display = 'none';
+            console.log('HIDING co-op indicator (single player)');
+          }
+        } else {
+          console.log('Co-op indicator elements NOT found');
+          // Try to find them within the timer display specifically
+          const timerDisplay = document.querySelector('.timer-display');
+          if (timerDisplay) {
+            const coopIndicatorInDisplay = timerDisplay.querySelector('.timer-coop-indicator');
+            const playerCountInDisplay = timerDisplay.querySelector('.timer-player-count');
+            console.log('Co-op indicator in timer display:', coopIndicatorInDisplay);
+            console.log('Player count in timer display:', playerCountInDisplay);
+          }
+        }
+      }, 100);
+      
       // Add timer-session-active class to log-game card and remove unnecessary elements
       if (logGameCard) {
         logGameCard.classList.add('timer-session-active');
+        
+        // Store the selected players value before removing the timer input
+        const timerPlayersElement = document.getElementById('timer-players');
+        console.log('Timer players element found:', timerPlayersElement);
+        if (timerPlayersElement) {
+          selectedPlayers = timerPlayersElement.value;
+          console.log('Selected players value captured:', selectedPlayers);
+        } else {
+          console.log('Timer players element NOT found');
+        }
+        
         const title = logGameCard.querySelector('h2');
         const divider = logGameCard.querySelector('.timer-divider');
         const logGameForm = logGameCard.querySelector('#log-game-form');
@@ -1191,6 +1238,19 @@ document.addEventListener('DOMContentLoaded', function() {
                 </label>
                 <input type="number" id="hours" placeholder="Hours..." step="0.5" min="0.5" required>
               </div>
+              <div class="form-group players-group">
+                <label for="players">
+                  <i class="fas fa-users"></i>
+                  Players
+                </label>
+                <select id="players" class="players-dropdown" required>
+                  <option value="1">1</option>
+                  <option value="2">2</option>
+                  <option value="3">3</option>
+                  <option value="4">4</option>
+                  <option value="5+">5+</option>
+                </select>
+              </div>
               <button type="submit" class="submit-button">
                 <i class="fas fa-plus"></i>
                 Log
@@ -1201,21 +1261,47 @@ document.addEventListener('DOMContentLoaded', function() {
             <span>OR</span>
           </div>
           <div class="timer-input">
-            <div class="form-row">
-              <div class="form-group game-name-group">
-                <label for="timer-game-name">
-                  <i class="fas fa-gamepad"></i>
-                  Start Timer
-                </label>
-                <div class="search-container">
-                  <input type="text" id="timer-game-name" placeholder="Enter game name..." required>
-                  <div class="autocomplete-dropdown"></div>
-                </div>
+            <div class="form-group">
+              <label for="timer-game-name">
+                <i class="fas fa-gamepad"></i>
+                Session Timer
+              </label>
+              <div class="search-container">
+                <input type="text" id="timer-game-name" placeholder="Search for a game..." autocomplete="off">
               </div>
-              <button type="button" id="start-timer" class="submit-button">
-                <i class="fas fa-play"></i>
-                Start
-              </button>
+            </div>
+            <div class="form-group timer-players-group">
+              <label for="timer-players">
+                <i class="fas fa-users"></i>
+                Players
+              </label>
+              <select id="timer-players" class="players-dropdown" required>
+                <option value="1">1</option>
+                <option value="2">2</option>
+                <option value="3">3</option>
+                <option value="4">4</option>
+                <option value="5+">5+</option>
+              </select>
+            </div>
+            <div class="timer-controls">
+              <button id="start-timer" class="timer-button" disabled>START TIMER</button>
+              <button id="stop-timer" class="timer-button" disabled style="display: none;">STOP</button>
+            </div>
+          </div>
+          <div class="timer-display" style="display: none;">
+            <div class="timer-box-art">
+              <img src="https://static-cdn.jtvnw.net/ttv-boxart/loading_boxart.png" alt="Game Box Art" id="timer-box-art">
+            </div>
+            <div class="timer-coop-indicator" style="display: none;">
+              <span class="timer-player-count"></span><i class="fas fa-users"></i>
+            </div>
+            <div class="timer-time">
+              <span id="timer-hours">00</span>:<span id="timer-minutes">00</span>:<span id="timer-seconds">00</span>
+            </div>
+            <div class="timer-active-controls">
+              <button id="pause-timer" class="timer-button">PAUSE</button>
+              <button id="resume-timer" class="timer-button" style="display: none;">RESUME</button>
+              <button id="log-timer" class="timer-button">LOG SESSION</button>
             </div>
           </div>
         `;
@@ -1227,6 +1313,7 @@ document.addEventListener('DOMContentLoaded', function() {
             event.preventDefault();
             const gameName = document.getElementById('game-name').value;
             const hours = document.getElementById('hours').value;
+            const players = document.getElementById('players').value;
 
             fetch('/api/user')
               .then(response => {
@@ -1242,7 +1329,8 @@ document.addEventListener('DOMContentLoaded', function() {
                   body: JSON.stringify({
                     user_id: user.id,
                     game_name: gameName,
-                    hours: hours
+                    hours: hours,
+                    players: players
                   })
                 })
                 .then(response => response.json())
@@ -1271,6 +1359,13 @@ document.addEventListener('DOMContentLoaded', function() {
       timerMinutes.textContent = '00';
       timerSeconds.textContent = '00';
       updateTimerBoxArt('https://static-cdn.jtvnw.net/ttv-boxart/loading_boxart.png');
+      
+      // Hide co-op indicator
+      const coopIndicator = document.querySelector('.timer-coop-indicator');
+      if (coopIndicator) {
+        coopIndicator.style.display = 'none';
+      }
+      
       currentGame = null;
       
       // Update button states
@@ -1307,6 +1402,7 @@ document.addEventListener('DOMContentLoaded', function() {
       if (!isRunning) return;
 
       const hours = elapsedTime / 3600000; // Convert milliseconds to hours
+      const players = selectedPlayers; // Use the stored players value
       
       fetch('/api/user')
         .then(response => {
@@ -1322,7 +1418,8 @@ document.addEventListener('DOMContentLoaded', function() {
             body: JSON.stringify({
               user_id: user.id,
               game_name: currentGame.name,
-              hours: hours.toFixed(2)
+              hours: hours.toFixed(2),
+              players: players
             })
           })
           .then(response => response.json())

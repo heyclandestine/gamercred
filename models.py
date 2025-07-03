@@ -45,6 +45,7 @@ class GamingSession(Base):
     hours = Column(Float, nullable=False)
     credits_earned = Column(Float, nullable=False)
     timestamp = Column(DateTime, nullable=False)
+    players = Column(Integer, nullable=False, default=1)  # Number of players in the session
     
     user = relationship("UserStats", back_populates="gaming_sessions")
     game = relationship("Game", back_populates="gaming_sessions")
