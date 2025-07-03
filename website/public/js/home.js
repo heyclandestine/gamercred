@@ -258,7 +258,7 @@ document.addEventListener('DOMContentLoaded', function() {
               <span class="rank">${index + 1}</span>
               <img class="avatar" src="${player.avatar_url || 'https://www.gravatar.com/avatar/?d=mp&s=50'}" alt="${player.username}">
               <a class="user-link" href="/pages/user.html?user=${player.user_id}">${player.username}</a>
-              <span class="score">${formatNumberWithCommas(player.total_credits || 0)} pts</span>
+              <span class="score">${formatNumberWithCommas(player.total_credits || 0)} cred</span>
             `;
             leaderboardList.appendChild(listItem);
           });
@@ -285,7 +285,7 @@ document.addEventListener('DOMContentLoaded', function() {
               <span class="rank">${index + 1}</span>
               <img class="avatar" src="${player.avatar_url || 'https://www.gravatar.com/avatar/?d=mp&s=50'}" alt="${player.username}">
               <a class="user-link" href="/pages/user.html?user=${player.user_id}">${player.username}</a>
-              <span class="score">${formatNumberWithCommas(player.total_credits || 0)} pts</span>
+              <span class="score">${formatNumberWithCommas(player.total_credits || 0)} cred</span>
             `;
             leaderboardList.appendChild(listItem);
           });
