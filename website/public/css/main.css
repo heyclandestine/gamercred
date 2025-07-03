@@ -2577,15 +2577,24 @@ a:hover .game-cover-carousel, .activity-card:hover .game-cover-carousel {
 
 .log-game h2 {
   color: #ff6fae;
-  margin-bottom: 1.5rem;
   font-size: 1.4rem;
   display: flex;
+  margin-bottom: -1rem;
   align-items: center;
   gap: 0.5rem;
 }
 
 .log-game h2 i {
   font-size: 1.2rem;
+}
+
+.log-game h3 {
+  color: white;
+  margin-bottom: 1.5rem;
+  font-size: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 }
 
 #log-game-form {

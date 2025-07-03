@@ -1182,10 +1182,12 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         
         const title = logGameCard.querySelector('h2');
+        const subtitle = logGameCard.querySelector('h3');
         const divider = logGameCard.querySelector('.timer-divider');
         const logGameForm = logGameCard.querySelector('#log-game-form');
         const timerInput = logGameCard.querySelector('.timer-input');
         if (title) title.remove();
+        if (subtitle) subtitle.remove();
         if (divider) divider.remove();
         if (logGameForm) logGameForm.remove();
         if (timerInput) timerInput.remove();
@@ -1219,6 +1221,7 @@ document.addEventListener('DOMContentLoaded', function() {
         logGameCard.classList.remove('timer-session-active');
         // Restore the form
         const formHTML = `
+          <h3>(10% boost for each additional player)</h3>
           <form id="log-game-form">
             <div class="form-row">
               <div class="form-group game-name-group">
