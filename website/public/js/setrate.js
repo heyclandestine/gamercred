@@ -392,16 +392,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
         recentChangesList.innerHTML = changes.map(change => `
             <div class="recent-change-item">
-                <img src="${change.box_art_url || 'https://static-cdn.jtvnw.net/ttv-boxart/loading_boxart.png'}" 
-                     alt="${change.game_name}" class="recent-change-cover"
-                     onerror="this.src='https://static-cdn.jtvnw.net/ttv-boxart/loading_boxart.png'">
+                <a href="/pages/game.html?game=${encodeURIComponent(change.game_name)}" target="_blank" class="recent-change-cover-link">
+                    <img src="${change.box_art_url || 'https://static-cdn.jtvnw.net/ttv-boxart/loading_boxart.png'}" 
+                         alt="${change.game_name}" class="recent-change-cover"
+                         onerror="this.src='https://static-cdn.jtvnw.net/ttv-boxart/loading_boxart.png'">
+                </a>
                 <div class="recent-change-details">
-                    <div class="recent-change-game">${change.game_name}</div>
+                    <a href="/pages/game.html?game=${encodeURIComponent(change.game_name)}" target="_blank" class="recent-change-game-link">
+                        <div class="recent-change-game">${change.game_name}</div>
+                    </a>
                     <div class="recent-change-info">
                         CPH: ${change.current_cph.toFixed(1)}
                         ${change.current_half_life ? `<br>Half-life: ${change.current_half_life}h` : '<br>Half-life: None'}
                     </div>
-                    <div class="recent-change-time">${formatTimeAgo(change.timestamp)} by ${change.user_name}</div>
+                    <div class="recent-change-time">Set by ${change.user_name}</div>
                 </div>
             </div>
         `).join('');

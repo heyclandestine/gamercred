@@ -1133,6 +1133,31 @@ input, .form-input, .search-input {
     font-style: italic;
 }
 
+/* Recent changes link styles */
+.recent-change-cover-link {
+    display: block;
+    text-decoration: none;
+    transition: transform 0.2s ease;
+}
+
+.recent-change-cover-link:hover {
+    transform: scale(1.05);
+}
+
+.recent-change-game-link {
+    text-decoration: none;
+    color: inherit;
+    transition: color 0.2s ease;
+}
+
+.recent-change-game-link:hover {
+    color: #ff6fae;
+}
+
+.recent-change-game-link:hover .recent-change-game {
+    color: #ff6fae;
+}
+
 /* Loading States */
 .loading-spinner {
     display: flex;
