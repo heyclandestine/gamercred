@@ -379,6 +379,7 @@ input, .form-input, .search-input {
     border-radius: 0 0 16px 16px;
     max-height: 350px;
     overflow-y: auto;
+    overflow-x: hidden;
     z-index: 1000;
     display: none;
     box-shadow: 0 8px 24px rgba(255, 111, 174, 0.2);
@@ -406,9 +407,11 @@ input, .form-input, .search-input {
     cursor: pointer;
     display: flex;
     align-items: center;
-    gap: 1.2rem;
+    gap: 1rem;
     transition: all 0.3s ease;
     border-bottom: 1px solid rgba(255, 111, 174, 0.1);
+    min-width: 0;
+    width: 100%;
 }
 
 .autocomplete-item:last-child {
@@ -421,12 +424,12 @@ input, .form-input, .search-input {
 }
 
 .autocomplete-avatar {
-    width: 56px;
-    height: 74px;
+    width: 100%;
+    height: 64px;
     border-radius: 12px;
     object-fit: cover;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
     transition: transform 0.3s ease;
+    flex-shrink: 0;
 }
 
 .autocomplete-item:hover .autocomplete-avatar {
@@ -435,9 +438,15 @@ input, .form-input, .search-input {
 
 .autocomplete-title {
     font-weight: 600;
-    color: #fff;
+    color: #ffb86c;
     font-size: 1.1rem;
     text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+    flex: 1;
+    min-width: 0;
+    max-width: calc(100% - 60px);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 /* Selected Game Display */
@@ -1113,7 +1122,7 @@ input, .form-input, .search-input {
 }
 
 .recent-change-game {
-    color: #fff;
+    color: #ffb86c;
     font-weight: 700;
     margin-bottom: 0.5rem;
     font-size: 1.1rem;
@@ -1712,17 +1721,6 @@ input, .form-input, .search-input {
     margin-right: auto;
 }
 
-.video-cover {
-    position: relative;
-    width: 100%;
-    height: 140px;
-    border-radius: 12px;
-    object-fit: cover;
-    margin-bottom: 1.2rem;
-    box-shadow: 0 6px 16px rgba(0,0,0,0.3);
-    background: #222;
-    display: block;
-}
 .video-cover video {
     width: 100%;
     height: 100%;
@@ -1746,23 +1744,18 @@ input, .form-input, .search-input {
     pointer-events: none;
     z-index: 2;
 }
-.autocomplete-avatar.video-cover, .selected-game-cover.video-cover {
+.autocomplete-item {
     background: #222;
 }
 .similar-game-card .video-cover {
     margin-bottom: 1.2rem;
-}
-.autocomplete-avatar.video-cover {
-    width: 56px;
-    height: 74px;
-    border-radius: 12px;
-    display: block;
 }
 .selected-game-cover.video-cover {
     width: 100px;
     height: 133px;
     border-radius: 16px;
     display: block;
+    background: #222;
 } 
 
 .rate-config-grid {

@@ -369,25 +369,41 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        recentChangesList.innerHTML = changes.map(change => `
-            <div class="recent-change-item">
-                <a href="/pages/game.html?game=${encodeURIComponent(change.game_name)}" target="_blank" class="recent-change-cover-link">
+        recentChangesList.innerHTML = changes.map(change => {
+            let coverHtml = '';
+            if (isVideoUrl(change.box_art_url)) {
+                coverHtml = `
+                    <video src="${change.box_art_url}" autoplay muted loop playsinline 
+                           poster="https://static-cdn.jtvnw.net/ttv-boxart/loading_boxart.png" 
+                           class="recent-change-cover video-cover">
+                    </video>
+                `;
+            } else {
+                coverHtml = `
                     <img src="${change.box_art_url || 'https://static-cdn.jtvnw.net/ttv-boxart/loading_boxart.png'}" 
                          alt="${change.game_name}" class="recent-change-cover"
                          onerror="this.src='https://static-cdn.jtvnw.net/ttv-boxart/loading_boxart.png'">
-                </a>
-                <div class="recent-change-details">
-                    <a href="/pages/game.html?game=${encodeURIComponent(change.game_name)}" target="_blank" class="recent-change-game-link">
-                        <div class="recent-change-game">${change.game_name}</div>
+                `;
+            }
+
+            return `
+                <div class="recent-change-item">
+                    <a href="/pages/game.html?game=${encodeURIComponent(change.game_name)}" target="_blank" class="recent-change-cover-link">
+                        ${coverHtml}
                     </a>
-                    <div class="recent-change-info">
-                        CPH: ${change.current_cph.toFixed(1)}
-                        ${change.current_half_life ? `<br>Half-life: ${change.current_half_life}h` : '<br>Half-life: None'}
+                    <div class="recent-change-details">
+                        <a href="/pages/game.html?game=${encodeURIComponent(change.game_name)}" target="_blank" class="recent-change-game-link">
+                            <div class="recent-change-game">${change.game_name}</div>
+                        </a>
+                        <div class="recent-change-info">
+                            CPH: ${change.current_cph.toFixed(1)}
+                            ${change.current_half_life ? `<br>Half-life: ${change.current_half_life}h` : '<br>Half-life: None'}
+                        </div>
+                        <div class="recent-change-time">Set by ${change.user_name}</div>
                     </div>
-                    <div class="recent-change-time">Set by ${change.user_name}</div>
                 </div>
-            </div>
-        `).join('');
+            `;
+        }).join('');
     }
 
     function formatTimeAgo(timestamp) {
