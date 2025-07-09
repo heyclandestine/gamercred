@@ -277,54 +277,53 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
       }
 
-      // Use a dedicated index to track how many items are shown
-      let shownCount = 0;
-      const showItems = (count) => {
-        const toShow = activityData.slice(shownCount, shownCount + count);
-        toShow.forEach(activity => {
-          const hours = activity.hours;
-          const timeDisplay = hours >= 1 ? `${hours.toFixed(1)}h` : `${(hours * 60).toFixed(0)}m`;
-          const date = new Date(activity.timestamp).toLocaleDateString();
-          const listItem = document.createElement('li');
-          
-          let mediaElement;
-          if (activity.box_art_url && activity.box_art_url.endsWith('.webm')) {
-            mediaElement = document.createElement('video');
-            mediaElement.src = activity.box_art_url;
-            mediaElement.autoplay = true;
-            mediaElement.loop = true;
-            mediaElement.muted = true;
-            mediaElement.playsInline = true;
-          } else {
-            mediaElement = document.createElement('img');
-            mediaElement.src = activity.box_art_url || 'https://static-cdn.jtvnw.net/ttv-boxart/loading_boxart.png';
-            mediaElement.onerror = function() {
-              this.src = 'https://static-cdn.jtvnw.net/ttv-boxart/loading_boxart.png';
-            };
-          }
-          mediaElement.className = 'game-cover-activity';
-          mediaElement.alt = activity.game_name;
-
-          listItem.innerHTML = `
-            ${mediaElement.outerHTML}
-            <div class="activity-details">
-              <div class="game-name">${activity.game_name}${activity.players > 1 ? ` <span class="coop-indicator"><span class="player-count">${activity.players}</span><i class="fas fa-users"></i></span>` : ''}</div>
-              <div class="activity-time">${timeDisplay}</div>
-              <div class="activity-credits">${formatNumberWithCommas(activity.credits_earned)} credits</div>
-              <div class="activity-date">${date}</div>
-            </div>
-          `;
-          
-          activityList.appendChild(listItem);
-        });
-        shownCount += count;
-      };
-
       // Show first 5 items initially
-      showItems(5);
+      const initialItems = activityData.slice(0, 5);
+      initialItems.forEach(activity => {
+        const hours = activity.hours;
+        const timeDisplay = hours >= 1 ? `${hours.toFixed(1)}h` : `${(hours * 60).toFixed(0)}m`;
+        const date = new Date(activity.timestamp).toLocaleDateString();
+        const listItem = document.createElement('li');
+        
+        let mediaElement;
+        if (activity.box_art_url && activity.box_art_url.endsWith('.webm')) {
+          mediaElement = document.createElement('video');
+          mediaElement.src = activity.box_art_url;
+          mediaElement.autoplay = true;
+          mediaElement.loop = true;
+          mediaElement.muted = true;
+          mediaElement.playsInline = true;
+        } else {
+          mediaElement = document.createElement('img');
+          mediaElement.src = activity.box_art_url || 'https://static-cdn.jtvnw.net/ttv-boxart/loading_boxart.png';
+          mediaElement.onerror = function() {
+            this.src = 'https://static-cdn.jtvnw.net/ttv-boxart/loading_boxart.png';
+          };
+        }
+        mediaElement.className = 'game-cover-activity';
+        mediaElement.alt = activity.game_name;
 
-      // Add "Show More" button if there are more items
+        listItem.innerHTML = `
+          ${mediaElement.outerHTML}
+          <div class="activity-details">
+            <div class="game-name">${activity.game_name}${activity.players > 1 ? ` <span class="coop-indicator"><span class="player-count">${activity.players}</span><i class="fas fa-users"></i></span>` : ''}</div>
+            <div class="activity-time">${timeDisplay}</div>
+            <div class="activity-credits">${formatNumberWithCommas(activity.credits_earned)} credits</div>
+            <div class="activity-date">${date}</div>
+          </div>
+        `;
+        
+        activityList.appendChild(listItem);
+      });
+
+      // Add "Show More" functionality if there are more items
       if (activityData.length > 5) {
+        const hiddenContainer = document.createElement('div');
+        hiddenContainer.dataset.remainingItems = JSON.stringify(activityData.slice(5));
+        hiddenContainer.dataset.currentIndex = '0';
+        hiddenContainer.style.display = 'none';
+        activityList.appendChild(hiddenContainer);
+
         const buttonContainer = document.createElement('div');
         buttonContainer.style.display = 'flex';
         buttonContainer.style.gap = '0.5rem';
@@ -335,15 +334,53 @@ document.addEventListener('DOMContentLoaded', () => {
         moreButton.className = 'more-button';
         moreButton.textContent = 'Show More';
         moreButton.onclick = () => {
-          const remaining = activityData.length - shownCount;
-          const toShow = Math.min(5, remaining);
-          showItems(toShow);
+          const items = JSON.parse(hiddenContainer.dataset.remainingItems);
+          const currentIndex = parseInt(hiddenContainer.dataset.currentIndex);
+          const remainingItems = items.slice(currentIndex, currentIndex + 5);
           
-          console.log(`Showed ${toShow} more items. Total shown: ${shownCount}/${activityData.length}`);
-          
-          // Only remove the button when we've shown all items
-          if (shownCount >= activityData.length) {
-            buttonContainer.remove();
+          remainingItems.forEach(activity => {
+            const hours = activity.hours;
+            const timeDisplay = hours >= 1 ? `${hours.toFixed(1)}h` : `${(hours * 60).toFixed(0)}m`;
+            const date = new Date(activity.timestamp).toLocaleDateString();
+            const listItem = document.createElement('li');
+            
+            let mediaElement;
+            if (activity.box_art_url && activity.box_art_url.endsWith('.webm')) {
+              mediaElement = document.createElement('video');
+              mediaElement.src = activity.box_art_url;
+              mediaElement.autoplay = true;
+              mediaElement.loop = true;
+              mediaElement.muted = true;
+              mediaElement.playsInline = true;
+            } else {
+              mediaElement = document.createElement('img');
+              mediaElement.src = activity.box_art_url || 'https://static-cdn.jtvnw.net/ttv-boxart/loading_boxart.png';
+              mediaElement.onerror = function() {
+                this.src = 'https://static-cdn.jtvnw.net/ttv-boxart/loading_boxart.png';
+              };
+            }
+            mediaElement.className = 'game-cover-activity';
+            mediaElement.alt = activity.game_name;
+
+            listItem.innerHTML = `
+              ${mediaElement.outerHTML}
+              <div class="activity-details">
+                <div class="game-name">${activity.game_name}${activity.players > 1 ? ` <span class="coop-indicator"><span class="player-count">${activity.players}</span><i class="fas fa-users"></i></span>` : ''}</div>
+                <div class="activity-time">${timeDisplay}</div>
+                <div class="activity-credits">${formatNumberWithCommas(activity.credits_earned)} credits</div>
+                <div class="activity-date">${date}</div>
+              </div>
+            `;
+            
+            activityList.insertBefore(listItem, buttonContainer);
+          });
+
+          // Update the current index
+          hiddenContainer.dataset.currentIndex = currentIndex + 5;
+
+          // Hide the buttons if we've shown all items
+          if (currentIndex + 5 >= items.length) {
+            buttonContainer.style.display = 'none';
           }
         };
 
@@ -351,10 +388,49 @@ document.addEventListener('DOMContentLoaded', () => {
         showAllButton.className = 'more-button';
         showAllButton.textContent = 'Show All';
         showAllButton.onclick = () => {
-          const remaining = activityData.length - shownCount;
-          showItems(remaining);
-          console.log(`Showed all remaining ${remaining} items. Total shown: ${shownCount}/${activityData.length}`);
-          buttonContainer.remove();
+          const items = JSON.parse(hiddenContainer.dataset.remainingItems);
+          const currentIndex = parseInt(hiddenContainer.dataset.currentIndex);
+          const remainingItems = items.slice(currentIndex);
+          
+          remainingItems.forEach(activity => {
+            const hours = activity.hours;
+            const timeDisplay = hours >= 1 ? `${hours.toFixed(1)}h` : `${(hours * 60).toFixed(0)}m`;
+            const date = new Date(activity.timestamp).toLocaleDateString();
+            const listItem = document.createElement('li');
+            
+            let mediaElement;
+            if (activity.box_art_url && activity.box_art_url.endsWith('.webm')) {
+              mediaElement = document.createElement('video');
+              mediaElement.src = activity.box_art_url;
+              mediaElement.autoplay = true;
+              mediaElement.loop = true;
+              mediaElement.muted = true;
+              mediaElement.playsInline = true;
+            } else {
+              mediaElement = document.createElement('img');
+              mediaElement.src = activity.box_art_url || 'https://static-cdn.jtvnw.net/ttv-boxart/loading_boxart.png';
+              mediaElement.onerror = function() {
+                this.src = 'https://static-cdn.jtvnw.net/ttv-boxart/loading_boxart.png';
+              };
+            }
+            mediaElement.className = 'game-cover-activity';
+            mediaElement.alt = activity.game_name;
+
+            listItem.innerHTML = `
+              ${mediaElement.outerHTML}
+              <div class="activity-details">
+                <div class="game-name">${activity.game_name}${activity.players > 1 ? ` <span class="coop-indicator"><span class="player-count">${activity.players}</span><i class="fas fa-users"></i></span>` : ''}</div>
+                <div class="activity-time">${timeDisplay}</div>
+                <div class="activity-credits">${formatNumberWithCommas(activity.credits_earned)} credits</div>
+                <div class="activity-date">${date}</div>
+              </div>
+            `;
+            
+            activityList.insertBefore(listItem, buttonContainer);
+          });
+
+          // Hide the buttons after showing all items
+          buttonContainer.style.display = 'none';
         };
 
         buttonContainer.appendChild(moreButton);
