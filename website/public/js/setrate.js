@@ -161,10 +161,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 ${coverHtml}
                 <span class="autocomplete-title">${game.name}</span>
             `;
-            // Open game in new tab on click, using game name in URL
+            // Select game on click
             item.addEventListener('click', (e) => {
                 e.stopPropagation();
-                window.open(`/pages/game.html?game=${encodeURIComponent(game.name)}`, '_blank');
+                selectGame(game);
             });
             gameAutocompleteDropdown.appendChild(item);
         });
@@ -298,8 +298,9 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        if (!selectedGame) {
-            showToast('Please select a game first', 'warning');
+        const gameName = gameSearch.value.trim();
+        if (!gameName) {
+            showToast('Please enter a game name', 'warning');
             return;
         }
 
@@ -322,7 +323,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     user_id: currentUser.id,
-                    game_name: selectedGame.name,
+                    game_name: gameName,
                     cph: cph,
                     half_life: halfLife,
                     box_art_url: boxArtUrl
