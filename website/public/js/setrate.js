@@ -38,32 +38,11 @@ document.addEventListener('DOMContentLoaded', () => {
             const response = await fetch('/api/user');
             if (response.ok) {
                 currentUser = await response.json();
-                updateAuthUI();
             } else {
                 showToast('Please log in to use this feature', 'warning');
             }
         } catch (error) {
             console.error('Auth check failed:', error);
-        }
-    }
-
-    function updateAuthUI() {
-        const loginBtn = document.getElementById('login-btn');
-        const userProfile = document.getElementById('user-profile');
-        const logoutBtn = document.getElementById('logout-btn');
-        const userAvatar = document.getElementById('user-avatar');
-        const userName = document.getElementById('user-name');
-
-        if (currentUser) {
-            loginBtn.style.display = 'none';
-            userProfile.style.display = 'flex';
-            logoutBtn.style.display = 'flex';
-            userAvatar.src = currentUser.avatar_url;
-            userName.textContent = currentUser.username;
-        } else {
-            loginBtn.style.display = 'flex';
-            userProfile.style.display = 'none';
-            logoutBtn.style.display = 'none';
         }
     }
 
