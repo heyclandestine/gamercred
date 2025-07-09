@@ -262,6 +262,16 @@ def all_games():
         traceback.print_exc()
         return "Error serving all_games.html", 500
 
+@app.route('/setrate.html')
+def setrate():
+    try:
+        return send_from_directory(app.static_folder, 'pages/setrate.html')
+    except Exception as e:
+        print(f"Error serving setrate.html: {str(e)}")
+        print("Full traceback:")
+        traceback.print_exc()
+        return "Error serving setrate.html", 500
+
 @app.route('/<path:path>')
 def serve_static(path):
     try:
@@ -1226,6 +1236,85 @@ def get_user_daily_credits(user_identifier):
         return jsonify(daily_credits)
     except Exception as e:
         return jsonify({'error': 'Internal server error', 'details': str(e)}), 500
+
+@app.route('/api/set-game-rate', methods=['POST'])
+def set_game_rate():
+    """Set game rate, half-life, and box art"""
+    try:
+        data = request.json
+        if not data:
+            return jsonify({'error': 'No data provided'}), 400
+
+        user_id = data.get('user_id')
+        game_name = data.get('game_name')
+        cph = data.get('cph')
+        half_life = data.get('half_life', 0)
+        box_art_url = data.get('box_art_url', '')
+
+        if not all([user_id, game_name, cph]):
+            return jsonify({'error': 'Missing required fields'}), 400
+
+        try:
+            cph = float(cph)
+            half_life = float(half_life) if half_life else 0
+        except ValueError:
+            return jsonify({'error': 'Invalid numeric values'}), 400
+
+        if cph < 0.1:
+            return jsonify({'error': 'CPH must be at least 0.1'}), 400
+
+        logger.info(f"Setting rate for game {game_name} to {cph} CPH, {half_life}h half-life by user {user_id}")
+        
+        try:
+            # Set CPH
+            cph_success = run_async(storage.set_game_credits_per_hour(game_name, cph, user_id))
+            if not cph_success:
+                return jsonify({'error': f'Failed to set CPH for {game_name}'}), 500
+
+            # Set half-life
+            half_life_success = run_async(storage.set_game_half_life(game_name, half_life, user_id))
+            if not half_life_success:
+                return jsonify({'error': f'Failed to set half-life for {game_name}'}), 500
+
+            # Set box art if provided
+            if box_art_url:
+                box_art_success = storage.set_game_box_art(game_name, box_art_url, user_id)
+                if not box_art_success:
+                    logger.warning(f"Failed to set box art for {game_name}")
+
+            return jsonify({'message': f'Successfully updated {game_name}'}), 200
+
+        except Exception as e:
+            logger.error(f"Error setting game rate: {str(e)}", exc_info=True)
+            return jsonify({'error': f'Failed to set game rate: {str(e)}'}), 500
+
+    except Exception as e:
+        error_msg = f"Error setting game rate: {str(e)}"
+        logger.error(error_msg, exc_info=True)
+        return jsonify({'error': 'Internal server error'}), 500
+
+@app.route('/api/recent-rate-changes')
+def get_recent_rate_changes():
+    """Get recent rate changes"""
+    try:
+        changes = storage.get_recent_rate_changes(limit=10)
+        
+        # Fetch Discord usernames for each change
+        for change in changes:
+            user_id = change.get('user_id')
+            if user_id:
+                discord_info = get_cached_discord_user_info(user_id)
+                if discord_info:
+                    change['user_name'] = discord_info.get('username', f'User{user_id}')
+                else:
+                    change['user_name'] = f'User{user_id}'
+            else:
+                change['user_name'] = 'Unknown'
+        
+        return jsonify(changes)
+    except Exception as e:
+        logger.error(f"Error getting recent rate changes: {str(e)}", exc_info=True)
+        return jsonify({'error': 'Failed to get recent changes'}), 500
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True) 

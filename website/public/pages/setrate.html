@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Set Game Rate - Gamer Cred</title>
+    <link rel="stylesheet" href="/css/main.css">
+    <link rel="stylesheet" href="/css/setrate.css">
+    <link rel="icon" type="image/png" href="/images/favicon.png">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="nav-left">
+            <button class="mobile-menu-toggle mobile-only" aria-label="Toggle menu">
+                <i class="fas fa-bars"></i>
+            </button>
+            <a href="/" class="site-title nav-home-btn">
+                <img src="/images/favicon.png" alt="Gamer Cred" class="nav-favicon">
+                Gamer Cred
+            </a>
+        </div>
+        <div class="nav-center">
+            <input type="text" class="search-bar" placeholder="Search players, games...">
+            <a href="/pages/all_games.html" class="nav-link desktop-only">All Games</a>
+            <a href="/pages/setrate.html" class="nav-link desktop-only active">Set Rate</a>
+        </div>
+        <div class="nav-right">
+            <div id="auth-container">
+                <a href="/login" class="auth-button login-button">
+                    <i class="fab fa-discord"></i>
+                    Login with Discord
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <main class="setrate-main">
+        <section class="setrate-header-section card">
+            <h1><i class="fas fa-cog"></i> Set Game Rate</h1>
+            <p>Configure credits per hour, half-life, and box art for games</p>
+        </section>
+
+        <div class="setrate-columns">
+            <div class="setrate-col-left">
+                <section class="main-config-section card">
+                    <div class="game-select-block">
+                        <h3><i class="fas fa-search"></i> Select Game</h3>
+                        <div class="search-container">
+                            <input type="text" id="game-search" placeholder="Search for a game..." class="search-input">
+                            <div class="autocomplete-dropdown" id="game-autocomplete-dropdown"></div>
+                        </div>
+                    </div>
+                    <hr class="section-divider">
+                    <div class="rate-config-block">
+                        <h3><i class="fas fa-coins"></i> Rate Configuration</h3>
+                        <form id="rate-config-form" class="rate-config-grid">
+                            <div class="form-group">
+                                <label for="cph-input">Credits Per Hour (CPH)</label>
+                                <div class="input-wrapper">
+                                    <span class="input-icon"><i class="fas fa-coins"></i></span>
+                                    <input type="number" id="cph-input" class="form-input" placeholder="e.g. 1.0">
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label for="half-life-input">Half-Life (hours)</label>
+                                <div class="input-wrapper">
+                                    <span class="input-icon"><i class="fas fa-clock"></i></span>
+                                    <input type="number" id="half-life-input" class="form-input" placeholder="e.g. 0 (no decay)">
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label for="box-art-url">Box Art URL</label>
+                                <div class="input-wrapper">
+                                    <span class="input-icon"><i class="fas fa-image"></i></span>
+                                    <input type="url" id="box-art-url" class="form-input" placeholder="https://example.com/box-art.jpg">
+                                </div>
+                            </div>
+                        </form>
+                        <hr class="section-divider">
+                        <div class="form-actions rate-actions-centered">
+                            <button type="button" id="save-rate-btn" class="save-button">Set</button>
+                            <button type="button" id="reset-form-btn" class="reset-button">Reset</button>
+                        </div>
+                    </div>
+                    <details class="cph-calc-collapsible">
+                        <summary><i class="fas fa-calculator"></i> CPH Calculator</summary>
+                        <div class="cph-calc-block">
+                            <form id="cph-calc-form">
+                                <div class="cph-calc-group">
+                                    <label for="calc-relevance">Cultural Relevance <i class="fas fa-info-circle" title="How relevant is this game culturally? (0-100)"></i></label>
+                                    <input type="number" id="calc-relevance" min="0" max="100" value="0">
+                                </div>
+                                <div class="cph-calc-group">
+                                    <label for="calc-popularity">Popularity <i class="fas fa-info-circle" title="How popular is this game? (0-100)"></i></label>
+                                    <input type="number" id="calc-popularity" min="0" max="100" value="0">
+                                </div>
+                                <div class="cph-calc-group">
+                                    <label for="calc-importance">Importance <i class="fas fa-info-circle" title="How important is this game? (0-100)"></i></label>
+                                    <input type="number" id="calc-importance" min="0" max="100" value="0">
+                                </div>
+                                <div class="cph-calc-group">
+                                    <label for="calc-accessibility">Accessibility <i class="fas fa-info-circle" title="How accessible is this game? (0-100)"></i></label>
+                                    <input type="number" id="calc-accessibility" min="0" max="100" value="0">
+                                </div>
+                                <div class="cph-calc-group">
+                                    <label for="calc-age">Age <i class="fas fa-info-circle" title="How old is this game? (0-100, see cheat sheet)"></i></label>
+                                    <input type="number" id="calc-age" min="0" max="100" value="0">
+                                </div>
+                                <button type="button" id="calc-cph-btn" class="save-button" style="margin-top:1rem;"><i class="fas fa-equals"></i> Calculate CPH</button>
+                            </form>
+                            <div class="cph-calc-result" id="cph-calc-result" style="margin-top:1.2rem;">
+                                <span class="cph-calc-label">Calculated CPH:</span>
+                                <span class="cph-calc-value" id="cph-calc-value">0.0</span>
+                                <button type="button" id="copy-cph-btn" class="reset-button" style="margin-left:1rem;"><i class="fas fa-copy"></i> Copy to Rate Config</button>
+                            </div>
+                            <div class="cph-calc-cheatsheet" style="margin-top:1.2rem;">
+                                <details>
+                                    <summary><b>Age Cheat Sheet</b></summary>
+                                    <table class="cph-calc-cheat-table">
+                                        <thead><tr><th>Age</th><th>Years</th></tr></thead>
+                                        <tbody>
+                                            <tr><td>0</td><td>This Year</td></tr>
+                                            <tr><td>10</td><td>2019-2024</td></tr>
+                                            <tr><td>20</td><td>2014-2018</td></tr>
+                                            <tr><td>30</td><td>2010-2013</td></tr>
+                                            <tr><td>40</td><td>2006-2009</td></tr>
+                                            <tr><td>50</td><td>2003-2005</td></tr>
+                                            <tr><td>60</td><td>1996-2002</td></tr>
+                                            <tr><td>70</td><td>1993-1995</td></tr>
+                                            <tr><td>80</td><td>1990-1992</td></tr>
+                                            <tr><td>90</td><td>1985-1989</td></tr>
+                                            <tr><td>100</td><td>-1985</td></tr>
+                                        </tbody>
+                                    </table>
+                                </details>
+                            </div>
+                        </div>
+                    </details>
+                </section>
+                <section class="similar-games-section card">
+                    <h2><i class="fas fa-chart-line"></i> Similar CPH Games</h2>
+                    <div class="similar-games-container">
+                        <div class="similar-games-header">
+                            <p>Games with similar CPH rates will appear here when you enter a CPH value</p>
+                        </div>
+                        <div class="similar-games-grid" id="similar-games-grid">
+                            <div class="no-similar-games">
+                                <i class="fas fa-info-circle"></i>
+                                <p>Enter a CPH value above to see similar games</p>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+                <section class="recent-changes-section card">
+                    <h2><i class="fas fa-history"></i> Recent Rate Changes</h2>
+                    <div class="recent-changes-list" id="recent-changes-list">
+                        <div class="loading-spinner">
+                            <i class="fas fa-spinner fa-spin"></i>
+                            <span>Loading recent changes...</span>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </div>
+    </main>
+
+    <!-- Toast Container -->
+    <div class="toast-container" id="toast-container"></div>
+
+    <script src="/js/setrate.js"></script>
+</body>
+</html> 

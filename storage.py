@@ -2246,6 +2246,81 @@ class GameStorage:
         finally:
             session.close()
 
+    def set_game_box_art(self, game_name: str, box_art_url: str, user_id: int) -> bool:
+        """Set box art URL for a game"""
+        session = self.Session()
+        try:
+            # Format the game name
+            formatted_name = ' '.join(word.capitalize() for word in game_name.split())
+            
+            # Get existing game
+            game = session.query(Game).filter(func.lower(Game.name) == func.lower(formatted_name)).first()
+            
+            if game:
+                # Update existing game
+                game.box_art_url = box_art_url if box_art_url else None
+                game.added_by = user_id
+                session.commit()
+                return True
+            else:
+                # Game doesn't exist, create it with default values
+                game = Game(
+                    name=formatted_name, 
+                    credits_per_hour=1.0,  # Default CPH
+                    box_art_url=box_art_url if box_art_url else None,
+                    added_by=user_id
+                )
+                session.add(game)
+                session.commit()
+                return True
+
+        except Exception as e:
+            session.rollback()
+            print(f"Error setting game box art: {str(e)}")
+            print("Full traceback:")
+            traceback.print_exc()
+            return False
+        finally:
+            session.close()
+
+    def get_recent_rate_changes(self, limit: int = 10) -> List[Dict]:
+        """Get recent rate changes for games"""
+        session = self.Session()
+        try:
+            # Get recent games that have been modified
+            # Since we don't have a dedicated rate changes table, we'll get recent games
+            # and their current settings as a proxy for recent changes
+            games = session.query(Game)\
+                .filter(Game.added_by.isnot(None))\
+                .order_by(Game.id.desc())\
+                .limit(limit)\
+                .all()
+            
+            changes = []
+            for game in games:
+                # Get user info for the person who set the rate
+                user_id = str(game.added_by) if game.added_by else None
+                
+                changes.append({
+                    'game_name': game.name,
+                    'current_cph': game.credits_per_hour,
+                    'current_half_life': game.half_life_hours,
+                    'box_art_url': game.box_art_url,
+                    'user_id': user_id,
+                    'user_name': f'User{user_id}' if user_id else 'Unknown',
+                    'timestamp': datetime.now().isoformat()  # Since we don't track when rates were set
+                })
+            
+            return changes
+
+        except Exception as e:
+            print(f"Error getting recent rate changes: {str(e)}")
+            print("Full traceback:")
+            traceback.print_exc()
+            return []
+        finally:
+            session.close()
+
 def get_period_boundaries(dt: datetime, period_type: str):
     """Return (start, end) datetime for the period containing dt. period_type is 'weekly' or 'monthly'. All times in CST."""
     cst = pytz.timezone('America/Chicago')

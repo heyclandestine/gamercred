@@ -107,7 +107,9 @@ function renderGames() {
             <a href="/pages/game.html?game=${encodeURIComponent(game.name)}" class="game-card-link">
             </a>
             <div class="game-card-info">
-                <h3 class="game-card-title">${game.name}</h3>
+                <h3 class="game-card-title">
+                    <a href="/pages/game.html?game=${encodeURIComponent(game.name)}" class="game-title-link">${game.name}</a>
+                </h3>
                 <div class="game-card-stats">
                     <div class="stat">
                         <span class="stat-label">CPH</span>

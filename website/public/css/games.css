@@ -126,3 +126,15 @@
   background: #19191f !important;
 }
 
+/* Game title link styles */
+.game-title-link {
+  color: #ffb86c;
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+
+.game-title-link:hover {
+  color: #ff6fae;
+  text-decoration: none;
+}
+
