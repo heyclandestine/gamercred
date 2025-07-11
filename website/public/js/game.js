@@ -84,15 +84,20 @@ document.addEventListener('DOMContentLoaded', function() {
   document.title = `${gameName} - Gamer Cred`;
 
   // Fetch game data
+  console.log('DEBUG: Fetching game data for:', gameName);
   fetch(`/api/game?name=${encodeURIComponent(gameName)}`)
     .then(response => {
+      console.log('DEBUG: API response status:', response.status);
       return response.json();
     })
     .then(data => {
+      console.log('DEBUG: API response data:', data);
       if (data.error) {
+        console.error('DEBUG: API returned error:', data.error);
         showError(data.error);
         return;
       }
+      console.log('DEBUG: Updating game info with:', data);
       updateGameInfo(data);
     })
     .catch(error => {
@@ -296,6 +301,73 @@ function showError(message) {
   `;
 }
 
+// Enhanced message display function
+function showMessage(message, type = 'success') {
+  const messageDiv = document.createElement('div');
+  messageDiv.className = type === 'success' ? 'success-message' : 'error-message';
+  messageDiv.innerHTML = `
+    <i class="fas fa-${type === 'success' ? 'check-circle' : 'exclamation-circle'}"></i>
+    <span>${message}</span>
+  `;
+  
+  // Insert at the top of the game-interactivity section
+  const gameInteractivity = document.querySelector('.game-interactivity');
+  gameInteractivity.insertBefore(messageDiv, gameInteractivity.firstChild);
+  
+  // Remove after 5 seconds
+  setTimeout(() => {
+    messageDiv.style.opacity = '0';
+    messageDiv.style.transform = 'translateY(-10px)';
+    setTimeout(() => messageDiv.remove(), 300);
+  }, 5000);
+}
+
+// Screenshot Modal Functions
+function openScreenshotModal(imageUrl, caption, username, avatarUrl) {
+  const modal = document.getElementById('screenshotModal');
+  const modalImage = document.getElementById('modalImage');
+  const modalCaption = document.getElementById('modalCaption');
+  const modalUsername = document.getElementById('modalUsername');
+  const modalUserAvatar = document.getElementById('modalUserAvatar');
+  
+  modalImage.src = imageUrl;
+  modalCaption.textContent = caption || '';
+  modalUsername.textContent = username;
+  modalUserAvatar.src = avatarUrl;
+  modalUserAvatar.alt = username;
+  
+  // Hide caption div if no caption
+  if (!caption || caption.trim() === '') {
+    modalCaption.style.display = 'none';
+  } else {
+    modalCaption.style.display = 'block';
+  }
+  
+  modal.classList.add('active');
+  document.body.style.overflow = 'hidden'; // Prevent background scrolling
+}
+
+function closeScreenshotModal() {
+  const modal = document.getElementById('screenshotModal');
+  modal.classList.remove('active');
+  document.body.style.overflow = ''; // Restore scrolling
+}
+
+// Close modal when clicking outside the content
+document.addEventListener('click', function(e) {
+  const modal = document.getElementById('screenshotModal');
+  if (e.target === modal) {
+    closeScreenshotModal();
+  }
+});
+
+// Close modal with Escape key
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape') {
+    closeScreenshotModal();
+  }
+});
+
 // Add event listeners for More/Less buttons
 document.addEventListener('DOMContentLoaded', function() {
   const moreButton = document.querySelector('.more-button');
@@ -316,5 +388,385 @@ document.addEventListener('DOMContentLoaded', function() {
       moreButton.style.display = 'inline-block';
       lessButton.style.display = 'none';
     });
+  }
+}); 
+
+// --- GAME INTERACTIVITY LOGIC ---
+document.addEventListener('DOMContentLoaded', function() {
+  const urlParams = new URLSearchParams(window.location.search);
+  const gameName = urlParams.get('game');
+  let currentUser = null;
+
+  // Check login status and fetch user info
+  fetch('/api/user').then(r => r.ok ? r.json() : null).then(user => {
+    currentUser = user;
+    setupInteractivityUI(user);
+  }).catch(() => {
+    setupInteractivityUI(null);
+  });
+
+  function setupInteractivityUI(user) {
+    // Ratings
+    fetch(`/api/game/ratings?name=${encodeURIComponent(gameName)}`)
+      .then(r => r.json())
+      .then(data => {
+        document.getElementById('averageRating').textContent = data.average !== null ? data.average : '-';
+        // Pluralization fix for rating count
+        const ratingCount = data.count;
+        const ratingText = ratingCount === 1 ? 'rating' : 'ratings';
+        document.getElementById('ratingCount').textContent = ratingCount;
+        document.querySelector('.game-info-rating-display').innerHTML = `${data.average !== null ? data.average : '-'} / 5 (<span id="ratingCount">${ratingCount}</span> ${ratingText})`;
+        if (user) {
+          document.getElementById('user-rating-widget').style.display = 'block';
+          renderStarWidget(data.user_rating || 0);
+        }
+      });
+
+    // Completion
+    fetch(`/api/game/completions?name=${encodeURIComponent(gameName)}`)
+      .then(r => r.json())
+      .then(data => {
+        document.getElementById('completionCount').textContent = data.count;
+        if (user) {
+          if (data.user_completed) {
+            document.getElementById('completedBadge').style.display = 'inline-block';
+            document.getElementById('markCompletedBtn').style.display = 'none';
+            document.getElementById('undoCompletedBtn').style.display = 'inline-block';
+          } else {
+            document.getElementById('completedBadge').style.display = 'none';
+            document.getElementById('markCompletedBtn').style.display = 'inline-block';
+            document.getElementById('undoCompletedBtn').style.display = 'none';
+          }
+        }
+      });
+    if (user) {
+      document.getElementById('markCompletedBtn').addEventListener('click', function() {
+        const btn = this;
+        const originalText = btn.textContent;
+        btn.textContent = 'Marking...';
+        btn.disabled = true;
+        
+        fetch('/api/game/complete', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ game_name: gameName })
+        })
+        .then(r => r.json())
+        .then(data => {
+          if (data.already_completed) {
+            document.getElementById('completedBadge').style.display = 'inline-block';
+            document.getElementById('markCompletedBtn').style.display = 'none';
+            document.getElementById('undoCompletedBtn').style.display = 'inline-block';
+            showMessage('You have already completed this game!', 'success');
+          } else {
+            document.getElementById('completedBadge').style.display = 'inline-block';
+            document.getElementById('markCompletedBtn').style.display = 'none';
+            document.getElementById('undoCompletedBtn').style.display = 'inline-block';
+            document.getElementById('completionCount').textContent = parseInt(document.getElementById('completionCount').textContent) + 1;
+            showMessage('🎉 Congratulations! You have been awarded 1,000 credits for completing this game!', 'success');
+          }
+        })
+        .catch(error => {
+          console.error('Error marking game as completed:', error);
+          showMessage('Failed to mark game as completed. Please try again.', 'error');
+          btn.textContent = originalText;
+          btn.disabled = false;
+        });
+      });
+      // Undo Completion button logic
+      document.getElementById('undoCompletedBtn').addEventListener('click', function() {
+        const btn = this;
+        const originalText = btn.textContent;
+        btn.textContent = 'Undoing...';
+        btn.disabled = true;
+        fetch('/api/game/uncomplete', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ game_name: gameName })
+        })
+        .then(r => r.json())
+        .then(data => {
+          if (data.error) {
+            showMessage(data.error, 'error');
+          } else {
+            document.getElementById('completedBadge').style.display = 'none';
+            document.getElementById('markCompletedBtn').style.display = 'inline-block';
+            document.getElementById('undoCompletedBtn').style.display = 'none';
+            document.getElementById('completionCount').textContent = data.completion_count;
+            showMessage('Completion undone and credits removed.', 'success');
+          }
+        })
+        .catch(error => {
+          console.error('Error undoing completion:', error);
+          showMessage('Failed to undo completion. Please try again.', 'error');
+        })
+        .finally(() => {
+          btn.textContent = originalText;
+          btn.disabled = false;
+        });
+      });
+    }
+
+    // Reviews
+    fetch(`/api/game/reviews?name=${encodeURIComponent(gameName)}`)
+      .then(r => r.json())
+      .then(reviews => {
+        renderReviews(reviews);
+      });
+    if (user) {
+      document.getElementById('reviewFormContainer').style.display = 'block';
+      document.getElementById('submitReviewBtn').onclick = function() {
+        const text = document.getElementById('reviewText').value.trim();
+        if (!text) {
+          showMessage('Review cannot be empty!', 'error');
+          return;
+        }
+        
+        const btn = this;
+        const originalText = btn.textContent;
+        btn.textContent = 'Submitting...';
+        btn.disabled = true;
+        
+        fetch('/api/game/review', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ game_name: gameName, review_text: text })
+        })
+        .then(r => r.json())
+        .then(data => {
+          if (data.error) {
+            showMessage(data.error, 'error');
+          } else {
+            document.getElementById('reviewText').value = '';
+            showMessage('Review submitted successfully!', 'success');
+            fetch(`/api/game/reviews?name=${encodeURIComponent(gameName)}`)
+              .then(r => r.json())
+              .then(renderReviews);
+          }
+        })
+        .catch(error => {
+          console.error('Error submitting review:', error);
+          showMessage('Failed to submit review. Please try again.', 'error');
+        })
+        .finally(() => {
+          btn.textContent = originalText;
+          btn.disabled = false;
+        });
+      };
+    }
+
+    // Screenshots
+    fetch(`/api/game/screenshots?name=${encodeURIComponent(gameName)}`)
+      .then(r => r.json())
+      .then(renderScreenshots);
+    if (user) {
+      document.getElementById('screenshotUploadForm').style.display = 'block';
+      document.getElementById('screenshotUploadForm').onsubmit = function(e) {
+        e.preventDefault();
+        const fileInput = document.getElementById('screenshotFile');
+        if (!fileInput.files.length) {
+          showMessage('Please select a screenshot to upload.', 'error');
+          return;
+        }
+        
+        const submitBtn = this.querySelector('button[type="submit"]');
+        const originalText = submitBtn.textContent;
+        submitBtn.textContent = 'Uploading...';
+        submitBtn.disabled = true;
+        
+        const formData = new FormData();
+        formData.append('game_name', gameName);
+        formData.append('caption', document.getElementById('screenshotCaption').value);
+        formData.append('screenshot', fileInput.files[0]);
+        
+        fetch('/api/game/screenshot', {
+          method: 'POST',
+          body: formData
+        })
+        .then(r => r.json())
+        .then(data => {
+          if (data.error) {
+            showMessage(data.error, 'error');
+          } else if (data.image_url) {
+            showMessage('Screenshot uploaded successfully!', 'success');
+            fetch(`/api/game/screenshots?name=${encodeURIComponent(gameName)}`)
+              .then(r => r.json())
+              .then(renderScreenshots);
+            fileInput.value = '';
+            document.getElementById('screenshotCaption').value = '';
+          }
+        })
+        .catch(error => {
+          console.error('Error uploading screenshot:', error);
+          showMessage('Failed to upload screenshot. Please try again.', 'error');
+        })
+        .finally(() => {
+          submitBtn.textContent = originalText;
+          submitBtn.disabled = false;
+        });
+      };
+    }
+  }
+
+  function renderStarWidget(userRating) {
+    const starRating = document.getElementById('starRating');
+    const userRatingValue = document.getElementById('userRatingValue');
+    starRating.innerHTML = '';
+    let current = userRating;
+    for (let i = 1; i <= 5; i++) {
+      const full = current >= 1;
+      const half = !full && current >= 0.5;
+      const star = document.createElement('span');
+      star.className = 'star-widget-star';
+      star.innerHTML = full ? '<i class="fas fa-star"></i>' : (half ? '<i class="fas fa-star-half-alt"></i>' : '<i class="far fa-star"></i>');
+      star.style.cursor = 'pointer';
+      star.dataset.value = i;
+      star.dataset.half = half ? '1' : '0';
+      star.onmousemove = function(e) {
+        const rect = star.getBoundingClientRect();
+        const isHalf = (e.clientX - rect.left) < rect.width / 2;
+        highlightStars(i - (isHalf ? 0.5 : 0));
+      };
+      star.onmouseleave = function() {
+        highlightStars(userRating);
+      };
+      star.onclick = function(e) {
+        const rect = star.getBoundingClientRect();
+        const value = (e.clientX - rect.left) < rect.width / 2 ? i - 0.5 : i;
+        
+        // Add visual feedback
+        this.style.transform = 'scale(0.9)';
+        setTimeout(() => {
+          this.style.transform = 'scale(1)';
+        }, 150);
+        
+        fetch('/api/game/rating', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ game_name: gameName, rating: value })
+        })
+        .then(r => r.json())
+        .then(data => {
+          if (data.error) {
+            showMessage(data.error, 'error');
+          } else {
+            highlightStars(value);
+            userRatingValue.textContent = value;
+            showMessage(`Rating updated to ${value} stars!`, 'success');
+            fetch(`/api/game/ratings?name=${encodeURIComponent(gameName)}`)
+              .then(r => r.json())
+              .then(data => {
+                document.getElementById('averageRating').textContent = data.average !== null ? data.average : '-';
+                document.getElementById('ratingCount').textContent = data.count;
+              });
+          }
+        })
+        .catch(error => {
+          console.error('Error submitting rating:', error);
+          showMessage('Failed to submit rating. Please try again.', 'error');
+        });
+      };
+      starRating.appendChild(star);
+      current -= 1;
+    }
+    highlightStars(userRating);
+    userRatingValue.textContent = userRating ? userRating : '';
+  }
+  
+  function highlightStars(value) {
+    const stars = document.querySelectorAll('.star-widget-star');
+    let v = value;
+    stars.forEach(star => {
+      if (v >= 1) {
+        star.innerHTML = '<i class="fas fa-star"></i>';
+      } else if (v >= 0.5) {
+        star.innerHTML = '<i class="fas fa-star-half-alt"></i>';
+      } else {
+        star.innerHTML = '<i class="far fa-star"></i>';
+      }
+      v -= 1;
+    });
+  }
+  
+  function renderReviews(reviews) {
+    const reviewsList = document.getElementById('reviewsList');
+    if (!reviews.length) {
+      reviewsList.innerHTML = '<div style="text-align: center; color: #6272a4; padding: 2rem;">No reviews yet. Be the first to share your thoughts!</div>';
+      return;
+    }
+    reviewsList.innerHTML = reviews.map(r => {
+      // Generate star rating HTML
+      const ratingStars = r.rating ? generateStarRatingHTML(r.rating) : '';
+      
+      // Format hours
+      const hoursAtReview = r.hours_at_review ? formatHours(r.hours_at_review) : '0h';
+      const totalHours = r.total_hours ? formatHours(r.total_hours) : '0h';
+      
+      return `
+        <div class="review-item">
+          <div class="review-header">
+            <div class="review-user-info">
+              <img class="avatar-sm" src="${r.avatar_url}" alt="${r.username}">
+              <span class="review-username">${r.username}</span>
+              <span class="review-date">${new Date(r.timestamp).toLocaleString()}</span>
+            </div>
+          </div>
+          <div class="review-meta">
+            ${r.rating ? `
+              <div class="review-rating">
+                <div class="review-rating-stars">${ratingStars}</div>
+                <span class="review-rating-value">${r.rating}</span>
+              </div>
+            ` : ''}
+            <div class="review-hours">
+              <i class="fas fa-clock"></i>
+              <span class="review-hours-text">${hoursAtReview} at review</span>
+              <span class="review-hours-total">(${totalHours} total)</span>
+            </div>
+          </div>
+          <div class="review-text">${r.review_text}</div>
+        </div>
+      `;
+    }).join('');
+  }
+  
+  function generateStarRatingHTML(rating) {
+    let stars = '';
+    let remaining = rating;
+    
+    for (let i = 1; i <= 5; i++) {
+      if (remaining >= 1) {
+        stars += '<i class="fas fa-star"></i>';
+        remaining -= 1;
+      } else if (remaining >= 0.5) {
+        stars += '<i class="fas fa-star-half-alt"></i>';
+        remaining -= 0.5;
+      } else {
+        stars += '<i class="far fa-star"></i>';
+      }
+    }
+    
+    return stars;
+  }
+  
+  function renderScreenshots(screens) {
+    const gallery = document.getElementById('screenshotsGallery');
+    if (!screens.length) {
+      gallery.innerHTML = '<div style="text-align: center; color: #6272a4; padding: 2rem;">No screenshots yet. Share your first screenshot!</div>';
+      return;
+    }
+    gallery.innerHTML = screens.map(s => {
+      const hasCaption = s.caption && s.caption.trim() !== '';
+      return `
+        <div class="screenshot-item" onclick="openScreenshotModal('${s.image_url}', '${s.caption || ''}', '${s.username}', '${s.avatar_url}')">
+          <img src="${s.image_url}" alt="Screenshot by ${s.username}" loading="lazy" style="height: ${hasCaption ? '200px' : '280px'};">
+          ${hasCaption ? `<div class="screenshot-caption">${s.caption}</div>` : ''}
+          <div class="screenshot-user">
+            <img class="avatar-sm" src="${s.avatar_url}" alt="${s.username}">
+            <span>${s.username}</span>
+          </div>
+        </div>
+      `;
+    }).join('');
   }
 }); 

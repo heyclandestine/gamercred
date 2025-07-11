@@ -23,6 +23,10 @@ class Game(Base):
     release_date = Column(String)  # Store the release date as a string in ISO format
     description = Column(Text)  # Store game descriptions from RAWG API
     gaming_sessions = relationship("GamingSession", back_populates="game")
+    reviews = relationship("GameReview", back_populates="game")
+    ratings = relationship("GameRating", back_populates="game")
+    completions = relationship("GameCompletion", back_populates="game")
+    screenshots = relationship("GameScreenshot", back_populates="game")
 
 class UserStats(Base):
     __tablename__ = 'user_stats'
@@ -35,6 +39,10 @@ class UserStats(Base):
     
     gaming_sessions = relationship("GamingSession", back_populates="user")
     bonuses = relationship("Bonus", back_populates="user")
+    reviews = relationship("GameReview", back_populates="user")
+    ratings = relationship("GameRating", back_populates="user")
+    completions = relationship("GameCompletion", back_populates="user")
+    screenshots = relationship("GameScreenshot", back_populates="user")
 
 class GamingSession(Base):
     __tablename__ = 'gaming_sessions'
@@ -85,3 +93,52 @@ class Bonus(Base):
     timestamp = Column(DateTime, nullable=False)
     
     user = relationship("UserStats", back_populates="bonuses")
+
+class GameReview(Base):
+    __tablename__ = 'game_reviews'
+    
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(BigInteger, ForeignKey('user_stats.user_id'), nullable=False)
+    game_id = Column(Integer, ForeignKey('games.id'), nullable=False)
+    review_text = Column(Text, nullable=False)
+    timestamp = Column(DateTime, nullable=False)
+    
+    user = relationship("UserStats", back_populates="reviews")
+    game = relationship("Game", back_populates="reviews")
+
+class GameRating(Base):
+    __tablename__ = 'game_ratings'
+    
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(BigInteger, ForeignKey('user_stats.user_id'), nullable=False)
+    game_id = Column(Integer, ForeignKey('games.id'), nullable=False)
+    rating = Column(Float, nullable=False)  # 0.5 to 5.0 stars
+    timestamp = Column(DateTime, nullable=False)
+    
+    user = relationship("UserStats", back_populates="ratings")
+    game = relationship("Game", back_populates="ratings")
+
+class GameCompletion(Base):
+    __tablename__ = 'game_completions'
+    
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(BigInteger, ForeignKey('user_stats.user_id'), nullable=False)
+    game_id = Column(Integer, ForeignKey('games.id'), nullable=False)
+    completed_at = Column(DateTime, nullable=False)
+    credits_awarded = Column(Float, default=1000.0)  # 1000 credits for completion
+    
+    user = relationship("UserStats", back_populates="completions")
+    game = relationship("Game", back_populates="completions")
+
+class GameScreenshot(Base):
+    __tablename__ = 'game_screenshots'
+    
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(BigInteger, ForeignKey('user_stats.user_id'), nullable=False)
+    game_id = Column(Integer, ForeignKey('games.id'), nullable=False)
+    image_url = Column(String, nullable=False)  # URL to the uploaded image
+    caption = Column(String)  # Optional caption for the screenshot
+    uploaded_at = Column(DateTime, nullable=False)
+    
+    user = relationship("UserStats", back_populates="screenshots")
+    game = relationship("Game", back_populates="screenshots")

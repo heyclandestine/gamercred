@@ -40,7 +40,25 @@
       <div class="game-header">
         <div class="game-cover-container" style="display: grid; place-items: center;">
           <img id="gameCover" class="game-cover" src="" alt="Game Cover">
-          <a id="backloggdLink" href="#" class="game-link backloggd-link-below-cover" style="display: none;">Check it out on Backloggd</a>
+          <!-- Consolidated Ratings and Completion Section -->
+          <div class="cover-side-info">
+            <div class="game-info-ratings">
+              <div id="user-rating-widget" style="display:none;">
+                <span id="starRating"></span>
+              </div>
+              <div class="game-info-rating-display">
+                <span id="averageRating">-</span> / 5.0 (<span id="ratingCount">0</span> ratings)
+              </div>
+            </div>
+            <div class="game-info-completion">
+              <div class="game-info-completion-content">
+                <span id="completionCountLabel"><span id="completionCount">0</span> Completions</span>
+                <button id="markCompletedBtn" class="game-info-mark-completed-btn" style="display:none;">Mark as Completed</button>
+                <span id="completedBadge" class="game-info-completed-badge" style="display:none;">✔ You have completed this game!</span>
+                <button id="undoCompletedBtn" class="game-info-undo-completed-btn" style="display:none;">Undo Completion</button>
+              </div>
+            </div>
+          </div>
         </div>
         <div class="game-header-right">
           <h1 id="gameTitle" style="color: #ffb86c;">Loading...</h1>
@@ -100,19 +118,14 @@
           <div class="game-details-extra">
             <h3 style="margin: 0;"><i class="fas fa-file-alt"></i> Description</h3>
             <p class="game-desc" id="gameDescription">Loading game description...</p>
-            <button class="more-button" style="display: none;">More</button>
-            <button class="less-button" style="display: none;">Less</button>
+            <div class="desc-buttons-row">
+              <button class="more-button" style="display: none;">More</button>
+              <button class="less-button" style="display: none;">Less</button>
+              <a id="backloggdLink" href="#" class="game-link backloggd-link-below-cover" style="display: none;">Check it out on Backloggd</a>
+            </div>
           </div>
         </div>
       </div>
-    </section>
-
-    <section class="game-playing card">
-      <h3><i class="fas fa-users"></i> Currently Playing</h3>
-      <div class="loading-spinner"><i class="fas fa-spinner fa-spin"></i> Loading players...</div>
-      <ul class="players-list" style="display: none;">
-        <!-- Players will be populated here -->
-      </ul>
     </section>
 
     <section class="game-activity card">
@@ -123,8 +136,46 @@
       </ul>
     </section>
 
+    <section class="game-interactivity card">
+      <h2><i class="fas fa-comments"></i> Community Interactions</h2>
+      <!-- Reviews -->
+      <div id="reviews-section">
+        <h3><i class="fas fa-comments"></i> Reviews</h3>
+        <div id="reviewFormContainer" style="display:none;">
+          <textarea id="reviewText" rows="3" placeholder="Write your review..."></textarea>
+          <button id="submitReviewBtn">Submit Review</button>
+        </div>
+        <div id="reviewsList"></div>
+      </div>
+      <!-- Screenshots -->
+      <div id="screenshots-section">
+        <h3><i class="fas fa-image"></i> Screenshots</h3>
+        <form id="screenshotUploadForm" style="display:none;" enctype="multipart/form-data">
+          <input type="file" id="screenshotFile" name="screenshot" accept="image/*">
+          <input type="text" id="screenshotCaption" name="caption" placeholder="Caption (optional)">
+          <button type="submit">Upload Screenshot</button>
+        </form>
+        <div id="screenshotsGallery" class="screenshots-gallery"></div>
+      </div>
+    </section>
+
     <a href="/" class="back-link">&larr; Back to Home</a>
   </main>
+
+  <!-- Screenshot Modal -->
+  <div class="screenshot-modal" id="screenshotModal">
+    <div class="screenshot-modal-content">
+      <button class="screenshot-modal-close" onclick="closeScreenshotModal()">
+        <i class="fas fa-times"></i>
+      </button>
+      <img id="modalImage" src="" alt="Screenshot">
+      <div class="screenshot-modal-caption" id="modalCaption"></div>
+      <div class="screenshot-modal-user">
+        <img class="avatar-sm" id="modalUserAvatar" src="" alt="">
+        <span id="modalUsername"></span>
+      </div>
+    </div>
+  </div>
 
   <script src="/js/script.js"></script>
   <script src="/js/game.js"></script>
