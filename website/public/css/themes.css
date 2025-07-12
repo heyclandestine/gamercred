@@ -1,0 +1,316 @@
+/* Theme System */
+:root {
+  /* Default theme (Dark Gaming) */
+  --bg-primary: #23232b;
+  --bg-secondary: #19191f;
+  --bg-card: #2a2a3a;
+  --bg-input: #23232b;
+  --text-primary: #f3f3f3;
+  --text-secondary: #b0b0b0;
+  --user-primary: #8be9fd;
+  --game-primary: #ffb86c;
+  --accent-primary: #ff6fae;
+  --accent-secondary: #5865f2;
+  --border-color: #3a3a4a;
+  --shadow-color: rgba(0, 0, 0, 0.18);
+  --hover-bg: #3a3a4a;
+  --success-color: #4ade80;
+  --error-color: #f87171;
+  --warning-color: #fbbf24;
+}
+
+/* Light Gaming Theme */
+[data-theme="light-gaming"] {
+  --bg-primary: #f8f9fa;
+  --bg-secondary: #ffffff;
+  --bg-card: #ffffff;
+  --bg-input: #f1f3f4;
+  --text-primary: #1a1a1a;
+  --text-secondary: #5f6368;
+  --user-primary: #8be9fd;
+  --game-primary: #ffb86c;
+  --accent-primary: #ff6fae;
+  --accent-secondary: #5865f2;
+  --border-color: #e8eaed;
+  --shadow-color: rgba(0, 0, 0, 0.1);
+  --hover-bg: #f1f3f4;
+  --success-color: #34d399;
+  --error-color: #ef4444;
+  --warning-color: #f59e0b;
+}
+
+/* Cyberpunk Theme */
+[data-theme="cyberpunk"] {
+  --bg-card: #16213e;
+  --bg-input: #0f3460;
+  --text-primary: #e94560;
+  --text-secondary: #533483;
+  --user-primary: #8be9fd;
+  --game-primary: #ffb86c;
+  --accent-primary: #e94560;
+  --accent-secondary: #533483;
+  --border-color: #533483;
+  --shadow-color: rgba(233, 69, 96, 0.2);
+  --hover-bg: #533483;
+  --success-color: #00ff88;
+  --error-color: #ff006e;
+  --warning-color: #ffbe0b;
+}
+
+/* Forest Theme */
+[data-theme="forest"] {
+  --bg-primary: #1a2f1a;
+  --bg-secondary: #2d4a2d;
+  --bg-card: #3a5a3a;
+  --bg-input: #4a6b4a;
+  --text-primary: #e8f5e8;
+  --text-secondary: #b8d4b8;
+  --user-primary: #8be9fd;
+  --game-primary: #ffb86c;
+  --accent-primary: #4ade80;
+  --accent-secondary: #22c55e;
+  --border-color: #5a7b5a;
+  --shadow-color: rgba(0, 0, 0, 0.2);
+  --hover-bg: #5a7b5a;
+  --success-color: #22c55e;
+  --error-color: #ef4444;
+  --warning-color: #f59e0b;
+}
+
+/* Ocean Theme */
+[data-theme="ocean"] {
+  --bg-primary: #0f172a;
+  --bg-secondary: #1e293b;
+  --bg-card: #334155;
+  --bg-input: #475569;
+  --text-primary: #e2e8f0;
+  --text-secondary: #94a3b8;
+  --user-primary: #8be9fd;
+  --game-primary: #ffb86c;
+  --accent-primary: #06b6d4;
+  --accent-secondary: #0891b2;
+  --border-color: #64748b;
+  --shadow-color: rgba(6, 182, 212, 0.2);
+  --hover-bg: #64748b;
+  --success-color: #10b981;
+  --error-color: #ef4444;
+  --warning-color: #f59e0b;
+}
+
+/* Sunset Theme */
+[data-theme="sunset"] {
+  --bg-primary: #1f1f2e;
+  --bg-secondary: #2d2d44;
+  --bg-card: #3a3a5a;
+  --bg-input: #4a4a6a;
+  --text-primary: #ffeaa7;
+  --text-secondary: #fab1a0;
+  --user-primary: #8be9fd;
+  --game-primary: #ffb86c;
+  --accent-primary: #fd79a8;
+  --accent-secondary: #fdcb6e;
+  --border-color: #5a5a7a;
+  --shadow-color: rgba(253, 121, 168, 0.2);
+  --hover-bg: #5a5a7a;
+  --success-color: #00b894;
+  --error-color: #d63031;
+  --warning-color: #fdcb6e;
+}
+
+/* Retro Theme */
+[data-theme="retro"] {
+  --bg-primary: #2d1b69;
+  --bg-secondary: #1a103f;
+  --bg-card: #3d2b8a;
+  --bg-input: #4d3b9a;
+  --text-primary: #ffd700;
+  --text-secondary: #ffb347;
+  --user-primary: #8be9fd;
+  --game-primary: #ffb86c;
+  --accent-primary: #ff6b6b;
+  --accent-secondary: #4ecdc4;
+  --border-color: #5d4baa;
+  --shadow-color: rgba(255, 215, 0, 0.2);
+  --hover-bg: #5d4baa;
+  --success-color: #4ecdc4;
+  --error-color: #ff6b6b;
+  --warning-color: #ffb347;
+}
+
+/* Picture Theme */
+[data-theme="picture"] {
+  --bg-card: #16213e;
+  --bg-input: #0f3460;
+  --text-primary: #e94560;
+  --text-secondary: #533483;
+  --user-primary: #8be9fd;
+  --game-primary: #ffb86c;
+  --accent-primary: #e94560;
+  --accent-secondary: #533483;
+  --border-color: #533483;
+  --shadow-color: rgba(233, 69, 96, 0.2);
+  --hover-bg: #533483;
+  --success-color: #00ff88;
+  --error-color: #ff006e;
+  --warning-color: #ffbe0b;
+}
+
+/* Theme Switcher */
+.theme-switcher {
+  position: relative;
+  display: inline-block;
+}
+
+.theme-switcher-btn {
+  background: var(--bg-input);
+  border: 1px solid var(--border-color);
+  color: var(--text-primary);
+  padding: 0.5rem 1rem;
+  border-radius: 20px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+  transition: all 0.2s ease;
+}
+
+.theme-switcher-btn:hover {
+  background: var(--hover-bg);
+  transform: scale(1.05);
+}
+
+.theme-switcher-btn i {
+  font-size: 1rem;
+}
+
+.theme-dropdown {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  box-shadow: 0 4px 12px var(--shadow-color);
+  padding: 0.5rem;
+  min-width: 200px;
+  z-index: 1000;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-10px);
+  transition: all 0.2s ease;
+}
+
+.theme-dropdown.show {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+}
+
+.theme-option {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  color: var(--text-primary);
+  text-decoration: none;
+}
+
+.theme-option:hover {
+  background: var(--hover-bg);
+}
+
+.theme-option.active {
+  background: var(--accent-primary);
+  color: white;
+}
+
+.theme-option .theme-preview {
+  width: 20px;
+  height: 20px;
+  border-radius: 4px;
+  border: 2px solid var(--border-color);
+}
+
+.theme-option .theme-name {
+  font-weight: 500;
+}
+
+/* Theme-specific patterns and backgrounds removed - now handled by CSS variables */
+
+/* Apply theme colors to existing elements */
+body {
+  background: var(--bg-primary);
+  color: var(--text-primary);
+}
+
+.navbar {
+  background: var(--bg-secondary);
+  box-shadow: 0 2px 12px var(--shadow-color);
+}
+
+.site-title {
+  color: white;
+}
+
+.search-bar {
+  background: var(--bg-input);
+  color: var(--text-primary);
+  box-shadow: 0 2px 8px rgba(255, 111, 174, 0.08);
+}
+
+.nav-center .nav-link {
+  color: var(--text-primary);
+  background: var(--bg-input);
+}
+
+.nav-center .nav-link:hover,
+.nav-center .nav-link.active {
+  background: var(--accent-primary);
+  color: white;
+}
+
+.card {
+  background: var(--bg-card);
+  box-shadow: 0 4px 6px var(--shadow-color);
+}
+
+.tab-btn {
+  background: var(--bg-input);
+  color: var(--text-primary);
+}
+
+.tab-btn.active, .tab-btn:hover {
+  background: var(--accent-primary);
+  color: white;
+}
+
+.user-link {
+  color: var(--user-primary);
+}
+
+.user-link:hover {
+  color: var(--accent-primary);
+}
+
+.game-link {
+  color: var(--game-primary);
+}
+
+.game-link:hover {
+  color: var(--accent-primary);
+}
+
+/* Theme transition animation */
+* {
+  transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+/* Disable transitions for theme switcher to avoid flickering */
+.theme-switcher *,
+.theme-dropdown * {
+  transition: none;
+} 

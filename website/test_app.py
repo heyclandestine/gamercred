@@ -22,6 +22,7 @@ import logging
 from sqlalchemy.sql import func
 from models import GameReview, GameRating, GameCompletion, GameScreenshot, UserStats, Game
 from sqlalchemy.orm import sessionmaker
+from models import UserPreferences
 
 # Set up basic logging
 logging.basicConfig(
@@ -296,6 +297,11 @@ def serve_static(path):
         print("Full traceback:")
         traceback.print_exc()
         return f"Error serving {path}", 500
+
+# Serve uploaded backgrounds (images/videos) as static files
+@app.route('/uploads/<path:filename>')
+def serve_uploads(filename):
+    return send_from_directory(os.path.join(app.static_folder, 'uploads'), filename)
 
 # API routes
 @app.route('/api/game')
@@ -817,7 +823,7 @@ def callback():
     connections = connections_response.json() if connections_response.status_code == 200 else []
     
     # Store the access token in a cookie
-    resp = redirect(url_for('index'))
+    resp = redirect(url_for('index') + '?just_logged_in=1')
     # Set cookies to expire in 30 days
     resp.set_cookie('discord_token', access_token, httponly=True, max_age=30*24*60*60)
     resp.set_cookie('user_id', user['id'], httponly=True, max_age=30*24*60*60)
@@ -1577,6 +1583,150 @@ def get_game_screenshots():
                 'uploaded_at': s.uploaded_at.isoformat()
             })
         return jsonify(result)
+
+@app.route('/preferences.html')
+def preferences():
+    return app.send_static_file('pages/preferences.html')
+
+@app.route('/api/preferences', methods=['GET'])
+def get_user_preferences():
+    user_id = request.cookies.get('user_id')
+    if not user_id:
+        return jsonify({'error': 'Not logged in'}), 401
+    with storage.Session() as session:
+        prefs = session.query(UserPreferences).filter_by(user_id=user_id).first()
+        if prefs:
+            return jsonify({
+                'theme': prefs.theme,
+                'background_image_url': prefs.background_image_url,
+                'background_video_url': prefs.background_video_url,
+                'background_opacity': prefs.background_opacity,
+                'background_type': prefs.background_type or 'image'
+            })
+        else:
+            return jsonify({
+                'theme': None,
+                'background_image_url': None,
+                'background_video_url': None,
+                'background_opacity': 0.3,
+                'background_type': 'image'
+            })
+
+@app.route('/api/preferences', methods=['POST'])
+def set_user_preferences():
+    user_id = request.cookies.get('user_id')
+    if not user_id:
+        return jsonify({'error': 'Not logged in'}), 401
+    data = request.json
+    theme = data.get('theme')
+    background_image_url = data.get('background_image_url')
+    background_video_url = data.get('background_video_url')
+    background_opacity = data.get('background_opacity', 0.3)
+    background_type = data.get('background_type', 'image')
+    
+    if not theme:
+        return jsonify({'error': 'Missing theme'}), 400
+    
+    with storage.Session() as session:
+        prefs = session.query(UserPreferences).filter_by(user_id=user_id).first()
+        if prefs:
+            prefs.theme = theme
+            prefs.background_image_url = background_image_url
+            prefs.background_video_url = background_video_url
+            prefs.background_opacity = background_opacity
+            prefs.background_type = background_type
+        else:
+            prefs = UserPreferences(
+                user_id=user_id, 
+                theme=theme,
+                background_image_url=background_image_url,
+                background_video_url=background_video_url,
+                background_opacity=background_opacity,
+                background_type=background_type
+            )
+            session.add(prefs)
+        session.commit()
+        return jsonify({
+            'message': 'Preferences updated', 
+            'theme': theme,
+            'background_image_url': background_image_url,
+            'background_video_url': background_video_url,
+            'background_opacity': background_opacity,
+            'background_type': background_type
+        })
+
+@app.route('/api/preferences/upload-background', methods=['POST'])
+def upload_background_image():
+    user_id = request.cookies.get('user_id')
+    if not user_id:
+        return jsonify({'error': 'Not logged in'}), 401
+    
+    if 'background_file' not in request.files:
+        return jsonify({'error': 'No file provided'}), 400
+    
+    file = request.files['background_file']
+    if file.filename == '':
+        return jsonify({'error': 'No file selected'}), 400
+    
+    # Check file type
+    allowed_image_extensions = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
+    allowed_video_extensions = {'mp4', 'webm', 'ogg', 'mov'}
+    file_extension = file.filename.lower().split('.')[-1]
+    
+    if file_extension in allowed_image_extensions:
+        file_type = 'image'
+        upload_dir = os.path.join(app.static_folder, 'uploads', 'backgrounds', 'images')
+    elif file_extension in allowed_video_extensions:
+        file_type = 'video'
+        upload_dir = os.path.join(app.static_folder, 'uploads', 'backgrounds', 'videos')
+    else:
+        return jsonify({'error': 'Invalid file type. Please upload PNG, JPG, JPEG, GIF, WebP, MP4, WebM, OGG, or MOV'}), 400
+    
+    # Save file to appropriate directory (ensure directory exists)
+    os.makedirs(upload_dir, exist_ok=True)
+    
+    # Generate unique filename
+    filename = f"bg_{uuid.uuid4().hex}.{file_extension}"
+    file_path = os.path.join(upload_dir, filename)
+    
+    try:
+        file.save(file_path)
+        
+        # Create relative URL
+        if file_type == 'image':
+            file_url = f"/uploads/backgrounds/images/{filename}"
+        else:
+            file_url = f"/uploads/backgrounds/videos/{filename}"
+        
+        # Update user preferences with the new background file
+        with storage.Session() as session:
+            prefs = session.query(UserPreferences).filter_by(user_id=user_id).first()
+            if prefs:
+                if file_type == 'image':
+                    prefs.background_image_url = file_url
+                    prefs.background_type = 'image'
+                else:
+                    prefs.background_video_url = file_url
+                    prefs.background_type = 'video'
+            else:
+                prefs = UserPreferences(
+                    user_id=user_id,
+                    theme='dark',  # Default theme
+                    background_image_url=file_url if file_type == 'image' else None,
+                    background_video_url=file_url if file_type == 'video' else None,
+                    background_opacity=0.3,
+                    background_type=file_type
+                )
+                session.add(prefs)
+            session.commit()
+        
+        return jsonify({
+            'message': f'Background {file_type} uploaded successfully',
+            'file_url': file_url,
+            'file_type': file_type
+        })
+    except Exception as e:
+        return jsonify({'error': f'Failed to upload {file_type}: {str(e)}'}), 500
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True) 

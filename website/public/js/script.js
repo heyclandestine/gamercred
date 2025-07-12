@@ -1,5 +1,11 @@
 // console.log('Script loaded');
 document.addEventListener('DOMContentLoaded', function() {
+  const params = new URLSearchParams(window.location.search);
+  if (params.get('just_logged_in')) {
+    localStorage.removeItem('selected-theme');
+    // Optionally, remove the param from the URL for cleanliness
+    window.history.replaceState({}, document.title, window.location.pathname);
+  }
   // Check authentication status
   fetch('/api/user')
     .then(response => {
@@ -17,6 +23,9 @@ document.addEventListener('DOMContentLoaded', function() {
                  alt="${user.username}" 
                  class="user-avatar">
             <span class="user-name">${user.username}</span>
+          </a>
+          <a href="/pages/preferences.html" class="preferences-button" title="Preferences">
+            <i class="fas fa-cog"></i>
           </a>
           <a href="/logout" class="logout-button" title="Logout">
             <i class="fas fa-sign-out-alt"></i>
@@ -1533,3 +1542,232 @@ document.addEventListener('DOMContentLoaded', function() {
     return formatTimestampCST(timestamp);
   }
 }); 
+
+// THEME PREFERENCE LOGIC
+(function() {
+  // Helper: set theme
+  function setTheme(theme) {
+    if (theme) {
+      document.documentElement.setAttribute('data-theme', theme);
+      localStorage.setItem('selected-theme', theme);
+    }
+  }
+
+  // Helper: get theme from localStorage
+  function getLocalTheme() {
+    return localStorage.getItem('selected-theme');
+  }
+
+  // Helper: clear theme from localStorage
+  function clearLocalTheme() {
+    localStorage.removeItem('selected-theme');
+  }
+
+  // Helper: check if user is logged in (by cookie)
+  function isLoggedIn() {
+    return document.cookie.includes('user_id=');
+  }
+
+  // Helper: apply background to site (supports image and video)
+  function applyBackgroundUniversal(url, opacity, type = 'image') {
+    if (url) {
+      if (type === 'video') {
+        // For video backgrounds, use a video element
+        let videoBg = document.getElementById('background-video');
+        if (!videoBg) {
+          videoBg = document.createElement('video');
+          videoBg.id = 'background-video';
+          videoBg.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            z-index: -3;
+            pointer-events: none;
+          `;
+          videoBg.autoplay = true;
+          videoBg.muted = true;
+          videoBg.loop = true;
+          videoBg.playsInline = true;
+          document.body.appendChild(videoBg);
+        }
+        videoBg.src = url;
+        document.body.style.setProperty('--bg-opacity', opacity);
+        // Remove image background
+        document.body.style.backgroundImage = 'none';
+      } else {
+        // Remove video if it exists
+        const existingVideo = document.getElementById('background-video');
+        if (existingVideo) {
+          existingVideo.remove();
+        }
+        // Apply image background
+        document.body.style.backgroundImage = `url(${url})`;
+        document.body.style.backgroundSize = 'cover';
+        document.body.style.backgroundPosition = 'center';
+        document.body.style.backgroundAttachment = 'fixed';
+        document.body.style.backgroundRepeat = 'no-repeat';
+        document.body.style.setProperty('--bg-opacity', opacity);
+      }
+    } else {
+      // Remove video if it exists
+      const existingVideo = document.getElementById('background-video');
+      if (existingVideo) {
+        existingVideo.remove();
+      }
+      // Remove image background
+      document.body.style.backgroundImage = 'none';
+      document.body.style.removeProperty('--bg-opacity');
+    }
+  }
+
+  // On page load
+  document.addEventListener('DOMContentLoaded', function() {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('just_logged_in')) {
+      localStorage.removeItem('selected-theme');
+      localStorage.removeItem('background-image-url');
+      localStorage.removeItem('background-opacity');
+      localStorage.removeItem('background-type');
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+    
+    let localTheme = localStorage.getItem('selected-theme');
+    let localBackgroundUrl = localStorage.getItem('background-image-url');
+    let localBackgroundOpacity = localStorage.getItem('background-opacity');
+    let localBackgroundType = localStorage.getItem('background-type') || 'image';
+    
+    if (!localTheme && !localBackgroundUrl) {
+      fetch('/api/preferences', { credentials: 'include' })
+        .then(r => r.json())
+        .then(data => {
+          if (data.theme) {
+            document.documentElement.setAttribute('data-theme', data.theme);
+            localStorage.setItem('selected-theme', data.theme);
+          }
+          let bgType = data.background_type || 'image';
+          let bgUrl = bgType === 'video' ? data.background_video_url : data.background_image_url;
+          let bgOpacity = data.background_opacity || 0.3;
+          if (bgUrl) {
+            applyBackgroundUniversal(bgUrl, bgOpacity, bgType);
+            localStorage.setItem('background-image-url', bgUrl);
+            localStorage.setItem('background-opacity', bgOpacity);
+            localStorage.setItem('background-type', bgType);
+          }
+        })
+        .catch(error => {
+          console.error('Error fetching preferences:', error);
+        });
+    } else {
+      if (localTheme) {
+        document.documentElement.setAttribute('data-theme', localTheme);
+      }
+      if (localBackgroundUrl) {
+        applyBackgroundUniversal(localBackgroundUrl, localBackgroundOpacity || 0.3, localBackgroundType);
+      }
+    }
+  });
+
+  // On logout, clear local theme and background
+  function setupLogoutThemeClear() {
+    // Find logout buttons/links
+    const logoutLinks = document.querySelectorAll('a[href="/logout"]');
+    logoutLinks.forEach(link => {
+      link.addEventListener('click', function() {
+        clearLocalTheme();
+        localStorage.removeItem('background-image-url');
+        localStorage.removeItem('background-opacity');
+        localStorage.removeItem('background-type');
+        // Remove background from body
+        document.body.style.backgroundImage = 'none';
+        document.body.style.removeProperty('--bg-opacity');
+      });
+    });
+    // If logout is via a form or button, add similar logic as needed
+  }
+  document.addEventListener('DOMContentLoaded', setupLogoutThemeClear);
+
+  // Expose setTheme for theme switchers
+  window.setTheme = setTheme;
+})(); 
+
+// THEME SWITCHER DROPDOWN FUNCTIONALITY
+(function() {
+  let initialized = false;
+  
+  function initializeThemeSwitcher() {
+    const themeSwitcherBtn = document.getElementById('theme-switcher-btn');
+    const themeDropdown = document.getElementById('theme-dropdown');
+    const themeOptions = document.querySelectorAll('.theme-option');
+
+    if (!themeSwitcherBtn || !themeDropdown || initialized) return;
+
+    // Toggle dropdown
+    themeSwitcherBtn.addEventListener('click', function(e) {
+      e.stopPropagation();
+      themeDropdown.classList.toggle('show');
+    });
+
+    // Close dropdown when clicking outside
+    document.addEventListener('click', function(e) {
+      if (!themeSwitcherBtn.contains(e.target) && !themeDropdown.contains(e.target)) {
+        themeDropdown.classList.remove('show');
+      }
+    });
+
+    // Handle theme selection
+    themeOptions.forEach(option => {
+      option.addEventListener('click', function() {
+        const selectedTheme = this.getAttribute('data-theme');
+        
+        // Update active state
+        themeOptions.forEach(opt => opt.classList.remove('active'));
+        this.classList.add('active');
+        
+        // Apply theme
+        document.documentElement.setAttribute('data-theme', selectedTheme);
+        localStorage.setItem('selected-theme', selectedTheme);
+        
+        // Save to backend if logged in
+        if (document.cookie.includes('user_id=')) {
+          fetch('/api/preferences', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ theme: selectedTheme })
+          }).catch(error => {
+            console.error('Error saving theme preference:', error);
+          });
+        }
+        
+        // Close dropdown
+        themeDropdown.classList.remove('show');
+      });
+    });
+
+    // Set initial active state based on current theme
+    const currentTheme = document.documentElement.getAttribute('data-theme') || 'default';
+    themeOptions.forEach(option => {
+      const optionTheme = option.getAttribute('data-theme');
+      if (optionTheme === currentTheme) {
+        option.classList.add('active');
+      } else {
+        option.classList.remove('active');
+      }
+    });
+    
+    initialized = true;
+  }
+
+  // Initialize on DOMContentLoaded
+  document.addEventListener('DOMContentLoaded', initializeThemeSwitcher);
+  
+  // Also initialize immediately if DOM is already loaded
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initializeThemeSwitcher);
+  } else {
+    initializeThemeSwitcher();
+  }
+})(); 

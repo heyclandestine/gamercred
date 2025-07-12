@@ -734,6 +734,9 @@ document.addEventListener('DOMContentLoaded', () => {
                class="user-avatar">
           <span class="user-name">${user.username}</span>
         </a>
+        <a href="/pages/preferences.html" class="preferences-button" title="Preferences">
+          <i class="fas fa-cog"></i>
+        </a>
         <a href="/logout" class="logout-button" title="Logout">
           <i class="fas fa-sign-out-alt"></i>
         </a>

@@ -142,3 +142,16 @@ class GameScreenshot(Base):
     
     user = relationship("UserStats", back_populates="screenshots")
     game = relationship("Game", back_populates="screenshots")
+
+class UserPreferences(Base):
+    __tablename__ = 'user_preferences'
+    id = Column(Integer, primary_key=True)
+    user_id = Column(BigInteger, ForeignKey('user_stats.user_id'), unique=True, nullable=False)
+    theme = Column(String, nullable=True)
+    background_image_url = Column(String, nullable=True)  # URL or uploaded image path
+    background_video_url = Column(String, nullable=True)  # URL or uploaded video path
+    background_opacity = Column(Float, default=0.3)  # Opacity from 0.1 to 1.0
+    background_type = Column(String, default='image')  # 'image', 'video', or 'none'
+    # Add more preference columns as needed
+
+    user = relationship('UserStats', backref='preferences')

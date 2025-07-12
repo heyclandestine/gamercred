@@ -53,7 +53,7 @@
   overflow-y: auto;
   scrollbar-width: thin;
   scrollbar-color: #ff6fae #23232b;
-  padding-right: 12px; /* Add space between content and scrollbar */
+  padding-right: 10px; /* Add space between content and scrollbar */
 }
 
 .leaderboard .tab-content::-webkit-scrollbar,
@@ -70,7 +70,7 @@
 .leaderboard .tab-content::-webkit-scrollbar-thumb,
 .most-popular .tab-content::-webkit-scrollbar-thumb {
   background: #ff6fae;
-  border-radius: 4px;
+  border-radius: 15px;
 }
 
 .leaderboard .tab-content::-webkit-scrollbar-thumb:hover,
@@ -467,7 +467,7 @@ a:hover .game-cover-carousel, .activity-card:hover .game-cover-carousel {
 }
 .leaderboard-user {
   font-weight: 600;
-  color: #8be9fd;
+  color: var(--user-primary);
   text-decoration: none;
   font-size: 1.1em;
 }
@@ -510,20 +510,42 @@ a:hover .game-cover-carousel, .activity-card:hover .game-cover-carousel {
   outline: none;
 }
 .most-played-tabs .tab-btn.active, .most-played-tabs .tab-btn:hover {
-  background: #ffb86c; /* Use game-related color */
+  background: var(--game-primary); /* Use game-related color */
   color: #23232b;
   border-radius: 16px; /* Make all corners rounded */
 }
 .profile-activity li span {
   flex-grow: 1; /* Allow text to take up space */
 }
+.leaderboard-tabs .tab-btn{
+  background: var(--bg-input);
+  color: var(--user-primary);
+  border: none;
+  border-radius: 16px;
+  font-weight: 600;
+}
 .leaderboard-tabs .tab-btn.active, .leaderboard-tabs .tab-btn:hover {
-  background: #8be9fd;
-  color: #23232b;
+  background: var(--user-primary);
+  color: #ffffff;
   border-radius: 16px;
 }
 
 /* Style for hours in Most Popular on homepage */
+.popular-games-list li{
+  display: flex;
+  align-items: center;
+  gap: 1em;
+  font-size: 1.1rem;
+  background: var(--bg-input);
+  color: var(--game-primary);
+  border-radius: 10px;
+  padding: 0.5rem 0.75rem;
+  transition: background 0.2s;
+  width: 100%;
+  box-sizing: border-box;
+  height: 80px;
+}
+
 .popular-games-list .hours {
   margin-left: 2rem;
   font-weight: bold;
@@ -566,8 +588,8 @@ a:hover .game-cover-carousel, .activity-card:hover .game-cover-carousel {
   margin-bottom: 1.2em;
 }
 .most-played-tabs .tab-btn {
-  background: #29293a;
-  color: #ffb86c; /* Use game-related color */
+  background: var(--bg-input);
+  color: var(--game-primary); /* Use game-related color */
   border: none;
   border-radius: 16px 16px 0 0;
   padding: 0.5em 1.5em;
@@ -577,9 +599,26 @@ a:hover .game-cover-carousel, .activity-card:hover .game-cover-carousel {
   outline: none;
 }
 .most-played-tabs .tab-btn.active, .most-played-tabs .tab-btn:hover {
-  background: #ffb86c; /* Use game-related color */
-  color: #23232b;
+  background: var(--game-primary); /* Use game-related color */
+  color: var(--bg-input);
   border-radius: 16px; /* Make all corners rounded */
+}
+
+/* Popular Games Tab Buttons (Home only) */
+.popular-tabs .tab-btn {
+  background: var(--bg-input);
+  color: var(--game-primary);
+  border: none;
+  border-radius: 16px;
+  font-weight: 600;
+  padding: 0.5rem 1.2rem;
+  margin-right: 0.5rem;
+  transition: background 0.2s, color 0.2s;
+}
+.popular-tabs .tab-btn.active,
+.popular-tabs .tab-btn:hover {
+  background: var(--game-primary);
+  color: #fff;
 }
 
 .loading-spinner {
@@ -825,5 +864,20 @@ a:hover .game-cover-carousel, .activity-card:hover .game-cover-carousel {
   font-size: 0.92em;
   margin-left: auto;
   font-weight: 500;
+}
+
+/* Bonus List Items (Home only) */
+.bonuses-bottom li {
+  background: var(--bg-input);
+  color: var(--accent-primary);
+  border-radius: 10px;
+  margin-bottom: 0.5rem;
+  padding: 0.5rem 1rem;
+  font-weight: 600;
+  transition: background 0.2s, color 0.2s;
+}
+.bonuses-bottom li:hover {
+  background: var(--hover-bg);
+  color: #fff;
 }
 

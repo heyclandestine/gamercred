@@ -124,16 +124,19 @@
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
-  background: #29293a;
+  background: var(--bg-input);
   padding: 1rem;
   border-radius: 10px;
-  min-width: 100px;
   width: fit-content;
+}
+.user-game-stats .stat{
+  min-width: 100px;
+  background: var(--bg-input);
 }
 
 .stat-label {
   font-size: 0.9rem;
-  color: #6272a4;
+  color: var(--text-secondary);
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
@@ -275,7 +278,7 @@
   align-items: center;
   gap: 1rem;
   padding: 1rem;
-  background: #29293a;
+  background: var(--bg-input);
   border-radius: 10px;
   transition: background-color 0.2s;
 }
@@ -710,7 +713,7 @@
 
 /* Reviews Section */
 #reviews-section {
-  background: #29293a;
+  background: var(--bg-input);
   border-radius: 12px;
   padding: 1.5rem;
   margin-bottom: 1.5rem;
@@ -733,7 +736,7 @@
 }
 
 #reviewText {
-  width: 100%;
+  width: 95%;
   min-height: 100px;
   background: #1a1a22;
   border: 2px solid #6272a4;
@@ -948,7 +951,7 @@
 
 /* Screenshots Section */
 #screenshots-section {
-  background: #29293a;
+  background: var(--bg-input);
   border-radius: 12px;
   padding: 1.5rem;
   margin-bottom: 1.5rem;
@@ -1250,17 +1253,9 @@
 
 /* Game Info Area - Ratings and Completion */
 .game-info-ratings {
-  background: #29293a;
   border-radius: 12px;
-  padding: 1.5rem;
   margin-top: 1rem;
   transition: all 0.3s ease;
-}
-
-.game-info-ratings:hover {
-  border-color: rgba(255, 111, 174, 0.3);
-  transform: translateY(-2px);
-  box-shadow: 0 8px 24px rgba(255, 111, 174, 0.1);
 }
 
 .game-info-rating-display {
@@ -1278,18 +1273,7 @@
 }
 
 .game-info-completion {
-  background: #29293a;
-  border-radius: 12px;
-  padding: 1.5rem;
-  margin-top: 1rem;
-  border: 1px solid rgba(9, 163, 65, 0.1);
   transition: all 0.3s ease;
-}
-
-.game-info-completion:hover {
-  border-color: rgba(9, 163, 65, 0.3);
-  transform: translateY(-2px);
-  box-shadow: 0 8px 24px rgba(9, 163, 65, 0.1);
 }
 
 .game-info-completion h3 {
@@ -1304,7 +1288,6 @@
 .game-info-completion-content {
   display: flex;
   align-items: center;
-  gap: 1rem;
   flex-wrap: wrap;
 }
 
@@ -1614,7 +1597,6 @@
   width: 100%;
   max-width: 340px;
   margin: 0 auto;
-  background: #23232b;
   border-radius: 16px;
   padding: 2rem 1.5rem 2rem 1.5rem;
 }
@@ -1633,9 +1615,7 @@
 
 .cover-side-info .game-info-ratings {
   width: 100%;
-  background: #23232b;
   border-radius: 10px;
-  padding: 0rem 1rem 0rem 1rem;
   margin: 0;
   display: flex;
   flex-direction: column;
@@ -1694,10 +1674,7 @@
 .cover-side-info .game-info-completion {
   width: 100%;
   min-height: 90px;
-  background: #23232b;
   border-radius: 10px;
-  padding: 1.25rem 1rem 1.1rem 1rem;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
   margin: 0;
   display: flex;
   flex-direction: column;
@@ -1708,7 +1685,6 @@
 .cover-side-info .game-info-completion-content {
   font-size: 1rem;
   color: #8be9fd;
-  margin-bottom: 0.5rem;
   text-align: center;
   width: 100%;
   display: flex;

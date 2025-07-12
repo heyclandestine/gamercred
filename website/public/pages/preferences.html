@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>User Preferences - Gamer Cred</title>
+  <link rel="icon" type="image/png" href="/images/favicon.png">
+  <link rel="stylesheet" href="/css/main.css">
+  <link rel="stylesheet" href="/css/themes.css">
+  <link rel="stylesheet" href="/css/preferences.css">
+</head>
+<body>
+  <nav class="navbar">
+    <div class="nav-left">
+      <a href="/" class="site-title nav-home-btn">
+        <img src="/images/favicon.png" alt="Gamer Cred" class="nav-favicon">
+        Gamer Cred
+      </a>
+    </div>
+    <div class="nav-center">
+      <a href="/pages/all_games.html" class="nav-link desktop-only">All Games</a>
+      <a href="/pages/setrate.html" class="nav-link desktop-only">Set Rate</a>
+    </div>
+    <div class="nav-right">
+      <div id="auth-container">
+        <a href="/login" class="auth-button login-button">
+          <i class="fab fa-discord"></i>
+          Login with Discord
+        </a>
+      </div>
+    </div>
+  </nav>
+  <div class="preferences-layout">
+    <aside class="preferences-sidebar">
+      <h2 class="sidebar-title">Settings</h2>
+      <nav class="preferences-tabs">
+        <button class="preferences-tab active" data-tab="preferences">
+          <i class="fas fa-sliders-h"></i> Preferences
+        </button>
+        <!-- Future tabs: Notifications, Account, Integrations, etc. -->
+      </nav>
+      <div class="preferences-nav-btns sidebar-nav-btns">
+        <a href="/pages/user.html" class="preferences-btn"><i class="fas fa-user"></i> Back to Profile</a>
+        <a href="/" class="preferences-btn"><i class="fas fa-home"></i> Home</a>
+      </div>
+    </aside>
+    <main class="preferences-main">
+      <section class="preferences-section preferences-section-active" id="preferences">
+        <h2>Preferences</h2>
+        <form id="theme-preference-form">
+          <div class="form-group">
+            <label for="theme-select"><strong>Default Theme</strong></label>
+            <div class="theme-options-row">
+              <label class="theme-radio">
+                <input type="radio" name="theme" value="default" checked>
+                <span class="theme-preview" style="background: linear-gradient(45deg, #23232b, #ff6fae);"></span>
+                Dark Gaming
+              </label>
+              <label class="theme-radio">
+                <input type="radio" name="theme" value="light-gaming">
+                <span class="theme-preview" style="background: linear-gradient(45deg, #f8f9fa, #ff6fae);"></span>
+                Light Gaming
+              </label>
+              <label class="theme-radio">
+                <input type="radio" name="theme" value="cyberpunk">
+                <span class="theme-preview" style="background: linear-gradient(45deg, #0a0a0f, #e94560);"></span>
+                Cyberpunk
+              </label>
+              <label class="theme-radio">
+                <input type="radio" name="theme" value="forest">
+                <span class="theme-preview" style="background: linear-gradient(45deg, #1a2f1a, #4ade80);"></span>
+                Forest
+              </label>
+              <label class="theme-radio">
+                <input type="radio" name="theme" value="ocean">
+                <span class="theme-preview" style="background: linear-gradient(45deg, #0f172a, #06b6d4);"></span>
+                Ocean
+              </label>
+              <label class="theme-radio">
+                <input type="radio" name="theme" value="sunset">
+                <span class="theme-preview" style="background: linear-gradient(45deg, #1f1f2e, #fd79a8);"></span>
+                Sunset
+              </label>
+              <label class="theme-radio">
+                <input type="radio" name="theme" value="retro">
+                <span class="theme-preview" style="background: linear-gradient(45deg, #2d1b69, #ffd700);"></span>
+                Retro
+              </label>
+            </div>
+          </div>
+          
+          <div class="form-group">
+            <label><strong>Custom Background</strong></label>
+            <div class="background-options">
+              <div class="background-option">
+                <label class="background-radio">
+                  <input type="radio" name="background" value="none" checked>
+                  <span class="background-preview" style="background: var(--bg-primary);">
+                    <i class="fas fa-times"></i>
+                  </span>
+                  No Background
+                </label>
+              </div>
+              <div class="background-option">
+                <label class="background-radio">
+                  <input type="radio" name="background" value="image">
+                  <span class="background-preview" style="background: linear-gradient(45deg, #666, #999);">
+                    <i class="fas fa-image"></i>
+                  </span>
+                  Image
+                </label>
+              </div>
+              <div class="background-option">
+                <label class="background-radio">
+                  <input type="radio" name="background" value="video">
+                  <span class="background-preview" style="background: linear-gradient(45deg, #666, #999);">
+                    <i class="fas fa-video"></i>
+                  </span>
+                  Video
+                </label>
+              </div>
+            </div>
+            
+            <div id="custom-background-section" class="custom-background-section" style="display: none;">
+              <div class="background-input-group">
+                <label for="background-url">URL:</label>
+                <input type="url" id="background-url" placeholder="https://example.com/image.jpg or video.mp4" class="background-input">
+                <button type="button" id="test-background-btn" class="test-btn">Test</button>
+              </div>
+              
+              <div class="background-input-group">
+                <label for="background-file">Or upload file:</label>
+                <input type="file" id="background-file" accept="image/*,video/*" class="background-file-input">
+                <div class="file-input-wrapper">
+                  <input type="text" id="background-file-name" placeholder="Choose file..." readonly class="background-input">
+                  <button type="button" id="browse-btn" class="browse-btn">Browse</button>
+                  <button type="button" id="upload-btn" class="upload-btn" style="display: none;">Upload</button>
+                </div>
+                <div class="file-info">
+                  <small>Supported: PNG, JPG, GIF, WebP, MP4, WebM, OGG, MOV</small>
+                </div>
+              </div>
+              
+              <div class="background-preview-container">
+                <label>Preview:</label>
+                <div id="background-preview" class="background-preview-box">
+                  <div class="preview-placeholder">
+                    <i class="fas fa-image"></i>
+                    <span>No file selected</span>
+                  </div>
+                </div>
+              </div>
+              
+              <div class="background-settings">
+                <label for="background-opacity">Background Opacity:</label>
+                <input type="range" id="background-opacity" min="0.1" max="1" step="0.1" value="0.3" class="opacity-slider">
+                <span id="opacity-value">30%</span>
+              </div>
+            </div>
+          </div>
+          
+          <button type="submit" class="save-preferences-btn"><i class="fas fa-save"></i> Save Changes</button>
+        </form>
+      </section>
+      <!-- Future sections for other tabs -->
+    </main>
+  </div>
+  <script src="/js/script.js"></script>
+  <script>
+    // Preferences API integration
+    document.addEventListener('DOMContentLoaded', function() {
+      const form = document.getElementById('theme-preference-form');
+      const radios = form.elements['theme'];
+      const backgroundRadios = form.elements['background'];
+      const saveBtn = form.querySelector('.save-preferences-btn');
+      const customSection = document.getElementById('custom-background-section');
+      const backgroundUrl = document.getElementById('background-url');
+      const backgroundFile = document.getElementById('background-file');
+      const backgroundFileName = document.getElementById('background-file-name');
+      const browseBtn = document.getElementById('browse-btn');
+      const uploadBtn = document.getElementById('upload-btn');
+      const testBtn = document.getElementById('test-background-btn');
+      const backgroundPreview = document.getElementById('background-preview');
+      const opacitySlider = document.getElementById('background-opacity');
+      const opacityValue = document.getElementById('opacity-value');
+      
+      let currentTheme = null;
+      let currentBackground = null;
+      let currentOpacity = 0.3;
+      let currentBackgroundType = 'image';
+
+      // Helper: set the selected radio
+      function setSelectedTheme(theme) {
+        for (const radio of radios) {
+          radio.checked = (radio.value === theme);
+        }
+      }
+
+      // Helper: set the selected background radio
+      function setSelectedBackground(background) {
+        for (const radio of backgroundRadios) {
+          radio.checked = (radio.value === background);
+        }
+        if (background === 'image' || background === 'video') {
+          customSection.style.display = 'block';
+          currentBackgroundType = background;
+        } else {
+          customSection.style.display = 'none';
+          applyBackground(null, 0.3);
+        }
+      }
+
+      // Helper: apply theme to site
+      function applyTheme(theme) {
+        document.documentElement.setAttribute('data-theme', theme);
+        localStorage.setItem('selected-theme', theme);
+      }
+
+      // Helper: apply background to site
+      function applyBackground(url, opacity, type = 'image') {
+        if (url) {
+          if (type === 'video') {
+            // For video backgrounds, we'll use a video element
+            let videoBg = document.getElementById('background-video');
+            if (!videoBg) {
+              videoBg = document.createElement('video');
+              videoBg.id = 'background-video';
+              videoBg.style.cssText = `
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                object-fit: cover;
+                z-index: -3;
+                pointer-events: none;
+              `;
+              videoBg.autoplay = true;
+              videoBg.muted = true;
+              videoBg.loop = true;
+              videoBg.playsInline = true;
+              document.body.appendChild(videoBg);
+            }
+            videoBg.src = url;
+            document.body.style.setProperty('--bg-opacity', opacity);
+          } else {
+            // Remove video if it exists
+            const existingVideo = document.getElementById('background-video');
+            if (existingVideo) {
+              existingVideo.remove();
+            }
+            // Apply image background
+            document.body.style.backgroundImage = `url(${url})`;
+            document.body.style.backgroundSize = 'cover';
+            document.body.style.backgroundPosition = 'center';
+            document.body.style.backgroundAttachment = 'fixed';
+            document.body.style.backgroundRepeat = 'no-repeat';
+            document.body.style.setProperty('--bg-opacity', opacity);
+          }
+        } else {
+          // Remove video if it exists
+          const existingVideo = document.getElementById('background-video');
+          if (existingVideo) {
+            existingVideo.remove();
+          }
+          // Remove image background
+          document.body.style.backgroundImage = 'none';
+          document.body.style.removeProperty('--bg-opacity');
+        }
+        localStorage.setItem('background-image-url', url);
+        localStorage.setItem('background-opacity', opacity);
+        localStorage.setItem('background-type', type);
+      }
+
+      // Background radio change handler
+      backgroundRadios.forEach(radio => {
+        radio.addEventListener('change', function() {
+          if (this.value === 'image' || this.value === 'video') {
+            customSection.style.display = 'block';
+            currentBackgroundType = this.value;
+          } else {
+            customSection.style.display = 'none';
+            applyBackground(null, 0.3);
+          }
+        });
+      });
+
+      // File input handler
+      browseBtn.addEventListener('click', () => {
+        backgroundFile.click();
+      });
+
+      backgroundFile.addEventListener('change', function() {
+        if (this.files.length > 0) {
+          const file = this.files[0];
+          backgroundFileName.value = file.name;
+          uploadBtn.style.display = 'inline-block';
+          
+          // Preview the file
+          const reader = new FileReader();
+          reader.onload = function(e) {
+            if (file.type.startsWith('image/')) {
+              backgroundPreview.innerHTML = `<img src="${e.target.result}" alt="Background Preview">`;
+            } else if (file.type.startsWith('video/')) {
+              backgroundPreview.innerHTML = `
+                <video controls style="width: 100%; height: 100%; object-fit: cover;">
+                  <source src="${e.target.result}" type="${file.type}">
+                  Your browser does not support the video tag.
+                </video>
+              `;
+            }
+          };
+          reader.readAsDataURL(file);
+        }
+      });
+
+      // Upload button handler
+      uploadBtn.addEventListener('click', function() {
+        if (!backgroundFile.files.length) {
+          alert('Please select a file first');
+          return;
+        }
+
+        const file = backgroundFile.files[0];
+        const formData = new FormData();
+        formData.append('background_file', file);
+
+        uploadBtn.disabled = true;
+        uploadBtn.textContent = 'Uploading...';
+
+        fetch('/api/preferences/upload-background', {
+          method: 'POST',
+          credentials: 'include',
+          body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+          if (data.file_url) {
+            backgroundUrl.value = data.file_url;
+            currentBackground = data.file_url;
+            currentBackgroundType = data.file_type;
+            applyBackground(data.file_url, currentOpacity, data.file_type);
+            uploadBtn.textContent = 'Uploaded!';
+            setTimeout(() => {
+              uploadBtn.textContent = 'Upload';
+              uploadBtn.disabled = false;
+            }, 2000);
+          } else {
+            throw new Error(data.error || 'Upload failed');
+          }
+        })
+        .catch(error => {
+          console.error('Upload error:', error);
+          alert('Upload failed: ' + error.message);
+          uploadBtn.textContent = 'Upload';
+          uploadBtn.disabled = false;
+        });
+      });
+
+      // URL input handler
+      backgroundUrl.addEventListener('input', function() {
+        if (this.value) {
+          const isVideo = this.value.match(/\.(mp4|webm|ogg|mov)$/i);
+          if (isVideo) {
+            backgroundPreview.innerHTML = `
+              <video controls style="width: 100%; height: 100%; object-fit: cover;">
+                <source src="${this.value}" type="video/mp4">
+                Your browser does not support the video tag.
+              </video>
+            `;
+          } else {
+            backgroundPreview.innerHTML = `<img src="${this.value}" alt="Background Preview" onerror="this.parentElement.innerHTML='<div class=\\'preview-placeholder\\'><i class=\\'fas fa-exclamation-triangle\\'></i><span>Invalid URL</span></div>'">`;
+          }
+        } else {
+          backgroundPreview.innerHTML = '<div class="preview-placeholder"><i class="fas fa-image"></i><span>No file selected</span></div>';
+        }
+      });
+
+      // Test button handler
+      testBtn.addEventListener('click', function() {
+        const url = backgroundUrl.value;
+        if (url) {
+          const isVideo = url.match(/\.(mp4|webm|ogg|mov)$/i);
+          applyBackground(url, currentOpacity, isVideo ? 'video' : 'image');
+        }
+      });
+
+      // Opacity slider handler
+      opacitySlider.addEventListener('input', function() {
+        const opacity = parseFloat(this.value);
+        opacityValue.textContent = Math.round(opacity * 100) + '%';
+        currentOpacity = opacity;
+        
+        // Apply opacity to current background
+        const currentBg = backgroundUrl.value || localStorage.getItem('background-image-url');
+        if (currentBg) {
+          applyBackground(currentBg, opacity, currentBackgroundType);
+        }
+      });
+
+      // Fetch current preferences
+      fetch('/api/preferences', { credentials: 'include' })
+        .then(r => r.json())
+        .then(data => {
+          if (data.theme) {
+            setSelectedTheme(data.theme);
+            applyTheme(data.theme);
+            currentTheme = data.theme;
+          }
+          
+          if (data.background_image_url || data.background_video_url) {
+            const backgroundUrl = data.background_image_url || data.background_video_url;
+            const backgroundType = data.background_type || 'image';
+            
+            setSelectedBackground(backgroundType);
+            document.getElementById('background-url').value = backgroundUrl;
+            currentBackground = backgroundUrl;
+            currentBackgroundType = backgroundType;
+            currentOpacity = data.background_opacity || 0.3;
+            opacitySlider.value = currentOpacity;
+            opacityValue.textContent = Math.round(currentOpacity * 100) + '%';
+            applyBackground(backgroundUrl, currentOpacity, backgroundType);
+            
+            // Show preview
+            if (backgroundType === 'video') {
+              backgroundPreview.innerHTML = `
+                <video controls style="width: 100%; height: 100%; object-fit: cover;">
+                  <source src="${backgroundUrl}" type="video/mp4">
+                  Your browser does not support the video tag.
+                </video>
+              `;
+            } else {
+              backgroundPreview.innerHTML = `<img src="${backgroundUrl}" alt="Background Preview">`;
+            }
+          }
+        });
+
+      // Save preferences
+      form.addEventListener('submit', function(e) {
+        e.preventDefault();
+        const selected = Array.from(radios).find(r => r.checked)?.value;
+        const backgroundType = Array.from(backgroundRadios).find(r => r.checked)?.value;
+        
+        if (!selected) return;
+        
+        let backgroundImageUrl = null;
+        let backgroundVideoUrl = null;
+        let finalBackgroundType = 'none';
+        
+        // Use the value from the input, or the last uploaded file URL
+        const urlValue = backgroundUrl.value?.trim();
+        if (backgroundType === 'image') {
+          if (!urlValue) {
+            alert('Please enter a URL or upload an image file.');
+            return;
+          }
+          backgroundImageUrl = urlValue;
+          finalBackgroundType = 'image';
+        } else if (backgroundType === 'video') {
+          if (!urlValue) {
+            alert('Please enter a URL or upload a video file.');
+            return;
+          }
+          backgroundVideoUrl = urlValue;
+          finalBackgroundType = 'video';
+        }
+        
+        fetch('/api/preferences', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ 
+            theme: selected,
+            background_image_url: backgroundImageUrl,
+            background_video_url: backgroundVideoUrl,
+            background_opacity: currentOpacity,
+            background_type: finalBackgroundType
+          })
+        })
+        .then(r => r.json())
+        .then(data => {
+          if (data.theme) {
+            applyTheme(data.theme);
+            if (data.background_type === 'video') {
+              applyBackground(data.background_video_url, data.background_opacity, 'video');
+            } else if (data.background_type === 'image') {
+              applyBackground(data.background_image_url, data.background_opacity, 'image');
+            }
+            saveBtn.textContent = 'Saved!';
+            setTimeout(() => { saveBtn.textContent = 'Save Changes'; }, 1200);
+          } else {
+            saveBtn.textContent = 'Error';
+            setTimeout(() => { saveBtn.textContent = 'Save Changes'; }, 1200);
+          }
+        })
+        .catch(() => {
+          saveBtn.textContent = 'Error';
+          setTimeout(() => { saveBtn.textContent = 'Save Changes'; }, 1200);
+        });
+      });
+    });
+  </script>
+</body>
+</html> 
