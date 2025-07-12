@@ -514,9 +514,8 @@ def get_popular_games():
                     'box_art_url': box_art_url if box_art_url else f"https://static-cdn.jtvnw.net/ttv-boxart/{game_name}-144x192.jpg"
                 })
 
-        # Sort by hours played and take top 5
+        # Sort by hours played and return all data (no limit)
         formatted_data.sort(key=lambda x: x['total_hours'], reverse=True)
-        formatted_data = formatted_data[:5]  # Take top 5
 
         print(f"Returning formatted data: {formatted_data}")
         return jsonify(formatted_data)

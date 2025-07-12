@@ -252,7 +252,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const data = JSON.parse(cached);
         leaderboardList.innerHTML = '';
         if (data && data.length > 0) {
-          data.slice(0, 5).forEach((player, index) => {
+          data.forEach((player, index) => {
             const listItem = document.createElement('li');
             listItem.innerHTML = `
               <span class="rank">${index + 1}</span>
@@ -279,7 +279,7 @@ document.addEventListener('DOMContentLoaded', function() {
       .then(data => {
         leaderboardList.innerHTML = '';
         if (data && data.length > 0) {
-          data.slice(0, 5).forEach((player, index) => {
+          data.forEach((player, index) => {
             const listItem = document.createElement('li');
             listItem.innerHTML = `
               <span class="rank">${index + 1}</span>
