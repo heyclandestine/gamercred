@@ -1656,7 +1656,7 @@ document.addEventListener('DOMContentLoaded', function() {
           if (bgType === 'image') {
             if (data.background_image_data) {
               // File stored in database
-              bgUrl = `/api/preferences/background/${data.user_id}/image`;
+              bgUrl = `/api/preferences/background/${data.user_id}/image?t=${Date.now()}`;
             } else {
               // External URL
               bgUrl = data.background_image_url;
@@ -1664,7 +1664,7 @@ document.addEventListener('DOMContentLoaded', function() {
           } else if (bgType === 'video') {
             if (data.background_video_data) {
               // File stored in database
-              bgUrl = `/api/preferences/background/${data.user_id}/video`;
+              bgUrl = `/api/preferences/background/${data.user_id}/video?t=${Date.now()}`;
             } else {
               // External URL
               bgUrl = data.background_video_url;

@@ -1586,12 +1586,12 @@ def upload_game_screenshot():
         if file_extension not in allowed_extensions:
             return jsonify({'error': 'Invalid file type. Please upload PNG, JPG, JPEG, GIF, or WebP'}), 400
         
-        # Check file size (10MB limit)
+        # Check file size (100MB limit for screenshots)
         file.seek(0, 2)
         file_size = file.tell()
         file.seek(0)
-        if file_size > 10 * 1024 * 1024:
-            return jsonify({'error': 'File too large. Maximum size is 10MB'}), 400
+        if file_size > 100 * 1024 * 1024:
+            return jsonify({'error': 'File too large. Maximum size is 100MB'}), 400
         
         # Read file data and encode as base64
         file_data = file.read()
@@ -1615,8 +1615,8 @@ def upload_game_screenshot():
         try:
             # Check if it's valid base64
             decoded_data = base64.b64decode(image_data)
-            if len(decoded_data) > 10 * 1024 * 1024:  # 10MB limit
-                return jsonify({'error': 'Image too large. Maximum size is 10MB'}), 400
+            if len(decoded_data) > 100 * 1024 * 1024:  # 100MB limit
+                return jsonify({'error': 'Image too large. Maximum size is 100MB'}), 400
         except Exception:
             return jsonify({'error': 'Invalid base64 data'}), 400
     else:
@@ -1752,16 +1752,39 @@ def set_user_preferences():
         prefs = session.query(UserPreferences).filter_by(user_id=user_id).first()
         if prefs:
             prefs.theme = theme
-            prefs.background_image_url = background_image_url
-            prefs.background_video_url = background_video_url
             prefs.background_opacity = background_opacity
             prefs.background_type = background_type
+            
+            # Only update URL fields if they're external URLs (not internal API endpoints)
+            if background_image_url and not background_image_url.startswith('/api/preferences/background/'):
+                prefs.background_image_url = background_image_url
+                # Clear database-stored image data if switching to external URL
+                prefs.background_image_data = None
+                prefs.background_image_filename = None
+                prefs.background_image_mime_type = None
+            elif background_image_url is None:
+                # Clear external URL if setting to None
+                prefs.background_image_url = None
+                
+            if background_video_url and not background_video_url.startswith('/api/preferences/background/'):
+                prefs.background_video_url = background_video_url
+                # Clear database-stored video data if switching to external URL
+                prefs.background_video_data = None
+                prefs.background_video_filename = None
+                prefs.background_video_mime_type = None
+            elif background_video_url is None:
+                # Clear external URL if setting to None
+                prefs.background_video_url = None
         else:
+            # For new preferences, only store external URLs
+            image_url = background_image_url if background_image_url and not background_image_url.startswith('/api/preferences/background/') else None
+            video_url = background_video_url if background_video_url and not background_video_url.startswith('/api/preferences/background/') else None
+            
             prefs = UserPreferences(
                 user_id=user_id, 
                 theme=theme,
-                background_image_url=background_image_url,
-                background_video_url=background_video_url,
+                background_image_url=image_url,
+                background_video_url=video_url,
                 background_opacity=background_opacity,
                 background_type=background_type
             )
@@ -1770,8 +1793,8 @@ def set_user_preferences():
         return jsonify({
             'message': 'Preferences updated', 
             'theme': theme,
-            'background_image_url': background_image_url,
-            'background_video_url': background_video_url,
+            'background_image_url': prefs.background_image_url,
+            'background_video_url': prefs.background_video_url,
             'background_opacity': background_opacity,
             'background_type': background_type
         })
@@ -1797,11 +1820,11 @@ def upload_background_image():
     if file_extension in allowed_image_extensions:
         file_type = 'image'
         mime_type = file.content_type or f'image/{file_extension}'
-        max_size = 10 * 1024 * 1024  # 10MB for images
+        max_size = None  # No size limit for images
     elif file_extension in allowed_video_extensions:
         file_type = 'video'
         mime_type = file.content_type or f'video/{file_extension}'
-        max_size = 50 * 1024 * 1024  # 50MB for videos (reasonable for 10-second clips)
+        max_size = 100 * 1024 * 1024  # 100MB for videos
     else:
         return jsonify({'error': 'Invalid file type. Please upload PNG, JPG, JPEG, GIF, WebP, MP4, WebM, OGG, or MOV'}), 400
     
@@ -1811,7 +1834,7 @@ def upload_background_image():
         file_size = file.tell()
         file.seek(0)  # Reset to beginning
         
-        if file_size > max_size:
+        if max_size and file_size > max_size:
             size_mb = max_size / (1024 * 1024)
             return jsonify({'error': f'File too large. Maximum size is {size_mb}MB'}), 400
         
@@ -1882,7 +1905,7 @@ def upload_background_image():
         
         return jsonify({
             'message': f'Background {file_type} uploaded successfully',
-            'file_url': f'/api/preferences/background/{user_id}/{file_type}',
+            'file_url': f'/api/preferences/background/{user_id}/{file_type}?t={int(time.time())}',
             'file_type': file_type
         })
     except Exception as e:

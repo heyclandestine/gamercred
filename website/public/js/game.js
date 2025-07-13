@@ -581,9 +581,9 @@ document.addEventListener('DOMContentLoaded', function() {
           return;
         }
         
-        // Check file size (10MB limit)
-        if (file.size > 10 * 1024 * 1024) {
-          showMessage('File too large. Maximum size is 10MB.', 'error');
+        // Check file size (100MB limit for screenshots)
+        if (file.size > 100 * 1024 * 1024) {
+          showMessage('File too large. Maximum size is 100MB.', 'error');
           return;
         }
         

@@ -137,7 +137,7 @@
                   <button type="button" id="upload-btn" class="upload-btn" style="display: none;">Upload</button>
                 </div>
                 <div class="file-info">
-                  <small>Supported: PNG, JPG, GIF, WebP (max 10MB), MP4, WebM, OGG, MOV (max 50MB, 10 seconds)</small>
+                  <small>Supported: PNG, JPG, GIF, WebP (no size limit), MP4, WebM, OGG, MOV (max 100MB)</small>
                 </div>
               </div>
               
@@ -295,24 +295,14 @@
           const file = this.files[0];
           
           // Check file size
-          const maxImageSize = 10 * 1024 * 1024; // 10MB
-          const maxVideoSize = 50 * 1024 * 1024; // 50MB
-          
-          if (file.type.startsWith('image/') && file.size > maxImageSize) {
-            alert('Image file too large. Maximum size is 10MB.');
-            this.value = '';
-            backgroundFileName.value = '';
-            uploadBtn.style.display = 'none';
-            backgroundPreview.innerHTML = '<div class="preview-placeholder"><i class="fas fa-image"></i><span>No file selected</span></div>';
-            return;
-          }
+          const maxVideoSize = 100 * 1024 * 1024; // 100MB
           
           if (file.type.startsWith('video/') && file.size > maxVideoSize) {
-            alert('Video file too large. Maximum size is 50MB (approximately 10 seconds).');
+            alert('Video file too large. Maximum size is 100MB.');
             this.value = '';
             backgroundFileName.value = '';
             uploadBtn.style.display = 'none';
-            backgroundPreview.innerHTML = '<div class="preview-placeholder"><i class="fas fa-image"></i><span>No file selected</span></div>';
+            backgroundPreview.innerHTML = '<div class="preview-placeholder"><i class="fas fa-exclamation-triangle"></i><span>File too large</span></div>';
             return;
           }
           
@@ -450,7 +440,7 @@
             if (backgroundType === 'image') {
               if (data.background_image_data) {
                 // File stored in database
-                backgroundUrl = `/api/preferences/background/${data.user_id}/image`;
+                backgroundUrl = `/api/preferences/background/${data.user_id}/image?t=${Date.now()}`;
               } else {
                 // External URL
                 backgroundUrl = data.background_image_url;
@@ -458,7 +448,7 @@
             } else if (backgroundType === 'video') {
               if (data.background_video_data) {
                 // File stored in database
-                backgroundUrl = `/api/preferences/background/${data.user_id}/video`;
+                backgroundUrl = `/api/preferences/background/${data.user_id}/video?t=${Date.now()}`;
               } else {
                 // External URL
                 backgroundUrl = data.background_video_url;
@@ -512,20 +502,35 @@
           return url.startsWith('http://') || url.startsWith('https://') || url.startsWith('/');
         }
         
+        // Helper function to check if URL is an internal API endpoint
+        function isInternalApiUrl(url) {
+          return url && url.startsWith('/api/preferences/background/');
+        }
+        
         if (backgroundType === 'image') {
-          if (!isValidUrl(urlValue)) {
+          if (isInternalApiUrl(urlValue)) {
+            // Don't send internal API URLs - they represent database-stored files
+            backgroundImageUrl = null;
+            finalBackgroundType = 'image';
+          } else if (!isValidUrl(urlValue)) {
             alert('Please enter a valid URL (starting with http://, https://, or /) or upload an image file.');
             return;
+          } else {
+            backgroundImageUrl = urlValue;
+            finalBackgroundType = 'image';
           }
-          backgroundImageUrl = urlValue;
-          finalBackgroundType = 'image';
         } else if (backgroundType === 'video') {
-          if (!isValidUrl(urlValue)) {
+          if (isInternalApiUrl(urlValue)) {
+            // Don't send internal API URLs - they represent database-stored files
+            backgroundVideoUrl = null;
+            finalBackgroundType = 'video';
+          } else if (!isValidUrl(urlValue)) {
             alert('Please enter a valid URL (starting with http://, https://, or /) or upload a video file.');
             return;
+          } else {
+            backgroundVideoUrl = urlValue;
+            finalBackgroundType = 'video';
           }
-          backgroundVideoUrl = urlValue;
-          finalBackgroundType = 'video';
         }
         
         fetch('/api/preferences', {
@@ -544,11 +549,8 @@
         .then(data => {
           if (data.theme) {
             applyTheme(data.theme);
-            if (data.background_type === 'video') {
-              applyBackground(data.background_video_url, data.background_opacity, 'video');
-            } else if (data.background_type === 'image') {
-              applyBackground(data.background_image_url, data.background_opacity, 'image');
-            }
+            // Don't try to apply background from response - preserve current background
+            // The background is already applied and working, just save the theme
             saveBtn.textContent = 'Saved!';
             setTimeout(() => { saveBtn.textContent = 'Save Changes'; }, 1200);
           } else {
