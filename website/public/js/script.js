@@ -1647,9 +1647,30 @@ document.addEventListener('DOMContentLoaded', function() {
             document.documentElement.setAttribute('data-theme', data.theme);
             localStorage.setItem('selected-theme', data.theme);
           }
+          
           let bgType = data.background_type || 'image';
-          let bgUrl = bgType === 'video' ? data.background_video_url : data.background_image_url;
+          let bgUrl;
           let bgOpacity = data.background_opacity || 0.3;
+          
+          // Determine background URL (handle both database-stored and external URLs)
+          if (bgType === 'image') {
+            if (data.background_image_data) {
+              // File stored in database
+              bgUrl = `/api/preferences/background/${data.user_id}/image`;
+            } else {
+              // External URL
+              bgUrl = data.background_image_url;
+            }
+          } else if (bgType === 'video') {
+            if (data.background_video_data) {
+              // File stored in database
+              bgUrl = `/api/preferences/background/${data.user_id}/video`;
+            } else {
+              // External URL
+              bgUrl = data.background_video_url;
+            }
+          }
+          
           if (bgUrl) {
             applyBackgroundUniversal(bgUrl, bgOpacity, bgType);
             localStorage.setItem('background-image-url', bgUrl);

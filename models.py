@@ -148,8 +148,14 @@ class UserPreferences(Base):
     id = Column(Integer, primary_key=True)
     user_id = Column(BigInteger, ForeignKey('user_stats.user_id'), unique=True, nullable=False)
     theme = Column(String, nullable=True)
-    background_image_url = Column(String, nullable=True)  # URL or uploaded image path
-    background_video_url = Column(String, nullable=True)  # URL or uploaded video path
+    background_image_url = Column(String, nullable=True)  # URL for external images
+    background_video_url = Column(String, nullable=True)  # URL for external videos
+    background_image_data = Column(Text, nullable=True)  # Base64 encoded image data
+    background_video_data = Column(Text, nullable=True)  # Base64 encoded video data
+    background_image_filename = Column(String, nullable=True)  # Original filename for image
+    background_video_filename = Column(String, nullable=True)  # Original filename for video
+    background_image_mime_type = Column(String, nullable=True)  # MIME type for image
+    background_video_mime_type = Column(String, nullable=True)  # MIME type for video
     background_opacity = Column(Float, default=0.3)  # Opacity from 0.1 to 1.0
     background_type = Column(String, default='image')  # 'image', 'video', or 'none'
     # Add more preference columns as needed

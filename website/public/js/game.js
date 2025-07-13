@@ -613,9 +613,12 @@ document.addEventListener('DOMContentLoaded', function() {
 
   function renderStarWidget(userRating) {
     const starRating = document.getElementById('starRating');
-    const userRatingValue = document.getElementById('userRatingValue');
     starRating.innerHTML = '';
     let current = userRating;
+    
+    // Store the current rating in a variable that can be updated
+    let currentUserRating = userRating;
+    
     for (let i = 1; i <= 5; i++) {
       const full = current >= 1;
       const half = !full && current >= 0.5;
@@ -631,7 +634,7 @@ document.addEventListener('DOMContentLoaded', function() {
         highlightStars(i - (isHalf ? 0.5 : 0));
       };
       star.onmouseleave = function() {
-        highlightStars(userRating);
+        highlightStars(currentUserRating);
       };
       star.onclick = function(e) {
         const rect = star.getBoundingClientRect();
@@ -653,9 +656,12 @@ document.addEventListener('DOMContentLoaded', function() {
           if (data.error) {
             showMessage(data.error, 'error');
           } else {
+            // Update the stored rating value
+            currentUserRating = value;
             highlightStars(value);
-            userRatingValue.textContent = value;
             showMessage(`Rating updated to ${value} stars!`, 'success');
+            
+            // Update average rating and count in real-time
             fetch(`/api/game/ratings?name=${encodeURIComponent(gameName)}`)
               .then(r => r.json())
               .then(data => {
@@ -673,7 +679,6 @@ document.addEventListener('DOMContentLoaded', function() {
       current -= 1;
     }
     highlightStars(userRating);
-    userRatingValue.textContent = userRating ? userRating : '';
   }
   
   function highlightStars(value) {

@@ -69,6 +69,10 @@ cache = {
     'recent_activity': {'data': None, 'timestamp': 0}
 }
 
+# Cache for background files (1 hour expiration)
+background_file_cache = {}
+background_file_cache_timestamps = {}
+
 # Get RAWG API key from environment variable
 RAWG_API_KEY = os.getenv('RAWG_API_KEY')
 RAWG_API_URL = os.getenv('RAWG_API_URL', 'https://api.rawg.io/api')
@@ -1626,13 +1630,20 @@ def get_user_preferences():
     with storage.Session() as session:
         prefs = session.query(UserPreferences).filter_by(user_id=user_id).first()
         if prefs:
-            return jsonify({
-                'theme': prefs.theme,
-                'background_image_url': prefs.background_image_url,
-                'background_video_url': prefs.background_video_url,
-                'background_opacity': prefs.background_opacity,
-                'background_type': prefs.background_type or 'image'
-            })
+                            return jsonify({
+                    'theme': prefs.theme,
+                    'background_image_url': prefs.background_image_url,
+                    'background_video_url': prefs.background_video_url,
+                    'background_image_data': prefs.background_image_data,
+                    'background_video_data': prefs.background_video_data,
+                    'background_image_filename': prefs.background_image_filename,
+                    'background_video_filename': prefs.background_video_filename,
+                    'background_image_mime_type': prefs.background_image_mime_type,
+                    'background_video_mime_type': prefs.background_video_mime_type,
+                    'background_opacity': prefs.background_opacity,
+                    'background_type': prefs.background_type or 'image',
+                    'user_id': user_id
+                })
         else:
             return jsonify({
                 'theme': None,
@@ -1705,58 +1716,161 @@ def upload_background_image():
     
     if file_extension in allowed_image_extensions:
         file_type = 'image'
-        upload_dir = os.path.join(app.static_folder, 'uploads', 'backgrounds', 'images')
+        mime_type = file.content_type or f'image/{file_extension}'
+        max_size = 10 * 1024 * 1024  # 10MB for images
     elif file_extension in allowed_video_extensions:
         file_type = 'video'
-        upload_dir = os.path.join(app.static_folder, 'uploads', 'backgrounds', 'videos')
+        mime_type = file.content_type or f'video/{file_extension}'
+        max_size = 50 * 1024 * 1024  # 50MB for videos (reasonable for 10-second clips)
     else:
         return jsonify({'error': 'Invalid file type. Please upload PNG, JPG, JPEG, GIF, WebP, MP4, WebM, OGG, or MOV'}), 400
     
-    # Save file to appropriate directory (ensure directory exists)
-    os.makedirs(upload_dir, exist_ok=True)
-    
-    # Generate unique filename
-    filename = f"bg_{uuid.uuid4().hex}.{file_extension}"
-    file_path = os.path.join(upload_dir, filename)
-    
     try:
-        file.save(file_path)
+        # Check file size
+        file.seek(0, 2)  # Seek to end
+        file_size = file.tell()
+        file.seek(0)  # Reset to beginning
         
-        # Create relative URL
-        if file_type == 'image':
-            file_url = f"/uploads/backgrounds/images/{filename}"
-        else:
-            file_url = f"/uploads/backgrounds/videos/{filename}"
+        if file_size > max_size:
+            size_mb = max_size / (1024 * 1024)
+            return jsonify({'error': f'File too large. Maximum size is {size_mb}MB'}), 400
         
-        # Update user preferences with the new background file
+        # For videos, check duration (approximate based on file size)
+        if file_type == 'video':
+            # Rough estimate: 1MB per second for compressed video
+            estimated_duration = file_size / (1024 * 1024)  # seconds
+            if estimated_duration > 15:  # Allow some buffer
+                return jsonify({'error': 'Video too long. Maximum duration is 10 seconds'}), 400
+        
+        # Read file data and encode as base64
+        file_data = file.read()
+        import base64
+        encoded_data = base64.b64encode(file_data).decode('utf-8')
+        
+        # Check encoded size (base64 increases size by ~33%)
+        encoded_size = len(encoded_data)
+        if encoded_size > 100 * 1024 * 1024:  # 100MB limit for database storage
+            return jsonify({'error': 'File too large for database storage. Please use a smaller file or external URL'}), 400
+        
+        # Update user preferences with the file data stored in database
         with storage.Session() as session:
             prefs = session.query(UserPreferences).filter_by(user_id=user_id).first()
             if prefs:
                 if file_type == 'image':
-                    prefs.background_image_url = file_url
+                    prefs.background_image_data = encoded_data
+                    prefs.background_image_filename = file.filename
+                    prefs.background_image_mime_type = mime_type
+                    prefs.background_image_url = None  # Clear URL if storing in DB
                     prefs.background_type = 'image'
                 else:
-                    prefs.background_video_url = file_url
+                    prefs.background_video_data = encoded_data
+                    prefs.background_video_filename = file.filename
+                    prefs.background_video_mime_type = mime_type
+                    prefs.background_video_url = None  # Clear URL if storing in DB
                     prefs.background_type = 'video'
             else:
                 prefs = UserPreferences(
                     user_id=user_id,
                     theme='dark',  # Default theme
-                    background_image_url=file_url if file_type == 'image' else None,
-                    background_video_url=file_url if file_type == 'video' else None,
+                    background_image_data=encoded_data if file_type == 'image' else None,
+                    background_video_data=encoded_data if file_type == 'video' else None,
+                    background_image_filename=file.filename if file_type == 'image' else None,
+                    background_video_filename=file.filename if file_type == 'video' else None,
+                    background_image_mime_type=mime_type if file_type == 'image' else None,
+                    background_video_mime_type=mime_type if file_type == 'video' else None,
                     background_opacity=0.3,
                     background_type=file_type
                 )
                 session.add(prefs)
-            session.commit()
+            
+            try:
+                session.commit()
+                # Clear cache for this user's background files
+                cache_key_image = f"{user_id}_image"
+                cache_key_video = f"{user_id}_video"
+                if cache_key_image in background_file_cache:
+                    del background_file_cache[cache_key_image]
+                if cache_key_video in background_file_cache:
+                    del background_file_cache[cache_key_video]
+            except Exception as db_error:
+                session.rollback()
+                print(f"Database error: {str(db_error)}")
+                if "SSL connection has been closed" in str(db_error):
+                    return jsonify({'error': 'File too large for database storage. Please use a smaller file or external URL'}), 400
+                else:
+                    raise db_error
         
         return jsonify({
             'message': f'Background {file_type} uploaded successfully',
-            'file_url': file_url,
+            'file_url': f'/api/preferences/background/{user_id}/{file_type}',
             'file_type': file_type
         })
     except Exception as e:
+        print(f"Upload error: {str(e)}")
+        import traceback
+        traceback.print_exc()
         return jsonify({'error': f'Failed to upload {file_type}: {str(e)}'}), 500
+
+@app.route('/api/preferences/background/<user_id>/<file_type>')
+def serve_background_file(user_id, file_type):
+    """Serve background files stored in the database with caching."""
+    try:
+        # Check cache first
+        cache_key = f"{user_id}_{file_type}"
+        current_time = time.time()
+        cache_expiry = 3600  # 1 hour
+        
+        if (cache_key in background_file_cache and 
+            current_time - background_file_cache_timestamps.get(cache_key, 0) < cache_expiry):
+            cached_data = background_file_cache[cache_key]
+            from flask import Response
+            response = Response(cached_data['file_data'], mimetype=cached_data['mime_type'])
+            response.headers['Content-Disposition'] = f'inline; filename="{cached_data["filename"]}"'
+            response.headers['Cache-Control'] = 'public, max-age=31536000'
+            response.headers['ETag'] = cached_data['etag']
+            return response
+        
+        # If not in cache, get from database
+        with storage.Session() as session:
+            prefs = session.query(UserPreferences).filter_by(user_id=user_id).first()
+            if not prefs:
+                return jsonify({'error': 'User preferences not found'}), 404
+            
+            if file_type == 'image' and prefs.background_image_data:
+                import base64
+                file_data = base64.b64decode(prefs.background_image_data)
+                mime_type = prefs.background_image_mime_type or 'image/jpeg'
+                filename = prefs.background_image_filename or 'background.jpg'
+            elif file_type == 'video' and prefs.background_video_data:
+                import base64
+                file_data = base64.b64decode(prefs.background_video_data)
+                mime_type = prefs.background_video_mime_type or 'video/mp4'
+                filename = prefs.background_video_filename or 'background.mp4'
+            else:
+                return jsonify({'error': 'File not found'}), 404
+            
+            # Cache the result
+            etag = f'"{user_id}_{file_type}_{hash(file_data) % 1000000}"'
+            background_file_cache[cache_key] = {
+                'file_data': file_data,
+                'mime_type': mime_type,
+                'filename': filename,
+                'etag': etag
+            }
+            background_file_cache_timestamps[cache_key] = current_time
+            
+            from flask import Response
+            response = Response(file_data, mimetype=mime_type)
+            response.headers['Content-Disposition'] = f'inline; filename="{filename}"'
+            response.headers['Cache-Control'] = 'public, max-age=31536000'
+            response.headers['ETag'] = etag
+            return response
+            
+    except Exception as e:
+        print(f"Error serving background file: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': 'Internal server error'}), 500
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True) 

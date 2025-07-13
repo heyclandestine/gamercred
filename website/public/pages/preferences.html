@@ -137,7 +137,7 @@
                   <button type="button" id="upload-btn" class="upload-btn" style="display: none;">Upload</button>
                 </div>
                 <div class="file-info">
-                  <small>Supported: PNG, JPG, GIF, WebP, MP4, WebM, OGG, MOV</small>
+                  <small>Supported: PNG, JPG, GIF, WebP (max 10MB), MP4, WebM, OGG, MOV (max 50MB, 10 seconds)</small>
                 </div>
               </div>
               
@@ -293,6 +293,29 @@
       backgroundFile.addEventListener('change', function() {
         if (this.files.length > 0) {
           const file = this.files[0];
+          
+          // Check file size
+          const maxImageSize = 10 * 1024 * 1024; // 10MB
+          const maxVideoSize = 50 * 1024 * 1024; // 50MB
+          
+          if (file.type.startsWith('image/') && file.size > maxImageSize) {
+            alert('Image file too large. Maximum size is 10MB.');
+            this.value = '';
+            backgroundFileName.value = '';
+            uploadBtn.style.display = 'none';
+            backgroundPreview.innerHTML = '<div class="preview-placeholder"><i class="fas fa-image"></i><span>No file selected</span></div>';
+            return;
+          }
+          
+          if (file.type.startsWith('video/') && file.size > maxVideoSize) {
+            alert('Video file too large. Maximum size is 50MB (approximately 10 seconds).');
+            this.value = '';
+            backgroundFileName.value = '';
+            uploadBtn.style.display = 'none';
+            backgroundPreview.innerHTML = '<div class="preview-placeholder"><i class="fas fa-image"></i><span>No file selected</span></div>';
+            return;
+          }
+          
           backgroundFileName.value = file.name;
           uploadBtn.style.display = 'inline-block';
           
@@ -300,7 +323,7 @@
           const reader = new FileReader();
           reader.onload = function(e) {
             if (file.type.startsWith('image/')) {
-              backgroundPreview.innerHTML = `<img src="${e.target.result}" alt="Background Preview">`;
+              backgroundPreview.innerHTML = `<img src="${e.target.result}" alt="Background Preview" style="width: 100%; height: 100%; object-fit: cover;">`;
             } else if (file.type.startsWith('video/')) {
               backgroundPreview.innerHTML = `
                 <video controls style="width: 100%; height: 100%; object-fit: cover;">
@@ -333,7 +356,14 @@
           credentials: 'include',
           body: formData
         })
-        .then(response => response.json())
+        .then(response => {
+          if (!response.ok) {
+            return response.json().then(data => {
+              throw new Error(data.error || `Upload failed (${response.status})`);
+            });
+          }
+          return response.json();
+        })
         .then(data => {
           if (data.file_url) {
             backgroundUrl.value = data.file_url;
@@ -351,7 +381,11 @@
         })
         .catch(error => {
           console.error('Upload error:', error);
-          alert('Upload failed: ' + error.message);
+          let errorMessage = 'Upload failed';
+          if (error.message) {
+            errorMessage += ': ' + error.message;
+          }
+          alert(errorMessage);
           uploadBtn.textContent = 'Upload';
           uploadBtn.disabled = false;
         });
@@ -408,29 +442,50 @@
             currentTheme = data.theme;
           }
           
-          if (data.background_image_url || data.background_video_url) {
-            const backgroundUrl = data.background_image_url || data.background_video_url;
+          if (data.background_image_url || data.background_video_url || data.background_image_data || data.background_video_data) {
+            let backgroundUrl;
             const backgroundType = data.background_type || 'image';
             
-            setSelectedBackground(backgroundType);
-            document.getElementById('background-url').value = backgroundUrl;
-            currentBackground = backgroundUrl;
-            currentBackgroundType = backgroundType;
-            currentOpacity = data.background_opacity || 0.3;
-            opacitySlider.value = currentOpacity;
-            opacityValue.textContent = Math.round(currentOpacity * 100) + '%';
-            applyBackground(backgroundUrl, currentOpacity, backgroundType);
+            // Determine the background URL
+            if (backgroundType === 'image') {
+              if (data.background_image_data) {
+                // File stored in database
+                backgroundUrl = `/api/preferences/background/${data.user_id}/image`;
+              } else {
+                // External URL
+                backgroundUrl = data.background_image_url;
+              }
+            } else if (backgroundType === 'video') {
+              if (data.background_video_data) {
+                // File stored in database
+                backgroundUrl = `/api/preferences/background/${data.user_id}/video`;
+              } else {
+                // External URL
+                backgroundUrl = data.background_video_url;
+              }
+            }
             
-            // Show preview
+            if (backgroundUrl) {
+              setSelectedBackground(backgroundType);
+              document.getElementById('background-url').value = backgroundUrl;
+              currentBackground = backgroundUrl;
+              currentBackgroundType = backgroundType;
+              currentOpacity = data.background_opacity || 0.3;
+              opacitySlider.value = currentOpacity;
+              opacityValue.textContent = Math.round(currentOpacity * 100) + '%';
+              applyBackground(backgroundUrl, currentOpacity, backgroundType);
+              
+                          // Show preview
             if (backgroundType === 'video') {
               backgroundPreview.innerHTML = `
-                <video controls style="width: 100%; height: 100%; object-fit: cover;">
+                <video controls style="width: 100%; height: 100%; object-fit: cover;" preload="metadata">
                   <source src="${backgroundUrl}" type="video/mp4">
                   Your browser does not support the video tag.
                 </video>
               `;
             } else {
-              backgroundPreview.innerHTML = `<img src="${backgroundUrl}" alt="Background Preview" style="width: 100%; height: 100%; object-fit: cover;">`;
+              backgroundPreview.innerHTML = `<img src="${backgroundUrl}" alt="Background Preview" style="width: 100%; height: 100%; object-fit: cover;" loading="lazy">`;
+            }
             }
           }
         });
