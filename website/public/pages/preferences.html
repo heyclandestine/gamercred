@@ -124,7 +124,7 @@
             <div id="custom-background-section" class="custom-background-section" style="display: none;">
               <div class="background-input-group">
                 <label for="background-url">URL:</label>
-                <input type="url" id="background-url" placeholder="https://example.com/image.jpg or video.mp4" class="background-input">
+                <input type="text" id="background-url" placeholder="https://example.com/image.jpg or /uploads/backgrounds/images/file.jpg" class="background-input">
                 <button type="button" id="test-background-btn" class="test-btn">Test</button>
               </div>
               
@@ -369,7 +369,7 @@
               </video>
             `;
           } else {
-            backgroundPreview.innerHTML = `<img src="${this.value}" alt="Background Preview" onerror="this.parentElement.innerHTML='<div class=\\'preview-placeholder\\'><i class=\\'fas fa-exclamation-triangle\\'></i><span>Invalid URL</span></div>'">`;
+            backgroundPreview.innerHTML = `<img src="${this.value}" alt="Background Preview" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.parentElement.innerHTML='<div class=\\'preview-placeholder\\'><i class=\\'fas fa-exclamation-triangle\\'></i><span>Invalid URL</span></div>'">`;
           }
         } else {
           backgroundPreview.innerHTML = '<div class="preview-placeholder"><i class="fas fa-image"></i><span>No file selected</span></div>';
@@ -430,7 +430,7 @@
                 </video>
               `;
             } else {
-              backgroundPreview.innerHTML = `<img src="${backgroundUrl}" alt="Background Preview">`;
+              backgroundPreview.innerHTML = `<img src="${backgroundUrl}" alt="Background Preview" style="width: 100%; height: 100%; object-fit: cover;">`;
             }
           }
         });
@@ -449,16 +449,24 @@
         
         // Use the value from the input, or the last uploaded file URL
         const urlValue = backgroundUrl.value?.trim();
+        
+        // Helper function to validate URL format
+        function isValidUrl(url) {
+          if (!url) return false;
+          // Allow absolute URLs with protocol or relative URLs starting with /
+          return url.startsWith('http://') || url.startsWith('https://') || url.startsWith('/');
+        }
+        
         if (backgroundType === 'image') {
-          if (!urlValue) {
-            alert('Please enter a URL or upload an image file.');
+          if (!isValidUrl(urlValue)) {
+            alert('Please enter a valid URL (starting with http://, https://, or /) or upload an image file.');
             return;
           }
           backgroundImageUrl = urlValue;
           finalBackgroundType = 'image';
         } else if (backgroundType === 'video') {
-          if (!urlValue) {
-            alert('Please enter a URL or upload a video file.');
+          if (!isValidUrl(urlValue)) {
+            alert('Please enter a valid URL (starting with http://, https://, or /) or upload a video file.');
             return;
           }
           backgroundVideoUrl = urlValue;

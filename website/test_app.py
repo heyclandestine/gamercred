@@ -301,7 +301,16 @@ def serve_static(path):
 # Serve uploaded backgrounds (images/videos) as static files
 @app.route('/uploads/<path:filename>')
 def serve_uploads(filename):
-    return send_from_directory(os.path.join(app.static_folder, 'uploads'), filename)
+    # Split the filename to get the directory and file
+    parts = filename.split('/')
+    if len(parts) > 1:
+        # If there are subdirectories (like backgrounds/images/file.jpg)
+        subdir = '/'.join(parts[:-1])  # Get the subdirectory path
+        file = parts[-1]  # Get the actual filename
+        return send_from_directory(os.path.join(app.static_folder, 'uploads', subdir), file)
+    else:
+        # If it's just a filename in the uploads root
+        return send_from_directory(os.path.join(app.static_folder, 'uploads'), filename)
 
 # API routes
 @app.route('/api/game')
