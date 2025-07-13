@@ -572,41 +572,74 @@ document.addEventListener('DOMContentLoaded', function() {
           return;
         }
         
+        const file = fileInput.files[0];
+        
+        // Check file type
+        const allowedTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/gif', 'image/webp'];
+        if (!allowedTypes.includes(file.type)) {
+          showMessage('Invalid file type. Please upload PNG, JPG, JPEG, GIF, or WebP.', 'error');
+          return;
+        }
+        
+        // Check file size (10MB limit)
+        if (file.size > 10 * 1024 * 1024) {
+          showMessage('File too large. Maximum size is 10MB.', 'error');
+          return;
+        }
+        
         const submitBtn = this.querySelector('button[type="submit"]');
         const originalText = submitBtn.textContent;
         submitBtn.textContent = 'Uploading...';
         submitBtn.disabled = true;
         
-        const formData = new FormData();
-        formData.append('game_name', gameName);
-        formData.append('caption', document.getElementById('screenshotCaption').value);
-        formData.append('screenshot', fileInput.files[0]);
+        // Convert file to base64
+        const reader = new FileReader();
+        reader.onload = function(e) {
+          const base64Data = e.target.result.split(',')[1]; // Remove data:image/...;base64, prefix
+          
+          const uploadData = {
+            game_name: gameName,
+            caption: document.getElementById('screenshotCaption').value,
+            image_data: base64Data,
+            filename: file.name,
+            mime_type: file.type
+          };
+          
+          fetch('/api/game/screenshot', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(uploadData)
+          })
+          .then(r => r.json())
+          .then(data => {
+            if (data.error) {
+              showMessage(data.error, 'error');
+            } else if (data.screenshot_id) {
+              showMessage('Screenshot uploaded successfully!', 'success');
+              fetch(`/api/game/screenshots?name=${encodeURIComponent(gameName)}`)
+                .then(r => r.json())
+                .then(renderScreenshots);
+              fileInput.value = '';
+              document.getElementById('screenshotCaption').value = '';
+            }
+          })
+          .catch(error => {
+            console.error('Error uploading screenshot:', error);
+            showMessage('Failed to upload screenshot. Please try again.', 'error');
+          })
+          .finally(() => {
+            submitBtn.textContent = originalText;
+            submitBtn.disabled = false;
+          });
+        };
         
-        fetch('/api/game/screenshot', {
-          method: 'POST',
-          body: formData
-        })
-        .then(r => r.json())
-        .then(data => {
-          if (data.error) {
-            showMessage(data.error, 'error');
-          } else if (data.image_url) {
-            showMessage('Screenshot uploaded successfully!', 'success');
-            fetch(`/api/game/screenshots?name=${encodeURIComponent(gameName)}`)
-              .then(r => r.json())
-              .then(renderScreenshots);
-            fileInput.value = '';
-            document.getElementById('screenshotCaption').value = '';
-          }
-        })
-        .catch(error => {
-          console.error('Error uploading screenshot:', error);
-          showMessage('Failed to upload screenshot. Please try again.', 'error');
-        })
-        .finally(() => {
+        reader.onerror = function() {
+          showMessage('Error reading file. Please try again.', 'error');
           submitBtn.textContent = originalText;
           submitBtn.disabled = false;
-        });
+        };
+        
+        reader.readAsDataURL(file);
       };
     }
   }

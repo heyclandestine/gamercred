@@ -1565,35 +1565,91 @@ def get_game_completions():
 
 # --- GAME SCREENSHOTS ---
 import uuid
+import base64
 @app.route('/api/game/screenshot', methods=['POST'])
 def upload_game_screenshot():
     access_token = request.cookies.get('discord_token')
     user_id = request.cookies.get('user_id')
     if not access_token or not user_id:
         return jsonify({'error': 'Not logged in'}), 401
-    if 'screenshot' not in request.files:
-        return jsonify({'error': 'No screenshot file provided'}), 400
-    game_name = request.form.get('game_name')
-    caption = request.form.get('caption', '')
-    if not game_name:
-        return jsonify({'error': 'Missing game name'}), 400
-    file = request.files['screenshot']
-    # Save file to static/uploads (ensure directory exists)
-    upload_dir = os.path.join(app.static_folder, 'uploads')
-    os.makedirs(upload_dir, exist_ok=True)
-    ext = os.path.splitext(file.filename)[1]
-    filename = f"{uuid.uuid4().hex}{ext}"
-    file_path = os.path.join(upload_dir, filename)
-    file.save(file_path)
-    image_url = f"/uploads/{filename}"
+    
+    # Check if it's a file upload or base64 data
+    if 'screenshot' in request.files:
+        # Handle file upload (for backward compatibility)
+        file = request.files['screenshot']
+        if file.filename == '':
+            return jsonify({'error': 'No screenshot file provided'}), 400
+        
+        # Check file type
+        allowed_extensions = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
+        file_extension = file.filename.lower().split('.')[-1]
+        if file_extension not in allowed_extensions:
+            return jsonify({'error': 'Invalid file type. Please upload PNG, JPG, JPEG, GIF, or WebP'}), 400
+        
+        # Check file size (10MB limit)
+        file.seek(0, 2)
+        file_size = file.tell()
+        file.seek(0)
+        if file_size > 10 * 1024 * 1024:
+            return jsonify({'error': 'File too large. Maximum size is 10MB'}), 400
+        
+        # Read file data and encode as base64
+        file_data = file.read()
+        image_data = base64.b64encode(file_data).decode('utf-8')
+        filename = file.filename
+        mime_type = file.content_type or f'image/{file_extension}'
+        
+    elif request.is_json:
+        # Handle base64 data from JSON
+        data = request.json
+        image_data = data.get('image_data')
+        filename = data.get('filename', 'screenshot.png')
+        mime_type = data.get('mime_type', 'image/png')
+        caption = data.get('caption', '')
+        game_name = data.get('game_name')
+        
+        if not image_data or not game_name:
+            return jsonify({'error': 'Missing image_data or game_name'}), 400
+        
+        # Validate base64 data
+        try:
+            # Check if it's valid base64
+            decoded_data = base64.b64decode(image_data)
+            if len(decoded_data) > 10 * 1024 * 1024:  # 10MB limit
+                return jsonify({'error': 'Image too large. Maximum size is 10MB'}), 400
+        except Exception:
+            return jsonify({'error': 'Invalid base64 data'}), 400
+    else:
+        return jsonify({'error': 'No screenshot data provided'}), 400
+    
+    # Get caption and game name from form data if not from JSON
+    if not request.is_json:
+        caption = request.form.get('caption', '')
+        game_name = request.form.get('game_name')
+        if not game_name:
+            return jsonify({'error': 'Missing game name'}), 400
+    
     with storage.Session() as session:
         game = session.query(Game).filter_by(name=game_name).first()
         if not game:
             return jsonify({'error': 'Game not found'}), 404
-        screenshot = GameScreenshot(user_id=user_id, game_id=game.id, image_url=image_url, caption=caption, uploaded_at=datetime.utcnow())
+        
+        screenshot = GameScreenshot(
+            user_id=user_id, 
+            game_id=game.id, 
+            image_data=image_data,
+            image_filename=filename,
+            image_mime_type=mime_type,
+            caption=caption, 
+            uploaded_at=datetime.utcnow()
+        )
         session.add(screenshot)
         session.commit()
-        return jsonify({'message': 'Screenshot uploaded successfully', 'image_url': image_url})
+        
+        return jsonify({
+            'message': 'Screenshot uploaded successfully', 
+            'screenshot_id': screenshot.id
+        })
 
 @app.route('/api/game/screenshots')
 def get_game_screenshots():
@@ -1609,14 +1665,38 @@ def get_game_screenshots():
         for s in screenshots:
             user = session.query(UserStats).filter_by(user_id=s.user_id).first()
             result.append({
+                'id': s.id,
                 'user_id': s.user_id,
                 'username': user.username if user else f'User{s.user_id}',
                 'avatar_url': user.avatar_url if user else '',
-                'image_url': s.image_url,
+                'image_url': f'/api/game/screenshot/{s.id}',  # URL to serve the image
                 'caption': s.caption,
                 'uploaded_at': s.uploaded_at.isoformat()
             })
         return jsonify(result)
+
+@app.route('/api/game/screenshot/<int:screenshot_id>')
+def serve_screenshot(screenshot_id):
+    """Serve a screenshot image from the database"""
+    with storage.Session() as session:
+        screenshot = session.query(GameScreenshot).filter_by(id=screenshot_id).first()
+        if not screenshot:
+            return jsonify({'error': 'Screenshot not found'}), 404
+        
+        try:
+            # Decode base64 data
+            image_data = base64.b64decode(screenshot.image_data)
+            
+            # Set response headers
+            response = make_response(image_data)
+            response.headers['Content-Type'] = screenshot.image_mime_type or 'image/png'
+            response.headers['Cache-Control'] = 'public, max-age=31536000'  # 1 year cache
+            response.headers['ETag'] = f'"screenshot-{screenshot_id}-{screenshot.uploaded_at.timestamp()}"'
+            
+            return response
+        except Exception as e:
+            print(f"Error serving screenshot {screenshot_id}: {e}")
+            return jsonify({'error': 'Error serving image'}), 500
 
 @app.route('/api/preferences', methods=['GET'])
 def get_user_preferences():

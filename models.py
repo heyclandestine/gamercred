@@ -136,7 +136,9 @@ class GameScreenshot(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     user_id = Column(BigInteger, ForeignKey('user_stats.user_id'), nullable=False)
     game_id = Column(Integer, ForeignKey('games.id'), nullable=False)
-    image_url = Column(String, nullable=False)  # URL to the uploaded image
+    image_data = Column(Text, nullable=False)  # Base64 encoded image data
+    image_filename = Column(String, nullable=True)  # Original filename
+    image_mime_type = Column(String, nullable=True)  # MIME type
     caption = Column(String)  # Optional caption for the screenshot
     uploaded_at = Column(DateTime, nullable=False)
     
