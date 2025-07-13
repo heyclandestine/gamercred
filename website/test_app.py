@@ -301,16 +301,37 @@ def serve_static(path):
 # Serve uploaded backgrounds (images/videos) as static files
 @app.route('/uploads/<path:filename>')
 def serve_uploads(filename):
-    # Split the filename to get the directory and file
-    parts = filename.split('/')
-    if len(parts) > 1:
-        # If there are subdirectories (like backgrounds/images/file.jpg)
-        subdir = '/'.join(parts[:-1])  # Get the subdirectory path
-        file = parts[-1]  # Get the actual filename
-        return send_from_directory(os.path.join(app.static_folder, 'uploads', subdir), file)
-    else:
-        # If it's just a filename in the uploads root
-        return send_from_directory(os.path.join(app.static_folder, 'uploads'), filename)
+    try:
+        # Split the filename to get the directory and file
+        parts = filename.split('/')
+        if len(parts) > 1:
+            # If there are subdirectories (like backgrounds/images/file.jpg)
+            subdir = '/'.join(parts[:-1])  # Get the subdirectory path
+            file = parts[-1]  # Get the actual filename
+            directory = os.path.join(app.static_folder, 'uploads', subdir)
+        else:
+            # If it's just a filename in the uploads root
+            directory = os.path.join(app.static_folder, 'uploads')
+            file = filename
+        
+        # Check if directory exists
+        if not os.path.exists(directory):
+            print(f"ERROR: Directory does not exist: {directory}")
+            return jsonify({'error': 'Directory not found'}), 404
+        
+        # Check if file exists
+        file_path = os.path.join(directory, file)
+        if not os.path.exists(file_path):
+            print(f"ERROR: File does not exist: {file_path}")
+            return jsonify({'error': 'File not found'}), 404
+        
+        print(f"Serving file: {file_path}")
+        return send_from_directory(directory, file)
+    except Exception as e:
+        print(f"ERROR in serve_uploads: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': 'Internal server error'}), 500
 
 # API routes
 @app.route('/api/game')
