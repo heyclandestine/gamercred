@@ -54,4 +54,8 @@ data/
 *.key
 *.cert
 *.crt
-uv.lock 
+uv.lock
+
+# User uploads - should not be tracked in version control
+website/public/uploads/
+uploads/    
