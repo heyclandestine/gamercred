@@ -37,6 +37,93 @@ document.addEventListener('DOMContentLoaded', function() {
       `;
     });
 
+  // Champions functions (defined first for immediate use)
+  async function fetchCurrentChampions() {
+    try {
+      const response = await fetch('/api/current-champions');
+      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+      const champions = await response.json();
+      renderCurrentChampions(champions);
+    } catch (error) {
+      console.error('Error fetching current champions:', error);
+      const weeklyContainer = document.getElementById('weekly-champions');
+      const monthlyContainer = document.getElementById('monthly-champions');
+      if (weeklyContainer) {
+        weeklyContainer.innerHTML = '<div class="loading-spinner"><i class="fas fa-spinner fa-spin"></i> Error loading champions</div>';
+      }
+      if (monthlyContainer) {
+        monthlyContainer.innerHTML = '<div class="loading-spinner"><i class="fas fa-spinner fa-spin"></i> Error loading champions</div>';
+      }
+    }
+  }
+
+  function renderCurrentChampions(champions) {
+    const weeklyContainer = document.getElementById('weekly-champions');
+    const monthlyContainer = document.getElementById('monthly-champions');
+
+    // Render weekly champions
+    if (weeklyContainer) {
+      if (champions.weekly && champions.weekly.length > 0) {
+        weeklyContainer.innerHTML = createPodiumDisplay(champions.weekly);
+      } else {
+        weeklyContainer.innerHTML = '<div class="loading-spinner"><i class="fas fa-spinner fa-spin"></i> No weekly champions found</div>';
+      }
+    }
+
+    // Render monthly champions
+    if (monthlyContainer) {
+      if (champions.monthly && champions.monthly.length > 0) {
+        monthlyContainer.innerHTML = createPodiumDisplay(champions.monthly);
+      } else {
+        monthlyContainer.innerHTML = '<div class="loading-spinner"><i class="fas fa-spinner fa-spin"></i> No monthly champions found</div>';
+      }
+    }
+  }
+
+  function createPodiumDisplay(champions) {
+    if (champions.length === 0) {
+      return '<div class="loading-spinner"><i class="fas fa-spinner fa-spin"></i> No champions found</div>';
+    }
+
+    // Sort champions by placement
+    const sortedChampions = champions.sort((a, b) => a.placement - b.placement);
+    
+    // Get period info from first champion
+    const startDate = new Date(sortedChampions[0].period_start);
+    const endDate = new Date(sortedChampions[0].period_end);
+    const periodText = `${startDate.toLocaleDateString()} - ${endDate.toLocaleDateString()}`;
+
+    let podiumHTML = '<div class="champions-podium">';
+    
+    // Create podium places
+    sortedChampions.forEach(champion => {
+      const placementClass = champion.placement === 1 ? 'first' : champion.placement === 2 ? 'second' : 'third';
+      
+      podiumHTML += `
+        <div class="podium-place ${placementClass}">
+          <div class="podium-stand ${placementClass}">
+            <img class="podium-avatar" src="${champion.avatar_url}" alt="${champion.username}">
+            <a href="/pages/user.html?user=${champion.user_id}" class="podium-username">${champion.username}</a>
+            <div class="podium-credits">${formatNumberWithCommas(champion.credits)} cred</div>
+          </div>
+        </div>
+      `;
+    });
+    
+    podiumHTML += '</div>';
+    podiumHTML += `<div class="champions-period">Period: ${periodText}</div>`;
+    
+    return podiumHTML;
+  }
+
+  // Helper function to format numbers with commas (needed for champions)
+  function formatNumberWithCommas(number) {
+     return number.toLocaleString();
+  }
+
+  // Fetch current champions FIRST (highest priority)
+  fetchCurrentChampions();
+
   // Existing tab switching logic
   const tabContainers = document.querySelectorAll('.leaderboard-tabs, .popular-tabs');
 
@@ -102,22 +189,25 @@ document.addEventListener('DOMContentLoaded', function() {
       const tabContent = document.getElementById(tabId);
       if (tabContent) {
           tabContent.style.display = 'block';
-          // Trigger initial fetch for the active tabs
-          if (activeButton.closest('.leaderboard-tabs')) {
-              fetchLeaderboardData(tabId);
-          } else if (activeButton.closest('.popular-tabs')) {
-              // Extract timeframe from popular tab ID (e.g., 'popular-weekly' -> 'weekly')
-              const timeframe = tabId.replace('popular-', '');
-              fetchPopularGames(timeframe);
-          }
       }
   });
 
+  // Delay other API calls to ensure champions load first
+  setTimeout(() => {
+    document.querySelectorAll('.tab-btn.active').forEach(activeButton => {
+        const tabId = activeButton.getAttribute('data-tab');
+        // Trigger initial fetch for the active tabs
+        if (activeButton.closest('.leaderboard-tabs')) {
+            fetchLeaderboardData(tabId);
+        } else if (activeButton.closest('.popular-tabs')) {
+            // Extract timeframe from popular tab ID (e.g., 'popular-weekly' -> 'weekly')
+            const timeframe = tabId.replace('popular-', '');
+            fetchPopularGames(timeframe);
+        }
+    });
+  }, 100); // Small delay to ensure champions load first
+
   // Function to fetch and display leaderboard data for a specific timeframe
-  // Helper function to format numbers with commas
-  function formatNumberWithCommas(number) {
-     return number.toLocaleString();
-  }
 
   // Function to show loading state
   function setLoadingState(element, isLoading) {
@@ -335,89 +425,7 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   });
 
-  // Fetch current champions
-  fetchCurrentChampions();
-
   // Function to fetch and display current champions
-  async function fetchCurrentChampions() {
-    try {
-      const response = await fetch('/api/current-champions');
-      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-      const champions = await response.json();
-      renderCurrentChampions(champions);
-    } catch (error) {
-      console.error('Error fetching current champions:', error);
-      const weeklyContainer = document.getElementById('weekly-champions');
-      const monthlyContainer = document.getElementById('monthly-champions');
-      if (weeklyContainer) {
-        weeklyContainer.innerHTML = '<div class="loading-spinner"><i class="fas fa-spinner fa-spin"></i> Error loading champions</div>';
-      }
-      if (monthlyContainer) {
-        monthlyContainer.innerHTML = '<div class="loading-spinner"><i class="fas fa-spinner fa-spin"></i> Error loading champions</div>';
-      }
-    }
-  }
-
-  function renderCurrentChampions(champions) {
-    const weeklyContainer = document.getElementById('weekly-champions');
-    const monthlyContainer = document.getElementById('monthly-champions');
-
-    // Render weekly champions
-    if (weeklyContainer) {
-      if (champions.weekly && champions.weekly.length > 0) {
-        weeklyContainer.innerHTML = createPodiumDisplay(champions.weekly);
-      } else {
-        weeklyContainer.innerHTML = '<div class="loading-spinner"><i class="fas fa-spinner fa-spin"></i> No weekly champions found</div>';
-      }
-    }
-
-    // Render monthly champions
-    if (monthlyContainer) {
-      if (champions.monthly && champions.monthly.length > 0) {
-        monthlyContainer.innerHTML = createPodiumDisplay(champions.monthly);
-      } else {
-        monthlyContainer.innerHTML = '<div class="loading-spinner"><i class="fas fa-spinner fa-spin"></i> No monthly champions found</div>';
-      }
-    }
-  }
-
-  function createPodiumDisplay(champions) {
-    if (champions.length === 0) {
-      return '<div class="loading-spinner"><i class="fas fa-spinner fa-spin"></i> No champions found</div>';
-    }
-
-    // Sort champions by placement
-    const sortedChampions = champions.sort((a, b) => a.placement - b.placement);
-    
-    // Get period info from first champion
-    const startDate = new Date(sortedChampions[0].period_start);
-    const endDate = new Date(sortedChampions[0].period_end);
-    const periodText = `${startDate.toLocaleDateString()} - ${endDate.toLocaleDateString()}`;
-
-    let podiumHTML = '<div class="champions-podium">';
-    
-    // Create podium places
-    sortedChampions.forEach(champion => {
-      const placementClass = champion.placement === 1 ? 'first' : champion.placement === 2 ? 'second' : 'third';
-      const medal = champion.placement === 1 ? '🥇' : champion.placement === 2 ? '🥈' : '🥉';
-      
-      podiumHTML += `
-        <div class="podium-place ${placementClass}">
-          <div class="podium-stand ${placementClass}">
-            <img class="podium-avatar" src="${champion.avatar_url}" alt="${champion.username}">
-            <a href="/pages/user.html?user=${champion.user_id}" class="podium-username">${champion.username}</a>
-            <div class="podium-credits">${formatNumberWithCommas(champion.credits)} credits</div>
-          </div>
-        </div>
-      `;
-    });
-    
-    podiumHTML += '</div>';
-    podiumHTML += `<div class="champions-period">Period: ${periodText}</div>`;
-    
-    return podiumHTML;
-  }
-
   function getOrdinalSuffix(num) {
     const j = num % 10;
     const k = num % 100;
@@ -635,5 +643,7 @@ function setupActivityCarousel() {
   });
 }
 
-// On page load, show alltime activity by default
-fetchRecentActivity().then(() => setupActivityCarousel()); 
+// On page load, show alltime activity by default - delayed to ensure champions load first
+setTimeout(() => {
+  fetchRecentActivity().then(() => setupActivityCarousel());
+}, 200); // Delay to ensure champions load first 

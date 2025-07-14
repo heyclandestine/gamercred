@@ -66,7 +66,8 @@ discord_user_cache_timestamps = {}
 cache = {
     'leaderboard': {'data': None, 'timestamp': 0},
     'popular_games': {'data': None, 'timestamp': 0},
-    'recent_activity': {'data': None, 'timestamp': 0}
+    'recent_activity': {'data': None, 'timestamp': 0},
+    'current_champions': {'data': None, 'timestamp': 0}
 }
 
 # Cache for background files (1 hour expiration)
@@ -189,6 +190,102 @@ async def get_discord_user_info(user_id_str):
             'username': f'Unknown User {user_id_str}',
             'avatar_url': f'https://cdn.discordapp.com/embed/avatars/{int(user_id_str[-1]) % 6}.png'
         }
+
+# Function to batch fetch Discord user info for multiple users
+async def get_batch_discord_user_info(user_ids):
+    if not os.getenv('DISCORD_TOKEN'):
+        print("DISCORD_TOKEN not set.")
+        return {}
+    
+    DISCORD_TOKEN = os.getenv('DISCORD_TOKEN')
+    headers = {"Authorization": f"Bot {DISCORD_TOKEN}"}
+    guild_id = "693741073394040843"
+    
+    results = {}
+    
+    try:
+        async with aiohttp.ClientSession() as session:
+            # Create tasks for all user IDs
+            tasks = []
+            for user_id_str in user_ids:
+                # First try guild endpoint
+                guild_url = f"https://discord.com/api/v10/guilds/{guild_id}/members/{user_id_str}"
+                tasks.append((user_id_str, session.get(guild_url, headers=headers), 'guild'))
+                
+                # Also try global endpoint as fallback
+                global_url = f"https://discord.com/api/v10/users/{user_id_str}"
+                tasks.append((user_id_str, session.get(global_url, headers=headers), 'global'))
+            
+            # Execute all requests concurrently
+            responses = []
+            for user_id_str, task, endpoint_type in tasks:
+                try:
+                    response = await task
+                    responses.append((user_id_str, response, endpoint_type))
+                except Exception as e:
+                    # If guild request fails, we'll still have the global request
+                    continue
+            
+            # Process responses
+            for user_id_str, response, endpoint_type in responses:
+                if user_id_str in results:
+                    continue  # Already processed this user
+                
+                if response.status == 200:
+                    try:
+                        data = await response.json()
+                        
+                        if endpoint_type == 'guild':
+                            user_data = data.get('user', {})
+                            avatar_hash = user_data.get('avatar')
+                            username = user_data.get('username')
+                            if not username and 'nick' in data:
+                                username = data['nick']
+                        else:  # global
+                            user_data = data
+                            avatar_hash = user_data.get('avatar')
+                            username = user_data.get('username')
+                        
+                        if not username:
+                            username = f'Unknown User {user_id_str}'
+                        
+                        if avatar_hash:
+                            if avatar_hash.startswith('a_'):
+                                avatar_url = f"https://cdn.discordapp.com/avatars/{user_id_str}/{avatar_hash}.gif"
+                            else:
+                                avatar_url = f"https://cdn.discordapp.com/avatars/{user_id_str}/{avatar_hash}.png"
+                        else:
+                            default_avatar_index = int(user_id_str[-1]) % 6
+                            avatar_url = f"https://cdn.discordapp.com/embed/avatars/{default_avatar_index}.png"
+                        
+                        results[user_id_str] = {
+                            'username': username,
+                            'avatar_url': avatar_url
+                        }
+                    except Exception as e:
+                        # Fallback to default
+                        results[user_id_str] = {
+                            'username': f'Unknown User {user_id_str}',
+                            'avatar_url': f'https://cdn.discordapp.com/embed/avatars/{int(user_id_str[-1]) % 6}.png'
+                        }
+            
+            # Add defaults for any users that weren't found
+            for user_id_str in user_ids:
+                if user_id_str not in results:
+                    results[user_id_str] = {
+                        'username': f'Unknown User {user_id_str}',
+                        'avatar_url': f'https://cdn.discordapp.com/embed/avatars/{int(user_id_str[-1]) % 6}.png'
+                    }
+    
+    except Exception as e:
+        # Fallback: return defaults for all users
+        for user_id_str in user_ids:
+            results[user_id_str] = {
+                'username': f'Unknown User {user_id_str}',
+                'avatar_url': f'https://cdn.discordapp.com/embed/avatars/{int(user_id_str[-1]) % 6}.png'
+            }
+    
+    return results
 
 # Helper function to run async functions
 def run_async(coro):
@@ -342,14 +439,11 @@ def serve_uploads(filename):
 def get_game():
     try:
         game_name = request.args.get('name')
-        print(f"DEBUG: Requested game name: {game_name}")
         if not game_name:
             return jsonify({'error': 'Game name parameter missing'}), 400
 
         # Get game info from database
-        print(f"DEBUG: Calling storage.get_game_stats for: {game_name}")
         game_db_info = storage.get_game_stats(game_name)
-        print(f"DEBUG: Game DB info result: {game_db_info}")
         if not game_db_info:
             return jsonify({'error': 'Game not found'}), 404
 
@@ -505,6 +599,12 @@ def get_leaderboard():
 @app.route('/api/current-champions')
 def get_current_champions():
     try:
+        # Check cache first (5 minute cache)
+        current_time = time.time()
+        if (cache['current_champions']['data'] is not None and 
+            current_time - cache['current_champions']['timestamp'] < 300):  # 5 minutes
+            return jsonify(cache['current_champions']['data'])
+        
         with storage.Session() as session:
             # Get the most recent inactive weekly period
             weekly_period = session.query(LeaderboardPeriod).filter(
@@ -523,6 +623,9 @@ def get_current_champions():
                 'monthly': []
             }
             
+            # Collect all unique user IDs to batch Discord API calls
+            all_user_ids = set()
+            
             # Get top 3 for weekly if period exists
             if weekly_period:
                 weekly_history = session.query(LeaderboardHistory).filter(
@@ -530,8 +633,32 @@ def get_current_champions():
                 ).order_by(LeaderboardHistory.placement.asc()).limit(3).all()
                 
                 for entry in weekly_history:
+                    all_user_ids.add(str(entry.user_id))
+            
+            # Get top 3 for monthly if period exists
+            if monthly_period:
+                monthly_history = session.query(LeaderboardHistory).filter(
+                    LeaderboardHistory.period_id == monthly_period.id
+                ).order_by(LeaderboardHistory.placement.asc()).limit(3).all()
+                
+                for entry in monthly_history:
+                    all_user_ids.add(str(entry.user_id))
+            
+            # Batch fetch Discord user info for all unique users
+            if all_user_ids:
+                discord_info_map = run_async(get_batch_discord_user_info(list(all_user_ids)))
+            else:
+                discord_info_map = {}
+            
+            # Process weekly champions
+            if weekly_period:
+                weekly_history = session.query(LeaderboardHistory).filter(
+                    LeaderboardHistory.period_id == weekly_period.id
+                ).order_by(LeaderboardHistory.placement.asc()).limit(3).all()
+                
+                for entry in weekly_history:
                     user_id_str = str(entry.user_id)
-                    discord_info = get_cached_discord_user_info(user_id_str)
+                    discord_info = discord_info_map.get(user_id_str)
                     champions['weekly'].append({
                         'user_id': user_id_str,
                         'username': discord_info.get('username', f'User{user_id_str}') if discord_info else f'User{user_id_str}',
@@ -542,7 +669,7 @@ def get_current_champions():
                         'period_end': weekly_period.end_time.isoformat()
                     })
             
-            # Get top 3 for monthly if period exists
+            # Process monthly champions
             if monthly_period:
                 monthly_history = session.query(LeaderboardHistory).filter(
                     LeaderboardHistory.period_id == monthly_period.id
@@ -550,7 +677,7 @@ def get_current_champions():
                 
                 for entry in monthly_history:
                     user_id_str = str(entry.user_id)
-                    discord_info = get_cached_discord_user_info(user_id_str)
+                    discord_info = discord_info_map.get(user_id_str)
                     champions['monthly'].append({
                         'user_id': user_id_str,
                         'username': discord_info.get('username', f'User{user_id_str}') if discord_info else f'User{user_id_str}',
@@ -560,6 +687,10 @@ def get_current_champions():
                         'period_start': monthly_period.start_time.isoformat(),
                         'period_end': monthly_period.end_time.isoformat()
                     })
+            
+            # Cache the result
+            cache['current_champions']['data'] = champions
+            cache['current_champions']['timestamp'] = current_time
             
             return jsonify(champions)
     except Exception as e:
@@ -602,12 +733,10 @@ def get_recent_bonuses():
 @app.route('/api/popular-games')
 def get_popular_games():
     timeframe = request.args.get('timeframe', 'weekly')
-    print(f"Fetching popular games for timeframe: {timeframe}")
     try:
         # Use the new function to get aggregated game hours and box art URL
         # The storage function now returns (game_name, total_hours, box_art_url)
         game_data_from_storage = run_async(storage.get_total_game_hours_by_timeframe(timeframe))
-        print(f"Backend popular games data from storage for {timeframe}: {game_data_from_storage}")
 
         # Format the data for the frontend
         formatted_data = []
@@ -622,7 +751,6 @@ def get_popular_games():
         # Sort by hours played and return all data (no limit)
         formatted_data.sort(key=lambda x: x['total_hours'], reverse=True)
 
-        print(f"Returning formatted data: {formatted_data}")
         return jsonify(formatted_data)
     except Exception as e:
         print(f"Error getting popular games data: {str(e)}")
