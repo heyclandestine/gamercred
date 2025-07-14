@@ -85,8 +85,31 @@
     </div>
   </nav>
   <main class="main-grid">
+    <section class="current-champions card">
+      <h2><i class="fas fa-crown"></i> Current Champions</h2>
+      <div class="champions-tabs">
+        <button class="tab-btn active" data-tab="weekly">
+          <i class="fas fa-calendar-week"></i> Weekly
+        </button>
+        <button class="tab-btn" data-tab="monthly">
+          <i class="fas fa-calendar-alt"></i> Monthly
+        </button>
+      </div>
+      <div class="champions-container">
+        <div class="champions-content active" id="weekly-champions">
+          <div class="loading-spinner">
+            <i class="fas fa-spinner fa-spin"></i> Loading weekly champions...
+          </div>
+        </div>
+        <div class="champions-content" id="monthly-champions">
+          <div class="loading-spinner">
+            <i class="fas fa-spinner fa-spin"></i> Loading monthly champions...
+          </div>
+        </div>
+      </div>
+    </section>
     <section class="leaderboard card leaderboard-modern">
-      <h2><i class="fas fa-trophy"></i> Leaderboard</h2>
+      <h2><i class="fas fa-trophy"></i>Ongoing Leaderboard</h2>
       <div class="leaderboard-tabs">
         <button class="tab-btn active" data-tab="weekly">Weekly</button>
         <button class="tab-btn" data-tab="monthly">Monthly</button>

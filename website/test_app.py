@@ -20,7 +20,7 @@ from sqlalchemy.ext.declarative import declarative_base
 from models import Base # Import Base for table creation
 import logging
 from sqlalchemy.sql import func
-from models import GameReview, GameRating, GameCompletion, GameScreenshot, UserStats, Game
+from models import GameReview, GameRating, GameCompletion, GameScreenshot, UserStats, Game, LeaderboardHistory, LeaderboardPeriod
 from sqlalchemy.orm import sessionmaker
 from models import UserPreferences
 
@@ -500,6 +500,71 @@ def get_leaderboard():
     except Exception as e:
         logger.error(f"Error getting leaderboard data: {str(e)}", exc_info=True)
         return jsonify({'error': 'Failed to get leaderboard data'}), 500
+
+# Add endpoint to fetch current champions (latest inactive weekly and monthly periods)
+@app.route('/api/current-champions')
+def get_current_champions():
+    try:
+        with storage.Session() as session:
+            # Get the most recent inactive weekly period
+            weekly_period = session.query(LeaderboardPeriod).filter(
+                LeaderboardPeriod.leaderboard_type == LeaderboardType.WEEKLY,
+                LeaderboardPeriod.is_active == False
+            ).order_by(LeaderboardPeriod.end_time.desc()).first()
+            
+            # Get the most recent inactive monthly period
+            monthly_period = session.query(LeaderboardPeriod).filter(
+                LeaderboardPeriod.leaderboard_type == LeaderboardType.MONTHLY,
+                LeaderboardPeriod.is_active == False
+            ).order_by(LeaderboardPeriod.end_time.desc()).first()
+            
+            champions = {
+                'weekly': [],
+                'monthly': []
+            }
+            
+            # Get top 3 for weekly if period exists
+            if weekly_period:
+                weekly_history = session.query(LeaderboardHistory).filter(
+                    LeaderboardHistory.period_id == weekly_period.id
+                ).order_by(LeaderboardHistory.placement.asc()).limit(3).all()
+                
+                for entry in weekly_history:
+                    user_id_str = str(entry.user_id)
+                    discord_info = get_cached_discord_user_info(user_id_str)
+                    champions['weekly'].append({
+                        'user_id': user_id_str,
+                        'username': discord_info.get('username', f'User{user_id_str}') if discord_info else f'User{user_id_str}',
+                        'avatar_url': discord_info.get('avatar_url', '') if discord_info else f'https://randomuser.me/api/portraits/men/{user_id_str}.jpg',
+                        'placement': entry.placement,
+                        'credits': float(entry.credits or 0),
+                        'period_start': weekly_period.start_time.isoformat(),
+                        'period_end': weekly_period.end_time.isoformat()
+                    })
+            
+            # Get top 3 for monthly if period exists
+            if monthly_period:
+                monthly_history = session.query(LeaderboardHistory).filter(
+                    LeaderboardHistory.period_id == monthly_period.id
+                ).order_by(LeaderboardHistory.placement.asc()).limit(3).all()
+                
+                for entry in monthly_history:
+                    user_id_str = str(entry.user_id)
+                    discord_info = get_cached_discord_user_info(user_id_str)
+                    champions['monthly'].append({
+                        'user_id': user_id_str,
+                        'username': discord_info.get('username', f'User{user_id_str}') if discord_info else f'User{user_id_str}',
+                        'avatar_url': discord_info.get('avatar_url', '') if discord_info else f'https://randomuser.me/api/portraits/men/{user_id_str}.jpg',
+                        'placement': entry.placement,
+                        'credits': float(entry.credits or 0),
+                        'period_start': monthly_period.start_time.isoformat(),
+                        'period_end': monthly_period.end_time.isoformat()
+                    })
+            
+            return jsonify(champions)
+    except Exception as e:
+        logger.error(f"Error getting current champions: {str(e)}", exc_info=True)
+        return jsonify({'error': 'Failed to get current champions'}), 500
 
 # Add endpoint to fetch recent bonuses
 @app.route('/api/recent-bonuses')

@@ -312,6 +312,127 @@ document.addEventListener('DOMContentLoaded', function() {
   fetchPopularGames('monthly');
   fetchPopularGames('alltime');
 
+  // Setup champions tabs
+  const championsTabs = document.querySelectorAll('.champions-tabs .tab-btn');
+  championsTabs.forEach(tab => {
+    tab.addEventListener('click', function() {
+      // Remove active class from all tabs
+      championsTabs.forEach(t => t.classList.remove('active'));
+      // Add active class to clicked tab
+      this.classList.add('active');
+      
+      // Hide all content
+      document.querySelectorAll('.champions-content').forEach(content => {
+        content.classList.remove('active');
+      });
+      
+      // Show selected content
+      const tabName = this.getAttribute('data-tab');
+      const selectedContent = document.getElementById(`${tabName}-champions`);
+      if (selectedContent) {
+        selectedContent.classList.add('active');
+      }
+    });
+  });
+
+  // Fetch current champions
+  fetchCurrentChampions();
+
+  // Function to fetch and display current champions
+  async function fetchCurrentChampions() {
+    try {
+      const response = await fetch('/api/current-champions');
+      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+      const champions = await response.json();
+      renderCurrentChampions(champions);
+    } catch (error) {
+      console.error('Error fetching current champions:', error);
+      const weeklyContainer = document.getElementById('weekly-champions');
+      const monthlyContainer = document.getElementById('monthly-champions');
+      if (weeklyContainer) {
+        weeklyContainer.innerHTML = '<div class="loading-spinner"><i class="fas fa-spinner fa-spin"></i> Error loading champions</div>';
+      }
+      if (monthlyContainer) {
+        monthlyContainer.innerHTML = '<div class="loading-spinner"><i class="fas fa-spinner fa-spin"></i> Error loading champions</div>';
+      }
+    }
+  }
+
+  function renderCurrentChampions(champions) {
+    const weeklyContainer = document.getElementById('weekly-champions');
+    const monthlyContainer = document.getElementById('monthly-champions');
+
+    // Render weekly champions
+    if (weeklyContainer) {
+      if (champions.weekly && champions.weekly.length > 0) {
+        weeklyContainer.innerHTML = createPodiumDisplay(champions.weekly);
+      } else {
+        weeklyContainer.innerHTML = '<div class="loading-spinner"><i class="fas fa-spinner fa-spin"></i> No weekly champions found</div>';
+      }
+    }
+
+    // Render monthly champions
+    if (monthlyContainer) {
+      if (champions.monthly && champions.monthly.length > 0) {
+        monthlyContainer.innerHTML = createPodiumDisplay(champions.monthly);
+      } else {
+        monthlyContainer.innerHTML = '<div class="loading-spinner"><i class="fas fa-spinner fa-spin"></i> No monthly champions found</div>';
+      }
+    }
+  }
+
+  function createPodiumDisplay(champions) {
+    if (champions.length === 0) {
+      return '<div class="loading-spinner"><i class="fas fa-spinner fa-spin"></i> No champions found</div>';
+    }
+
+    // Sort champions by placement
+    const sortedChampions = champions.sort((a, b) => a.placement - b.placement);
+    
+    // Get period info from first champion
+    const startDate = new Date(sortedChampions[0].period_start);
+    const endDate = new Date(sortedChampions[0].period_end);
+    const periodText = `${startDate.toLocaleDateString()} - ${endDate.toLocaleDateString()}`;
+
+    let podiumHTML = '<div class="champions-podium">';
+    
+    // Create podium places
+    sortedChampions.forEach(champion => {
+      const placementClass = champion.placement === 1 ? 'first' : champion.placement === 2 ? 'second' : 'third';
+      const medal = champion.placement === 1 ? '🥇' : champion.placement === 2 ? '🥈' : '🥉';
+      
+      podiumHTML += `
+        <div class="podium-place ${placementClass}">
+          <div class="podium-stand ${placementClass}">
+            <img class="podium-avatar" src="${champion.avatar_url}" alt="${champion.username}">
+            <a href="/pages/user.html?user=${champion.user_id}" class="podium-username">${champion.username}</a>
+            <div class="podium-credits">${formatNumberWithCommas(champion.credits)} credits</div>
+          </div>
+        </div>
+      `;
+    });
+    
+    podiumHTML += '</div>';
+    podiumHTML += `<div class="champions-period">Period: ${periodText}</div>`;
+    
+    return podiumHTML;
+  }
+
+  function getOrdinalSuffix(num) {
+    const j = num % 10;
+    const k = num % 100;
+    if (j == 1 && k != 11) {
+      return "st";
+    }
+    if (j == 2 && k != 12) {
+      return "nd";
+    }
+    if (j == 3 && k != 13) {
+      return "rd";
+    }
+    return "th";
+  }
+
 });
 
 // --- Recent Activity with localStorage cache ---
