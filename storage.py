@@ -96,6 +96,7 @@ class GameStorage:
                     backloggd_url=backloggd_url
                 )
                 session.add(game)
+                session.commit()  # Commit to get the game ID
                 created = True
 
             # Fetch and update RAWG data if missing
@@ -108,12 +109,13 @@ class GameStorage:
                     game.release_date = rawg_details.get('release_date')
                     game.description = rawg_details.get('description')
                     session.add(game)
+                    session.commit()  # Commit RAWG data updates
 
             return game, created
         except Exception as e:
             session.rollback()
             logger.error(f"Error in get_or_create_game: {str(e)}", exc_info=True)
-            return None
+            raise
         finally:
             session.close()
 
@@ -2094,7 +2096,7 @@ class GameStorage:
         finally:
             session.close()
 
-    async def get_user_stats(self, user_id: int) -> Dict:
+    async def get_user_stats(self, user_id: int) -> Optional[Dict]:
         """Get user statistics"""
         session = self.Session()
         try:

@@ -59,7 +59,8 @@ class GamingCommands(commands.Cog):
             # Get game info for the response
             game_info = self.storage.get_game_info(game)
             if not game_info:
-                await ctx.send(f"Error: Could not find game '{game}'")
+                # This shouldn't happen since add_gaming_hours should have created the game
+                await ctx.send(f"Error: Could not find game '{game}' after logging hours. Please contact an administrator.")
                 return
 
             # URL encode the game name
@@ -75,7 +76,12 @@ class GamingCommands(commands.Cog):
             )
 
         except Exception as e:
-            await ctx.send(MESSAGES['error'].format(error=str(e)))
+            error_msg = str(e)
+            # Check for specific database constraint errors
+            if "null value in column \"game_id\"" in error_msg:
+                await ctx.send(f"❌ Game '{game}' doesn't exist in the database. Please use `!setrate <credits> {game}` to add it first.")
+            else:
+                await ctx.send(MESSAGES['error'].format(error=error_msg))
 
     @commands.command(name='setrate')
     async def set_game_credits_per_hour(self, ctx, credits: float, *, game: str):
