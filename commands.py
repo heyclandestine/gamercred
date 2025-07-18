@@ -76,12 +76,7 @@ class GamingCommands(commands.Cog):
             )
 
         except Exception as e:
-            error_msg = str(e)
-            # Check for specific database constraint errors
-            if "null value in column \"game_id\"" in error_msg:
-                await ctx.send(f"❌ Game '{game}' doesn't exist in the database. Please use `!setrate <credits> {game}` to add it first.")
-            else:
-                await ctx.send(MESSAGES['error'].format(error=error_msg))
+            await ctx.send(MESSAGES['error'].format(error=str(e)))
 
     @commands.command(name='setrate')
     async def set_game_credits_per_hour(self, ctx, credits: float, *, game: str):

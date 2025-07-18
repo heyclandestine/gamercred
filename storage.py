@@ -964,8 +964,12 @@ class GameStorage:
         try:
             session = self.get_session()
             
-            # Get or create the game
-            game, is_new = await self.get_or_create_game(game_name, user_id)
+            # Check if the game exists (no auto-creation for Discord bot)
+            formatted_name = ' '.join(word.capitalize() for word in game_name.split())
+            game = session.query(Game).filter(func.lower(Game.name) == func.lower(formatted_name)).first()
+            
+            if not game:
+                raise Exception(f"Game '{game_name}' does not exist in the database. Please use `!setrate <credits> {game_name}` to add it first.")
             
             # Get user's total hours for this game (before this session)
             total_game_hours = session.query(func.sum(GamingSession.hours))\
