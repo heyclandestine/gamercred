@@ -1171,6 +1171,12 @@ class GameStorage:
                     FROM bonuses
                     WHERE user_id = :user_id
                 ),
+                completion_stats AS (
+                    SELECT 
+                        COALESCE(SUM(credits_awarded), 0) as completion_credits
+                    FROM game_completions
+                    WHERE user_id = :user_id
+                ),
                 most_played AS (
                     SELECT 
                         g.name,
@@ -1185,25 +1191,34 @@ class GameStorage:
                 user_rank AS (
                     SELECT 
                         user_id,
-                        RANK() OVER (ORDER BY (COALESCE(SUM(credits_earned), 0) + COALESCE(SUM(bonus_credits), 0)) DESC) as rank
+                        RANK() OVER (ORDER BY (COALESCE(SUM(credits_earned), 0) + COALESCE(SUM(bonus_credits), 0) + COALESCE(SUM(completion_credits), 0)) DESC) as rank
                     FROM (
                         SELECT 
                             gs.user_id,
                             gs.credits_earned,
-                            0 as bonus_credits
+                            0 as bonus_credits,
+                            0 as completion_credits
                         FROM gaming_sessions gs
                         UNION ALL
                         SELECT 
                             b.user_id,
                             0 as credits_earned,
-                            b.credits as bonus_credits
+                            b.credits as bonus_credits,
+                            0 as completion_credits
                         FROM bonuses b
+                        UNION ALL
+                        SELECT 
+                            gc.user_id,
+                            0 as credits_earned,
+                            0 as bonus_credits,
+                            gc.credits_awarded as completion_credits
+                        FROM game_completions gc
                     ) combined_credits
                     GROUP BY user_id
                 )
                 SELECT 
                     us.total_hours,
-                    (us.session_credits + COALESCE(bs.bonus_credits, 0)) as total_credits,
+                    (us.session_credits + COALESCE(bs.bonus_credits, 0) + COALESCE(cs.completion_credits, 0)) as total_credits,
                     us.games_played,
                     us.total_sessions,
                     us.first_played,
@@ -1213,6 +1228,7 @@ class GameStorage:
                     ur.rank
                 FROM user_stats us
                 LEFT JOIN bonus_stats bs ON true
+                LEFT JOIN completion_stats cs ON true
                 LEFT JOIN most_played mp ON true
                 LEFT JOIN user_rank ur ON ur.user_id = :user_id
             """), {"user_id": user_id}).first()
