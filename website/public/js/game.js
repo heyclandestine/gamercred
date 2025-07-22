@@ -425,7 +425,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
       });
 
-    // Completion
+    // Completion status
     fetch(`/api/game/completions?name=${encodeURIComponent(gameName)}`)
       .then(r => r.json())
       .then(data => {
@@ -442,6 +442,83 @@ document.addEventListener('DOMContentLoaded', function() {
           }
         }
       });
+    
+    // Get completion requirements
+    console.log('User object for completion requirements:', user); // Debug logging
+    if (user) {
+      console.log('Fetching completion requirements for game:', gameName); // Debug logging
+      fetch(`/api/game/completion-requirements?name=${encodeURIComponent(gameName)}`)
+        .then(r => {
+          console.log('Completion requirements response status:', r.status); // Debug logging
+          if (!r.ok) {
+            throw new Error(`HTTP ${r.status}: ${r.statusText}`);
+          }
+          return r.json();
+        })
+        .then(data => {
+          console.log('Completion requirements data:', data); // Debug logging
+          
+          if (data.already_completed) {
+            // Already completed, no need to show requirements
+            return;
+          }
+          
+          // Validate required data fields
+          if (typeof data.hours_met === 'undefined') {
+            console.error('Invalid completion requirements data:', data);
+            return;
+          }
+          
+          // Update completion button based on requirements
+          const markCompletedBtn = document.getElementById('markCompletedBtn');
+          if (data.can_complete) {
+            markCompletedBtn.textContent = 'Mark as Completed';
+            markCompletedBtn.disabled = false;
+            markCompletedBtn.style.opacity = '1';
+          } else {
+            markCompletedBtn.textContent = 'Requirements Not Met';
+            markCompletedBtn.disabled = true;
+            markCompletedBtn.style.opacity = '0.6';
+          }
+          
+          // Show requirements status
+          const completionContent = document.querySelector('.game-info-completion-content');
+          console.log('Completion content element:', completionContent); // Debug logging
+          if (!completionContent) {
+            console.error('Could not find .game-info-completion-content element');
+            return;
+          }
+          let requirementsHtml = '';
+          
+          // Add the main requirement message
+          requirementsHtml += `<div class="requirement-message">
+            <i class="fas fa-info-circle"></i>
+            <span>3 logged hours required to rate or mark as complete</span>
+          </div>`;
+          
+          // Show rating status (informational only)
+          if (data.has_rating) {
+            const ratingValue = data.rating_value || 0;
+            requirementsHtml += `<div class="requirement-item requirement-info">
+              <i class="fas fa-star"></i>
+              <span>Rated: ${ratingValue} stars</span>
+            </div>`;
+          }
+          
+          // Add requirements display
+          const requirementsDiv = document.createElement('div');
+          requirementsDiv.className = 'completion-requirements';
+          requirementsDiv.innerHTML = requirementsHtml;
+          console.log('Generated requirements HTML:', requirementsHtml); // Debug logging
+          console.log('Requirements div element:', requirementsDiv); // Debug logging
+          completionContent.appendChild(requirementsDiv);
+        })
+        .catch(error => {
+          console.error('Error fetching completion requirements:', error);
+        });
+    }
+    
+    // Completion button event listeners
     if (user) {
       document.getElementById('markCompletedBtn').addEventListener('click', function() {
         const btn = this;
@@ -449,18 +526,28 @@ document.addEventListener('DOMContentLoaded', function() {
         btn.textContent = 'Marking...';
         btn.disabled = true;
         
+        console.log('Submitting completion for game:', gameName); // Debug logging
         fetch('/api/game/complete', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ game_name: gameName })
         })
-        .then(r => r.json())
+        .then(r => {
+          console.log('Completion response status:', r.status); // Debug logging
+          return r.json();
+        })
         .then(data => {
+          console.log('Completion response data:', data); // Debug logging
           if (data.already_completed) {
             document.getElementById('completedBadge').style.display = 'inline-block';
             document.getElementById('markCompletedBtn').style.display = 'none';
             document.getElementById('undoCompletedBtn').style.display = 'inline-block';
             showMessage('You have already completed this game!', 'success');
+          } else if (data.error) {
+            // Handle validation errors
+            showMessage(data.error, 'error');
+            btn.textContent = originalText;
+            btn.disabled = false;
           } else {
             document.getElementById('completedBadge').style.display = 'inline-block';
             document.getElementById('markCompletedBtn').style.display = 'none';
@@ -476,6 +563,7 @@ document.addEventListener('DOMContentLoaded', function() {
           btn.disabled = false;
         });
       });
+      
       // Undo Completion button logic
       document.getElementById('undoCompletedBtn').addEventListener('click', function() {
         const btn = this;
@@ -652,6 +740,49 @@ document.addEventListener('DOMContentLoaded', function() {
     // Store the current rating in a variable that can be updated
     let currentUserRating = userRating;
     
+    // Add delete button if user has a rating
+    if (userRating > 0) {
+      const deleteBtn = document.createElement('button');
+      deleteBtn.className = 'delete-rating-btn';
+      deleteBtn.innerHTML = '<i class="fas fa-trash"></i>';
+      deleteBtn.title = 'Delete rating';
+      deleteBtn.onclick = function() {
+        if (confirm('Are you sure you want to delete your rating?')) {
+          fetch('/api/game/rating', {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ game_name: gameName })
+          })
+          .then(r => r.json())
+          .then(data => {
+            if (data.error) {
+              showMessage(data.error, 'error');
+            } else {
+              currentUserRating = 0;
+              highlightStars(0);
+              showMessage('Rating deleted successfully!', 'success');
+              
+              // Update average rating and count in real-time
+              fetch(`/api/game/ratings?name=${encodeURIComponent(gameName)}`)
+                .then(r => r.json())
+                .then(data => {
+                  document.getElementById('averageRating').textContent = data.average !== null ? data.average : '-';
+                  document.getElementById('ratingCount').textContent = data.count;
+                });
+              
+              // Remove the delete button
+              deleteBtn.remove();
+            }
+          })
+          .catch(error => {
+            console.error('Error deleting rating:', error);
+            showMessage('Failed to delete rating. Please try again.', 'error');
+          });
+        }
+      };
+      starRating.appendChild(deleteBtn);
+    }
+    
     for (let i = 1; i <= 5; i++) {
       const full = current >= 1;
       const half = !full && current >= 0.5;
@@ -673,40 +804,150 @@ document.addEventListener('DOMContentLoaded', function() {
         const rect = star.getBoundingClientRect();
         const value = (e.clientX - rect.left) < rect.width / 2 ? i - 0.5 : i;
         
-        // Add visual feedback
-        this.style.transform = 'scale(0.9)';
-        setTimeout(() => {
-          this.style.transform = 'scale(1)';
-        }, 150);
-        
-        fetch('/api/game/rating', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ game_name: gameName, rating: value })
-        })
-        .then(r => r.json())
-        .then(data => {
-          if (data.error) {
-            showMessage(data.error, 'error');
-          } else {
-            // Update the stored rating value
-            currentUserRating = value;
-            highlightStars(value);
-            showMessage(`Rating updated to ${value} stars!`, 'success');
+        // Check rating requirements first
+        fetch(`/api/game/rating-requirements?name=${encodeURIComponent(gameName)}`)
+          .then(r => {
+            if (!r.ok) {
+              throw new Error(`HTTP ${r.status}: ${r.statusText}`);
+            }
+            return r.json();
+          })
+          .then(data => {
+            if (!data.can_rate) {
+              if (!data.hours_met) {
+                showMessage(`You need at least 3 hours logged to rate this game. You currently have ${data.current_hours.toFixed(1)} hours.`, 'error');
+              } else if (data.already_rated) {
+                showMessage('You have already rated this game.', 'error');
+              }
+              return;
+            }
             
-            // Update average rating and count in real-time
-            fetch(`/api/game/ratings?name=${encodeURIComponent(gameName)}`)
-              .then(r => r.json())
-              .then(data => {
-                document.getElementById('averageRating').textContent = data.average !== null ? data.average : '-';
-                document.getElementById('ratingCount').textContent = data.count;
-              });
-          }
-        })
-        .catch(error => {
-          console.error('Error submitting rating:', error);
-          showMessage('Failed to submit rating. Please try again.', 'error');
-        });
+            // Proceed with rating submission
+            const btn = this;
+            btn.style.transform = 'scale(0.9)';
+            setTimeout(() => {
+              btn.style.transform = 'scale(1)';
+            }, 150);
+            
+            fetch('/api/game/rating', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ game_name: gameName, rating: value })
+            })
+            .then(r => r.json())
+            .then(data => {
+              if (data.error) {
+                showMessage(data.error, 'error');
+              } else {
+                // Update the stored rating value
+                currentUserRating = value;
+                highlightStars(value);
+                showMessage(`Rating updated to ${value} stars!`, 'success');
+                
+                // Update average rating and count in real-time
+                fetch(`/api/game/ratings?name=${encodeURIComponent(gameName)}`)
+                  .then(r => r.json())
+                  .then(data => {
+                    document.getElementById('averageRating').textContent = data.average !== null ? data.average : '-';
+                    document.getElementById('ratingCount').textContent = data.count;
+                  });
+                
+                // Refresh completion requirements after rating
+                if (user) {
+                  fetch(`/api/game/completion-requirements?name=${encodeURIComponent(gameName)}`)
+                    .then(r => {
+                      if (!r.ok) {
+                        throw new Error(`HTTP ${r.status}: ${r.statusText}`);
+                      }
+                      return r.json();
+                    })
+                    .then(data => {
+                      console.log('Updated completion requirements data:', data); // Debug logging
+                      
+                      if (data.already_completed) {
+                        // Already completed, no need to show requirements
+                        return;
+                      }
+                      
+                      // Validate required data fields
+                      if (typeof data.hours_met === 'undefined') {
+                        console.error('Invalid completion requirements data:', data);
+                        return;
+                      }
+                      
+                      // Update completion button based on requirements
+                      const markCompletedBtn = document.getElementById('markCompletedBtn');
+                      if (data.can_complete) {
+                        markCompletedBtn.textContent = 'Mark as Completed';
+                        markCompletedBtn.disabled = false;
+                        markCompletedBtn.style.opacity = '1';
+                      } else {
+                        markCompletedBtn.textContent = 'Requirements Not Met';
+                        markCompletedBtn.disabled = true;
+                        markCompletedBtn.style.opacity = '0.6';
+                      }
+                      
+                      // Update requirements display
+                      const completionContent = document.querySelector('.game-info-completion-content');
+                      const existingRequirements = completionContent.querySelector('.completion-requirements');
+                      if (existingRequirements) {
+                        existingRequirements.remove();
+                      }
+                      
+                      let requirementsHtml = '';
+                      
+                      // Add the main requirement message
+                      requirementsHtml += `<div class="requirement-message">
+                        <i class="fas fa-info-circle"></i>
+                        <span>3 logged hours required to mark as complete</span>
+                      </div>`;
+                      
+                      if (!data.hours_met) {
+                        const currentHours = data.current_hours || 0;
+                        const hoursRequired = data.hours_required || 3.0;
+                        requirementsHtml += `<div class="requirement-item requirement-not-met">
+                          <i class="fas fa-clock"></i>
+                          <span>Need ${hoursRequired} hours (${currentHours.toFixed(1)}/${hoursRequired})</span>
+                        </div>`;
+                      } else {
+                        const currentHours = data.current_hours || 0;
+                        const hoursRequired = data.hours_required || 3.0;
+                        requirementsHtml += `<div class="requirement-item requirement-met">
+                          <i class="fas fa-check-circle"></i>
+                          <span>Hours: ${currentHours.toFixed(1)}/${hoursRequired} ✓</span>
+                        </div>`;
+                      }
+                      
+                      // Show rating status (informational only)
+                      if (data.has_rating) {
+                        const ratingValue = data.rating_value || 0;
+                        requirementsHtml += `<div class="requirement-item requirement-info">
+                          <i class="fas fa-star"></i>
+                          <span>Rated: ${ratingValue} stars</span>
+                        </div>`;
+                      }
+                      
+                      // Add requirements display
+                      const requirementsDiv = document.createElement('div');
+                      requirementsDiv.className = 'completion-requirements';
+                      requirementsDiv.innerHTML = requirementsHtml;
+                      completionContent.appendChild(requirementsDiv);
+                    })
+                    .catch(error => {
+                      console.error('Error refreshing completion requirements:', error);
+                    });
+                }
+              }
+            })
+            .catch(error => {
+              console.error('Error submitting rating:', error);
+              showMessage('Failed to submit rating. Please try again.', 'error');
+            });
+          })
+          .catch(error => {
+            console.error('Error checking rating requirements:', error);
+            showMessage('Failed to check rating requirements. Please try again.', 'error');
+          });
       };
       starRating.appendChild(star);
       current -= 1;
@@ -731,10 +972,16 @@ document.addEventListener('DOMContentLoaded', function() {
   
   function renderReviews(reviews) {
     const reviewsList = document.getElementById('reviewsList');
+    console.log('Rendering reviews:', reviews); // Debug logging
     if (!reviews.length) {
       reviewsList.innerHTML = '<div style="text-align: center; color: #6272a4; padding: 2rem;">No reviews yet. Be the first to share your thoughts!</div>';
       return;
     }
+    
+    // Get current user ID for comparison
+    const currentUserId = document.cookie.split('; ').find(row => row.startsWith('user_id='))?.split('=')[1];
+    console.log('Current user ID from cookie:', currentUserId); // Debug logging
+    
     reviewsList.innerHTML = reviews.map(r => {
       // Generate star rating HTML
       const ratingStars = r.rating ? generateStarRatingHTML(r.rating) : '';
@@ -743,14 +990,23 @@ document.addEventListener('DOMContentLoaded', function() {
       const hoursAtReview = r.hours_at_review ? formatHours(r.hours_at_review) : '0h';
       const totalHours = r.total_hours ? formatHours(r.total_hours) : '0h';
       
+      // Check if this is the current user's review (convert both to strings for comparison)
+      const isCurrentUser = currentUserId && String(r.user_id) === String(currentUserId);
+      console.log(`Review user ID: ${r.user_id}, Current user ID: ${currentUserId}, Is current user: ${isCurrentUser}`); // Debug logging
+      
       return `
-        <div class="review-item">
+        <div class="review-item" data-user-id="${r.user_id}">
           <div class="review-header">
             <div class="review-user-info">
               <img class="avatar-sm" src="${r.avatar_url}" alt="${r.username}">
               <span class="review-username">${r.username}</span>
               <span class="review-date">${new Date(r.timestamp).toLocaleString()}</span>
             </div>
+            ${isCurrentUser ? `
+              <button class="delete-review-btn" onclick="deleteReview('${gameName}')" title="Delete review">
+                <i class="fas fa-trash"></i>
+              </button>
+            ` : ''}
           </div>
           <div class="review-meta">
             ${r.rating ? `
@@ -790,6 +1046,35 @@ document.addEventListener('DOMContentLoaded', function() {
     return stars;
   }
   
+  function deleteReview(gameName) {
+    if (confirm('Are you sure you want to delete your review?')) {
+      fetch('/api/game/review', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ game_name: gameName })
+      })
+      .then(r => r.json())
+      .then(data => {
+        if (data.error) {
+          showMessage(data.error, 'error');
+        } else {
+          showMessage('Review deleted successfully!', 'success');
+          
+          // Refresh reviews
+          fetch(`/api/game/reviews?name=${encodeURIComponent(gameName)}`)
+            .then(r => r.json())
+            .then(reviews => {
+              renderReviews(reviews);
+            });
+        }
+      })
+      .catch(error => {
+        console.error('Error deleting review:', error);
+        showMessage('Failed to delete review. Please try again.', 'error');
+      });
+    }
+  }
+
   function renderScreenshots(screens) {
     const gallery = document.getElementById('screenshotsGallery');
     if (!screens.length) {

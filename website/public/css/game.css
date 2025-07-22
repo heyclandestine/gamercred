@@ -687,6 +687,92 @@
   transform: translateY(0);
 }
 
+#markCompletedBtn:disabled {
+  background: linear-gradient(135deg, #6272a4, #7c8ba8);
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+#markCompletedBtn:disabled::before {
+  display: none;
+}
+
+/* Completion Requirements */
+.completion-requirements {
+  margin-top: 1rem;
+  padding: 1rem;
+}
+
+.requirement-message {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 1rem;
+  padding: 0.75rem;
+  border-radius: 6px;
+  color: #8be9fd;
+  font-weight: 600;
+}
+
+.requirement-message i {
+  color: #8be9fd;
+  font-size: 1.1rem;
+}
+
+.requirement-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+  font-size: 0.9rem;
+  padding: 0.5rem;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+}
+
+.requirement-item:last-child {
+  margin-bottom: 0;
+}
+
+.requirement-item i {
+  width: 16px;
+  text-align: center;
+}
+
+.requirement-not-met {
+  background: rgba(255, 107, 107, 0.1);
+  border: 1px solid rgba(255, 107, 107, 0.3);
+  color: #ff6b6b;
+}
+
+.requirement-not-met i {
+  color: #ff6b6b;
+}
+
+.requirement-met {
+  background: rgba(9, 163, 65, 0.1);
+  border: 1px solid rgba(9, 163, 65, 0.3);
+  color: #09a341;
+}
+
+.requirement-met i {
+  color: #09a341;
+}
+
+.requirement-info {
+  background: rgba(255, 184, 108, 0.1);
+  border: 1px solid rgba(255, 184, 108, 0.3);
+  color: #ffb86c;
+}
+
+.requirement-info i {
+  color: #ffb86c;
+}
+
+.requirement-item span {
+  font-weight: 500;
+}
+
 #completedBadge {
   background: linear-gradient(135deg, #09a341, #0bc44a);
   color: white;
@@ -1828,4 +1914,69 @@
 }
 .star-widget-star .far.fa-star {
   color: #44475a; /* muted for empty */
+}
+
+/* Delete rating button */
+.delete-rating-btn {
+  background: none;
+  border: none;
+  color: #ff5555;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 4px;
+  margin-left: 10px;
+  font-size: 14px;
+  transition: all 0.2s ease;
+}
+
+.delete-rating-btn:hover {
+  background-color: rgba(255, 85, 85, 0.1);
+  transform: scale(1.1);
+}
+
+.delete-rating-btn:active {
+  transform: scale(0.95);
+}
+
+/* Delete review button */
+.delete-review-btn {
+  background: white;
+  border: 1px solid #ff5555;
+  color: #ff5555;
+  cursor: pointer;
+  padding: 6px 10px;
+  border-radius: 4px;
+  font-size: 14px;
+  transition: all 0.2s ease;
+  opacity: 0.8;
+  margin-left: 10px;
+  min-width: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.delete-review-btn:hover {
+  background-color: rgba(255, 85, 85, 0.1);
+  opacity: 1;
+  transform: scale(1.1);
+}
+
+.delete-review-btn:active {
+  transform: scale(0.95);
+}
+
+.review-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 0.5rem;
+  width: 100%;
+}
+
+.review-user-info {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex: 1;
 } 

@@ -1,10 +1,20 @@
 import asyncio
-from storage import GameStorage, get_period_boundaries
+import os
+import sys
+
+# Add parent directory to Python path to import modules from root
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+# Import models first to avoid discord dependency
 from models import LeaderboardPeriod
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-import os
-import sys
+
+# Set up environment to avoid discord import
+os.environ['SKIP_DISCORD_IMPORT'] = '1'
+
+# Now import storage with the environment variable set
+from storage import GameStorage, get_period_boundaries
 
 DATABASE_URL = os.getenv('DATABASE_URL')
 engine = create_engine(DATABASE_URL)

@@ -20,7 +20,7 @@ from sqlalchemy.ext.declarative import declarative_base
 from models import Base # Import Base for table creation
 import logging
 from sqlalchemy.sql import func
-from models import GameReview, GameRating, GameCompletion, GameScreenshot, UserStats, Game, LeaderboardHistory, LeaderboardPeriod
+from models import GameReview, GameRating, GameCompletion, GameScreenshot, UserStats, Game, LeaderboardHistory, LeaderboardPeriod, Bonus
 from sqlalchemy.orm import sessionmaker
 from models import UserPreferences
 
@@ -1620,6 +1620,34 @@ def get_game_reviews():
             })
         return jsonify(result)
 
+@app.route('/api/game/review', methods=['DELETE'])
+def delete_game_review():
+    """Delete a user's review for a game"""
+    access_token = request.cookies.get('discord_token')
+    user_id = request.cookies.get('user_id')
+    if not access_token or not user_id:
+        return jsonify({'error': 'Not logged in'}), 401
+    
+    data = request.json
+    game_name = data.get('game_name')
+    if not game_name:
+        return jsonify({'error': 'Missing game name'}), 400
+    
+    with storage.Session() as session:
+        game = session.query(Game).filter_by(name=game_name).first()
+        if not game:
+            return jsonify({'error': 'Game not found'}), 404
+        
+        # Find and delete the user's review (convert user_id to int for database query)
+        review = session.query(GameReview).filter_by(user_id=int(user_id), game_id=game.id).first()
+        if not review:
+            return jsonify({'error': 'No review found to delete'}), 404
+        
+        session.delete(review)
+        session.commit()
+        
+        return jsonify({'message': 'Review deleted successfully'})
+
 # --- GAME RATINGS ---
 @app.route('/api/game/rating', methods=['POST'])
 def submit_game_rating():
@@ -1642,6 +1670,22 @@ def submit_game_rating():
         game = session.query(Game).filter_by(name=game_name).first()
         if not game:
             return jsonify({'error': 'Game not found'}), 404
+        
+        # Check if user has logged at least 3 hours for this game
+        total_hours_result = session.execute(text("""
+            SELECT COALESCE(SUM(hours), 0) as total_hours
+            FROM gaming_sessions
+            WHERE user_id = :user_id AND game_id = :game_id
+        """), {"user_id": user_id, "game_id": game.id}).first()
+        total_hours = float(total_hours_result.total_hours) if total_hours_result else 0.0
+        
+        if total_hours < 3.0:
+            return jsonify({
+                'error': f'You need at least 3 hours logged to rate this game. You currently have {total_hours:.1f} hours.',
+                'hours_required': 3.0,
+                'current_hours': total_hours
+            }), 400
+        
         # Upsert rating
         gr = session.query(GameRating).filter_by(user_id=user_id, game_id=game.id).first()
         if gr:
@@ -1676,6 +1720,34 @@ def get_game_ratings():
             'user_rating': user_rating
         })
 
+@app.route('/api/game/rating', methods=['DELETE'])
+def delete_game_rating():
+    """Delete a user's star rating for a game"""
+    access_token = request.cookies.get('discord_token')
+    user_id = request.cookies.get('user_id')
+    if not access_token or not user_id:
+        return jsonify({'error': 'Not logged in'}), 401
+    
+    data = request.json
+    game_name = data.get('game_name')
+    if not game_name:
+        return jsonify({'error': 'Missing game name'}), 400
+    
+    with storage.Session() as session:
+        game = session.query(Game).filter_by(name=game_name).first()
+        if not game:
+            return jsonify({'error': 'Game not found'}), 404
+        
+        # Find and delete the user's rating (convert user_id to int for database query)
+        rating = session.query(GameRating).filter_by(user_id=int(user_id), game_id=game.id).first()
+        if not rating:
+            return jsonify({'error': 'No rating found to delete'}), 404
+        
+        session.delete(rating)
+        session.commit()
+        
+        return jsonify({'message': 'Rating deleted successfully'})
+
 # --- GAME COMPLETION ---
 @app.route('/api/game/complete', methods=['POST'])
 def complete_game():
@@ -1691,18 +1763,50 @@ def complete_game():
         game = session.query(Game).filter_by(name=game_name).first()
         if not game:
             return jsonify({'error': 'Game not found'}), 404
+        
         # Check if already completed
         existing = session.query(GameCompletion).filter_by(user_id=user_id, game_id=game.id).first()
         if existing:
             return jsonify({'message': 'Already marked as completed', 'already_completed': True}), 200
+        
+        # Check if user has logged at least 3 hours for this game
+        total_hours_result = session.execute(text("""
+            SELECT COALESCE(SUM(hours), 0) as total_hours
+            FROM gaming_sessions
+            WHERE user_id = :user_id AND game_id = :game_id
+        """), {"user_id": user_id, "game_id": game.id}).first()
+        total_hours = float(total_hours_result.total_hours) if total_hours_result else 0.0
+        
+        if total_hours < 3.0:
+            return jsonify({
+                'error': f'You need at least 3 hours logged to complete this game. You currently have {total_hours:.1f} hours.',
+                'hours_required': 3.0,
+                'current_hours': total_hours
+            }), 400
+        
         # Mark as completed
         completion = GameCompletion(user_id=user_id, game_id=game.id, completed_at=datetime.utcnow(), credits_awarded=1000.0)
         session.add(completion)
-        # Award credits
+        
+        # Award credits - ensure user exists first
         user = session.query(UserStats).filter_by(user_id=user_id).first()
-        if user:
-            user.total_credits = (user.total_credits or 0) + 1000.0
-        session.commit()
+        if not user:
+            user = UserStats(user_id=user_id, total_credits=0.0)
+            session.add(user)
+            print(f"Created new UserStats for user {user_id}")  # Debug logging
+        
+        old_credits = user.total_credits or 0
+        user.total_credits = old_credits + 1000.0
+        print(f"Updating credits for user {user_id}: {old_credits} -> {user.total_credits}")  # Debug logging
+        
+        try:
+            session.commit()
+            print(f"Successfully committed credits update for user {user_id}")  # Debug logging
+        except Exception as e:
+            print(f"Error committing credits update: {e}")  # Debug logging
+            session.rollback()
+            raise
+        
         return jsonify({'message': 'Game marked as completed and 1,000 credits awarded', 'already_completed': False})
 
 @app.route('/api/game/uncomplete', methods=['POST'])
@@ -1748,6 +1852,63 @@ def get_game_completions():
         return jsonify({
             'count': len(completions),
             'user_completed': user_completed
+        })
+
+@app.route('/api/game/completion-requirements')
+def get_completion_requirements():
+    """Get completion requirements for a game (hours only)"""
+    game_name = request.args.get('name')
+    user_id = request.cookies.get('user_id')
+    if not game_name:
+        return jsonify({'error': 'Game name parameter missing'}), 400
+    if not user_id:
+        return jsonify({'error': 'Not logged in'}), 401
+    
+    with storage.Session() as session:
+        game = session.query(Game).filter_by(name=game_name).first()
+        if not game:
+            return jsonify({'error': 'Game not found'}), 404
+        
+        # Check if already completed
+        existing = session.query(GameCompletion).filter_by(user_id=user_id, game_id=game.id).first()
+        if existing:
+            return jsonify({
+                'already_completed': True,
+                'message': 'You have already completed this game'
+            })
+        
+        # Get user's total hours for this game
+        total_hours_result = session.execute(text("""
+            SELECT COALESCE(SUM(hours), 0) as total_hours
+            FROM gaming_sessions
+            WHERE user_id = :user_id AND game_id = :game_id
+        """), {"user_id": user_id, "game_id": game.id}).first()
+        total_hours = float(total_hours_result.total_hours) if total_hours_result else 0.0
+        
+        # Check if user has rated this game (for display purposes only)
+        user_rating = session.query(GameRating).filter_by(user_id=user_id, game_id=game.id).first()
+        has_rating = user_rating is not None
+        rating_value = user_rating.rating if user_rating else None
+        
+        # Check requirements - only hours matter for completion
+        hours_met = total_hours >= 3.0
+        can_complete = hours_met
+        
+        return jsonify({
+            'already_completed': False,
+            'hours_required': 3.0,
+            'current_hours': total_hours,
+            'hours_met': hours_met,
+            'has_rating': has_rating,
+            'rating_value': rating_value,
+            'can_complete': can_complete,
+            'requirements': {
+                'hours': {
+                    'required': 3.0,
+                    'current': total_hours,
+                    'met': hours_met
+                }
+            }
         })
 
 # --- GAME SCREENSHOTS ---
@@ -2168,6 +2329,44 @@ def serve_background_file(user_id, file_type):
         import traceback
         traceback.print_exc()
         return jsonify({'error': 'Internal server error'}), 500
+
+@app.route('/api/game/rating-requirements')
+def get_rating_requirements():
+    """Check if user can rate a game (requires 3 hours logged)"""
+    game_name = request.args.get('name')
+    user_id = request.cookies.get('user_id')
+    if not game_name:
+        return jsonify({'error': 'Game name parameter missing'}), 400
+    if not user_id:
+        return jsonify({'error': 'Not logged in'}), 401
+    
+    with storage.Session() as session:
+        game = session.query(Game).filter_by(name=game_name).first()
+        if not game:
+            return jsonify({'error': 'Game not found'}), 404
+        
+        # Get user's total hours for this game
+        total_hours_result = session.execute(text("""
+            SELECT COALESCE(SUM(hours), 0) as total_hours
+            FROM gaming_sessions
+            WHERE user_id = :user_id AND game_id = :game_id
+        """), {"user_id": user_id, "game_id": game.id}).first()
+        total_hours = float(total_hours_result.total_hours) if total_hours_result else 0.0
+        
+        # Check if user has already rated this game
+        existing_rating = session.query(GameRating).filter_by(user_id=user_id, game_id=game.id).first()
+        
+        # Can rate if they have 3+ hours and haven't rated yet
+        can_rate = total_hours >= 3.0 and not existing_rating
+        
+        return jsonify({
+            'can_rate': can_rate,
+            'hours_required': 3.0,
+            'current_hours': total_hours,
+            'hours_met': total_hours >= 3.0,
+            'already_rated': existing_rating is not None,
+            'existing_rating': existing_rating.rating if existing_rating else None
+        })
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True) 

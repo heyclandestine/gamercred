@@ -4,7 +4,7 @@ from typing import Dict, List, Tuple, Optional, Any
 from sqlalchemy import create_engine, func, DateTime as sqlalchemy_DateTime, and_, Integer, String, BigInteger, text, distinct
 from sqlalchemy.orm import sessionmaker, scoped_session
 from sqlalchemy.pool import QueuePool
-from models import Base, Game, UserStats, GamingSession, LeaderboardHistory, LeaderboardType, LeaderboardPeriod, Bonus
+from models import Base, Game, UserStats, GamingSession, LeaderboardHistory, LeaderboardType, LeaderboardPeriod, Bonus, GameCompletion
 import pytz
 import discord
 from dotenv import load_dotenv
@@ -455,10 +455,20 @@ class GameStorage:
                     Bonus.user_id
                 ).subquery()
 
-                # Combine session and bonus credits for all-time
+                # Get completion credits for each user (only for all-time)
+                completion_credits = db_session.query(
+                    GameCompletion.user_id,
+                    func.sum(GameCompletion.credits_awarded).label('completion_credits')
+                ).group_by(
+                    GameCompletion.user_id
+                ).subquery()
+
+                # Combine session, bonus, and completion credits for all-time
                 results = db_session.query(
                     session_credits.c.user_id,
-                    (func.coalesce(session_credits.c.session_credits, 0) + func.coalesce(bonus_credits.c.bonus_credits, 0)).label('total_credits'),
+                    (func.coalesce(session_credits.c.session_credits, 0) + 
+                     func.coalesce(bonus_credits.c.bonus_credits, 0) + 
+                     func.coalesce(completion_credits.c.completion_credits, 0)).label('total_credits'),
                     session_credits.c.games_played,
                     most_played_games.c.game_name,
                     most_played_games.c.game_hours,
@@ -472,8 +482,13 @@ class GameStorage:
                 ).outerjoin(
                     bonus_credits,
                     session_credits.c.user_id == bonus_credits.c.user_id
+                ).outerjoin(
+                    completion_credits,
+                    session_credits.c.user_id == completion_credits.c.user_id
                 ).order_by(
-                    (func.coalesce(session_credits.c.session_credits, 0) + func.coalesce(bonus_credits.c.bonus_credits, 0)).desc()
+                    (func.coalesce(session_credits.c.session_credits, 0) + 
+                     func.coalesce(bonus_credits.c.bonus_credits, 0) + 
+                     func.coalesce(completion_credits.c.completion_credits, 0)).desc()
                 ).all()
             else:
                 # For weekly and monthly, only use session credits
@@ -1065,13 +1080,26 @@ class GameStorage:
                 Bonus.user_id
             ).subquery()
 
-            # Combine session credits and bonus credits
+            # Get total completion credits for each user
+            completion_credits = session.query(
+                GameCompletion.user_id,
+                func.sum(GameCompletion.credits_awarded).label('completion_credits')
+            ).group_by(
+                GameCompletion.user_id
+            ).subquery()
+
+            # Combine session credits, bonus credits, and completion credits
             results = session.query(
                 session_credits.c.user_id,
-                (func.coalesce(session_credits.c.session_credits, 0) + func.coalesce(bonus_credits.c.bonus_credits, 0)).label('total_credits')
+                (func.coalesce(session_credits.c.session_credits, 0) + 
+                 func.coalesce(bonus_credits.c.bonus_credits, 0) + 
+                 func.coalesce(completion_credits.c.completion_credits, 0)).label('total_credits')
             ).outerjoin(
                 bonus_credits,
                 session_credits.c.user_id == bonus_credits.c.user_id
+            ).outerjoin(
+                completion_credits,
+                session_credits.c.user_id == completion_credits.c.user_id
             ).all()
 
             # Update user_stats table with new total credits
@@ -1900,17 +1928,32 @@ class GameStorage:
                 Bonus.user_id
             ).subquery()
 
-            # Combine session credits and bonus credits
+            # Get total completion credits for each user
+            completion_credits = db_session.query(
+                GameCompletion.user_id,
+                func.sum(GameCompletion.credits_awarded).label('completion_credits')
+            ).group_by(
+                GameCompletion.user_id
+            ).subquery()
+
+            # Combine session credits, bonus credits, and completion credits
             results = db_session.query(
                 session_credits.c.user_id,
-                (func.coalesce(session_credits.c.session_credits, 0) + func.coalesce(bonus_credits.c.bonus_credits, 0)).label('total_credits'),
+                (func.coalesce(session_credits.c.session_credits, 0) + 
+                 func.coalesce(bonus_credits.c.bonus_credits, 0) + 
+                 func.coalesce(completion_credits.c.completion_credits, 0)).label('total_credits'),
                 session_credits.c.games_played,
                 session_credits.c.total_hours
             ).outerjoin(
                 bonus_credits,
                 session_credits.c.user_id == bonus_credits.c.user_id
+            ).outerjoin(
+                completion_credits,
+                session_credits.c.user_id == completion_credits.c.user_id
             ).order_by(
-                (func.coalesce(session_credits.c.session_credits, 0) + func.coalesce(bonus_credits.c.bonus_credits, 0)).desc()
+                (func.coalesce(session_credits.c.session_credits, 0) + 
+                 func.coalesce(bonus_credits.c.bonus_credits, 0) + 
+                 func.coalesce(completion_credits.c.completion_credits, 0)).desc()
             ).all()
 
             # Get most played game for each user
