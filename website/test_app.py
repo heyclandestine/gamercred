@@ -595,7 +595,7 @@ def get_leaderboard():
         logger.error(f"Error getting leaderboard data: {str(e)}", exc_info=True)
         return jsonify({'error': 'Failed to get leaderboard data'}), 500
 
-# Add endpoint to fetch current champions (latest inactive weekly and monthly periods)
+# Add endpoint to fetch current champions (1st, 2nd, 3rd place from most recent inactive periods)
 @app.route('/api/current-champions')
 def get_current_champions():
     try:
@@ -626,20 +626,22 @@ def get_current_champions():
             # Collect all unique user IDs to batch Discord API calls
             all_user_ids = set()
             
-            # Get top 3 for weekly if period exists
+            # Get 1st, 2nd, 3rd place for weekly if period exists
             if weekly_period:
                 weekly_history = session.query(LeaderboardHistory).filter(
-                    LeaderboardHistory.period_id == weekly_period.id
-                ).order_by(LeaderboardHistory.placement.asc()).limit(3).all()
+                    LeaderboardHistory.period_id == weekly_period.id,
+                    LeaderboardHistory.placement.in_([1, 2, 3])
+                ).order_by(LeaderboardHistory.placement.asc()).all()
                 
                 for entry in weekly_history:
                     all_user_ids.add(str(entry.user_id))
             
-            # Get top 3 for monthly if period exists
+            # Get 1st, 2nd, 3rd place for monthly if period exists
             if monthly_period:
                 monthly_history = session.query(LeaderboardHistory).filter(
-                    LeaderboardHistory.period_id == monthly_period.id
-                ).order_by(LeaderboardHistory.placement.asc()).limit(3).all()
+                    LeaderboardHistory.period_id == monthly_period.id,
+                    LeaderboardHistory.placement.in_([1, 2, 3])
+                ).order_by(LeaderboardHistory.placement.asc()).all()
                 
                 for entry in monthly_history:
                     all_user_ids.add(str(entry.user_id))
@@ -650,11 +652,12 @@ def get_current_champions():
             else:
                 discord_info_map = {}
             
-            # Process weekly champions
+            # Process weekly champions (1st, 2nd, 3rd place)
             if weekly_period:
                 weekly_history = session.query(LeaderboardHistory).filter(
-                    LeaderboardHistory.period_id == weekly_period.id
-                ).order_by(LeaderboardHistory.placement.asc()).limit(3).all()
+                    LeaderboardHistory.period_id == weekly_period.id,
+                    LeaderboardHistory.placement.in_([1, 2, 3])
+                ).order_by(LeaderboardHistory.placement.asc()).all()
                 
                 for entry in weekly_history:
                     user_id_str = str(entry.user_id)
@@ -669,11 +672,12 @@ def get_current_champions():
                         'period_end': weekly_period.end_time.isoformat()
                     })
             
-            # Process monthly champions
+            # Process monthly champions (1st, 2nd, 3rd place)
             if monthly_period:
                 monthly_history = session.query(LeaderboardHistory).filter(
-                    LeaderboardHistory.period_id == monthly_period.id
-                ).order_by(LeaderboardHistory.placement.asc()).limit(3).all()
+                    LeaderboardHistory.period_id == monthly_period.id,
+                    LeaderboardHistory.placement.in_([1, 2, 3])
+                ).order_by(LeaderboardHistory.placement.asc()).all()
                 
                 for entry in monthly_history:
                     user_id_str = str(entry.user_id)

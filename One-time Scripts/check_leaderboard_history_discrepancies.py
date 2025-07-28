@@ -1,9 +1,14 @@
+import sys
+import os
+# Add parent directory to Python path
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+import models
 from models import LeaderboardHistory, LeaderboardPeriod, LeaderboardType
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 import asyncio
 import pytz
-import os
 
 # Import your storage logic (adjust import as needed)
 from storage import GameStorage, get_period_boundaries
